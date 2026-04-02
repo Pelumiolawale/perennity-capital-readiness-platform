@@ -1,8 +1,30 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+// TODO: Add Perennity Bridge logo file to /src/assets/ directory
+// import perennityLogo from "./assets/perennity-logo.png";
 
 // ============================================================
 // PERENNITY CAPITAL READINESS PLATFORM — FULL MVP APPLICATION
 // ============================================================
+
+// ─── AIRTABLE BACKEND ───────────────────────────────────────
+const AIRTABLE_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID;
+const AIRTABLE_API_KEY = import.meta.env.VITE_AIRTABLE_API_KEY;
+
+async function sendToAirtable(tableName, fields) {
+  if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) {
+    console.warn("Airtable credentials not configured");
+    return false;
+  }
+  try {
+    const res = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${AIRTABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields }),
+    });
+    if (!res.ok) console.warn("Airtable error:", await res.json());
+    return res.ok;
+  } catch (e) { console.warn("Airtable send failed:", e); return false; }
+}
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 const COLORS = {
@@ -438,8 +460,10 @@ const css = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap');
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { height: 100%; overflow: hidden; }
+html, body, #root { height: 100%; }
 body { font-family: 'DM Sans', -apple-system, sans-serif; background: ${COLORS.bg}; color: ${COLORS.text}; }
+
+.main-scroll { overflow-y: auto; scroll-behavior: smooth; }
 
 h1, h2, h3 { font-family: 'DM Serif Display', Georgia, serif; font-weight: 400; }
 
@@ -893,6 +917,15 @@ export default function App() {
     setUser(userData);
     setScreen("app");
     setNavItem("dashboard");
+
+    // Send to Airtable Users table
+    sendToAirtable("Users", {
+      Name: userData.name,
+      Company: userData.company,
+      Role: userData.role,
+      Email: userData.email,
+      Timestamp: new Date().toISOString(),
+    });
   }
 
   function handleCreateProject() {
@@ -928,6 +961,28 @@ export default function App() {
     setAssessments(prev => ({ ...prev, [currentProject.id]: result }));
     setScreen("app");
     setNavItem("results");
+
+    // Send to Airtable Assessments table
+    sendToAirtable("Assessments", {
+      "Project Name": currentProject.project_name || "Untitled",
+      "Capital Readiness Score": result.capitalReadinessScore,
+      "Confidence Score": result.confidenceScore,
+      "Band": result.band?.label,
+      "Region": currentProject.region,
+      "Country": currentProject.country,
+      "Development Stage": currentProject.development_stage,
+      "PUE": flatProject.pue,
+      "Planned Capacity MW": flatProject.planned_capacity_mw,
+      "Renewable Energy %": flatProject.renewable_energy_share_pct,
+      "SA Score": result.subscores?.sa,
+      "EPV Score": result.subscores?.epv,
+      "WRE Score": result.subscores?.wre,
+      "CSR Score": result.subscores?.csr,
+      "DFR Score": result.subscores?.dfr,
+      "Hard Stop Triggered": result.hardStopTriggered,
+      "Hard Stop Reason": result.hardStopReason,
+      "Timestamp": new Date().toISOString(),
+    });
   }
 
   function handleEditProject(project) {
@@ -1744,7 +1799,24 @@ export default function App() {
             <FormField label="Tell us about your challenge">
               <textarea value={advisoryForm.message} onChange={e => setAdvisoryForm({...advisoryForm, message: e.target.value})} placeholder="Describe what you need help with..." />
             </FormField>
-            <Button style={{ width: "100%", justifyContent: "center" }} disabled={!advisoryForm.request_type}>Submit Request</Button>
+            <Button
+              style={{ width: "100%", justifyContent: "center" }}
+              disabled={!advisoryForm.request_type}
+              onClick={() => {
+                sendToAirtable("Advisory Requests", {
+                  "Support Area": advisoryForm.request_type,
+                  "Message": advisoryForm.message,
+                  "User Name": user?.name,
+                  "User Email": user?.email,
+                  "User Company": user?.company,
+                  "Timestamp": new Date().toISOString(),
+                });
+                setAdvisoryForm({ request_type: "", message: "" });
+                alert("Request submitted successfully! We'll be in touch soon.");
+              }}
+            >
+              Submit Request
+            </Button>
           </Card>
         </div>
       );
@@ -1768,12 +1840,13 @@ export default function App() {
       <style>{css}</style>
       <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         {/* Sidebar */}
-        <div style={{ width: 240, borderRight: `1px solid ${COLORS.border}`, display: "flex", flexDirection: "column", background: COLORS.surface, flexShrink: 0 }}>
+        <div style={{ width: 240, borderRight: `1px solid #1a3040`, display: "flex", flexDirection: "column", background: "#0d2030", flexShrink: 0 }}>
           <div style={{ padding: "20px 20px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+            {/* TODO: Replace with <img src={perennityLogo} alt="Perennity" style={{ width: 32, height: 32 }} /> once logo is added */}
             <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, #1B6B4A, #2A8C62)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="shield" size={16} color="#fff" />
             </div>
-            <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em" }}>Perennity</span>
+            <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em", color: "#ffffff" }}>Perennity</span>
           </div>
           <nav style={{ flex: 1, padding: "0 12px" }}>
             {navItems.map(item => (
@@ -1781,33 +1854,33 @@ export default function App() {
                 style={{
                   display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8,
                   cursor: "pointer", marginBottom: 2, fontSize: 14, fontWeight: navItem === item.key ? 500 : 400,
-                  color: navItem === item.key ? COLORS.text : COLORS.textSecondary,
-                  background: navItem === item.key ? COLORS.surfaceRaised : "transparent",
+                  color: navItem === item.key ? "#ffffff" : "rgba(255,255,255,0.55)",
+                  background: navItem === item.key ? "rgba(78, 205, 164, 0.15)" : "transparent",
                   transition: "all 0.15s",
                 }}
-                onMouseEnter={e => { if (navItem !== item.key) e.currentTarget.style.background = COLORS.surfaceHover; }}
+                onMouseEnter={e => { if (navItem !== item.key) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
                 onMouseLeave={e => { if (navItem !== item.key) e.currentTarget.style.background = "transparent"; }}
               >
-                <Icon name={item.icon} size={16} />
+                <Icon name={item.icon} size={16} color={navItem === item.key ? "#4ECDA4" : "rgba(255,255,255,0.55)"} />
                 <span>{item.label}</span>
               </div>
             ))}
           </nav>
-          <div style={{ padding: "16px 20px", borderTop: `1px solid ${COLORS.border}` }}>
+          <div style={{ padding: "16px 20px", borderTop: `1px solid #1a3040` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: COLORS.surfaceRaised, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon name="user" size={14} color={COLORS.textSecondary} />
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="user" size={14} color="rgba(255,255,255,0.7)" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.name}</div>
-                <div style={{ fontSize: 11, color: COLORS.textMuted }}>{user?.role}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#ffffff" }}>{user?.name}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{user?.role}</div>
               </div>
             </div>
-            <div 
-              onClick={() => setShowTos(true)} 
-              style={{ fontSize: 11, color: COLORS.textMuted, cursor: "pointer", padding: "4px 0" }}
-              onMouseEnter={e => e.currentTarget.style.color = COLORS.accent}
-              onMouseLeave={e => e.currentTarget.style.color = COLORS.textMuted}
+            <div
+              onClick={() => setShowTos(true)}
+              style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", cursor: "pointer", padding: "4px 0" }}
+              onMouseEnter={e => e.currentTarget.style.color = "#4ECDA4"}
+              onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.55)"}
             >
               Terms of Service & Confidentiality
             </div>
@@ -1815,7 +1888,7 @@ export default function App() {
         </div>
 
         {/* Main content */}
-        <div style={{ flex: 1, overflow: "auto", padding: "32px 40px" }}>
+        <div className="main-scroll" style={{ flex: 1, padding: "32px 40px" }}>
           <div style={{ maxWidth: 1100 }}>
             {renderContent()}
           </div>
