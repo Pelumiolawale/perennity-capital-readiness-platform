@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 // TODO: Add Perennity Bridge logo file to /src/assets/ directory
-// import perennityLogo from "./assets/perennity-logo.png";
+import perennityLogo from "./assets/perennity-logo.png";
 
 // ============================================================
 // PERENNITY CAPITAL READINESS PLATFORM — FULL MVP APPLICATION
