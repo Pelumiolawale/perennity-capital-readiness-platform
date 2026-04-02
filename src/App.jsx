@@ -1841,10 +1841,7 @@ export default function App() {
         {/* Sidebar */}
         <div style={{ width: 240, borderRight: `1px solid #1a3040`, display: "flex", flexDirection: "column", background: "#0d2030", flexShrink: 0 }}>
           <div style={{ padding: "20px 20px 24px", display: "flex", alignItems: "center", gap: 10 }}>
-            {/* TODO: Replace with <img src={perennityLogo} alt="Perennity" style={{ width: 32, height: 32 }} /> once logo is added */}
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, #1B6B4A, #2A8C62)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="shield" size={16} color="#fff" />
-            </div>
+            <img src={perennityLogo} alt="Perennity" style={{ width: 32, height: 32, objectFit: "contain" }} />
             <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em", color: "#ffffff" }}>Perennity</span>
           </div>
           <nav style={{ flex: 1, padding: "0 12px" }}>
