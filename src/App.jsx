@@ -11,18 +11,28 @@ const AIRTABLE_API_KEY = import.meta.env.VITE_AIRTABLE_API_KEY;
 
 async function sendToAirtable(tableName, fields) {
   if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) {
-    console.warn("Airtable credentials not configured");
+    console.error("❌ Airtable credentials not configured. Check your .env.local file and restart the dev server.");
+    console.log("BASE_ID present:", !!AIRTABLE_BASE_ID, "API_KEY present:", !!AIRTABLE_API_KEY);
     return false;
   }
+  console.log(`📤 Sending to Airtable table "${tableName}":`, fields);
   try {
     const res = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${AIRTABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ fields }),
     });
-    if (!res.ok) console.warn("Airtable error:", await res.json());
-    return res.ok;
-  } catch (e) { console.warn("Airtable send failed:", e); return false; }
+    if (!res.ok) {
+      const error = await res.json();
+      console.error("❌ Airtable error:", error);
+      return false;
+    }
+    console.log(`✅ Successfully sent to Airtable table "${tableName}"`);
+    return true;
+  } catch (e) {
+    console.error("❌ Airtable send failed:", e);
+    return false;
+  }
 }
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
