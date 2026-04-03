@@ -1,0 +1,77 @@
+{
+  "id": "eu-taxonomy",
+  "name": "EU Taxonomy — Activity 8.1: Data Centres",
+  "version": "DA 2021/2139 (amended 2023)",
+  "status": "active",
+  "effectiveDate": "2022-01-01",
+  "nextReview": "2027-01-01",
+  "description": "Technical screening criteria for data centres under Climate Change Mitigation objective",
+  "substantialContribution": {
+    "objective": "Climate Change Mitigation",
+    "criteria": [
+      {
+        "id": "pue_new",
+        "name": "PUE ≤ 1.5 (new facilities from 2026)",
+        "threshold": 1.5,
+        "appliesTo": "new_build",
+        "citation": "Annex I, Section 8.1, paragraph 1(a)"
+      },
+      {
+        "id": "pue_existing",
+        "name": "PUE ≤ 1.8 (existing facilities by 2027)",
+        "threshold": 1.8,
+        "appliesTo": "existing",
+        "citation": "Annex I, Section 8.1, paragraph 1(b)"
+      },
+      {
+        "id": "renewable_power",
+        "name": "100% renewable electricity or credible pathway",
+        "threshold": 100,
+        "softThreshold": 50,
+        "citation": "Annex I, Section 8.1, paragraph 1(c)"
+      },
+      {
+        "id": "waste_heat",
+        "name": "Waste heat reuse programme in place or assessed",
+        "type": "boolean",
+        "citation": "Annex I, Section 8.1, paragraph 1(d)"
+      }
+    ]
+  },
+  "dnsh": {
+    "climateAdaptation": {
+      "label": "Climate Change Adaptation",
+      "requirement": "Physical climate risks assessed per IPCC RCP 4.5/8.5 scenarios",
+      "citation": "Annex II"
+    },
+    "water": {
+      "label": "Water and Marine Resources",
+      "requirement": "Water consumption monitored; water-efficient cooling in water-stressed areas",
+      "wueThreshold": 1.0,
+      "citation": "Annex III"
+    },
+    "circularEconomy": {
+      "label": "Circular Economy",
+      "requirement": "Construction waste management plan; circular IT asset approach",
+      "citation": "Annex IV"
+    },
+    "pollution": {
+      "label": "Pollution Prevention and Control",
+      "requirement": "No use of substances of very high concern (SVHC); refrigerant management plan",
+      "citation": "Annex V"
+    },
+    "biodiversity": {
+      "label": "Biodiversity and Ecosystems",
+      "requirement": "Environmental impact assessment for sites near protected areas",
+      "citation": "Annex VI"
+    }
+  },
+  "minimumSocialSafeguards": {
+    "requirement": "Alignment with OECD Guidelines for MNEs and UN Guiding Principles on Business and Human Rights"
+  },
+  "scoringImpact": {
+    "taxonomyAlignedBonus": 8,
+    "taxonomyClaimedBonus": 4,
+    "description": "EU Taxonomy alignment materially improves Article 8/9 SFDR eligibility and green bond access"
+  }
+}

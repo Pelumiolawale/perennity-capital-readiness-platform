@@ -1,0 +1,59 @@
+{
+  "id": "tcfd",
+  "name": "TCFD — Task Force on Climate-related Financial Disclosures",
+  "version": "2023 (final recommendations, now ISSB IFRS S2)",
+  "status": "active",
+  "description": "Framework for climate-related financial risk disclosure, now mandated in UK (FCA), EU (CSRD), and voluntary globally",
+  "pillars": {
+    "governance": {
+      "name": "Governance",
+      "description": "Board oversight and management's role in assessing climate risks",
+      "scoringWeight": 0.20,
+      "projectField": "tcfd_governance",
+      "keyQuestions": [
+        "Does the board oversee climate-related risks?",
+        "Is there a dedicated ESG committee or officer?"
+      ]
+    },
+    "strategy": {
+      "name": "Strategy",
+      "description": "Actual and potential impacts of climate risks on business, strategy, and financial planning",
+      "scoringWeight": 0.25,
+      "projectField": "tcfd_strategy",
+      "keyQuestions": [
+        "Has a scenario analysis been conducted (1.5°C, 2°C, 4°C)?",
+        "Are climate risks integrated into financial planning?"
+      ]
+    },
+    "riskManagement": {
+      "name": "Risk Management",
+      "description": "Processes for identifying, assessing, and managing climate-related risks",
+      "scoringWeight": 0.25,
+      "projectField": "adaptation_measures_present",
+      "keyQuestions": [
+        "Are physical climate risks assessed (flood, heat, storm)?",
+        "Is there a business continuity plan covering climate events?"
+      ]
+    },
+    "metrics": {
+      "name": "Metrics & Targets",
+      "description": "Metrics and targets used to assess and manage climate-related risks",
+      "scoringWeight": 0.30,
+      "projectField": "net_zero_commitment_present",
+      "keyQuestions": [
+        "Are Scope 1, 2, and 3 emissions tracked?",
+        "Is there a science-based target (SBTi) or net-zero commitment?"
+      ]
+    }
+  },
+  "mandatoryRegions": {
+    "UK": "Mandatory for premium-listed companies (FCA LR 9.8.6)",
+    "EU": "Mandatory via CSRD/ESRS E1 for large companies",
+    "US": "SEC climate disclosure rule (2024)"
+  },
+  "scoringImpact": {
+    "fullTcfdBonus": 5,
+    "partialTcfdBonus": 2,
+    "description": "TCFD alignment increases investor confidence and DFI eligibility"
+  }
+}
