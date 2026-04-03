@@ -1,0 +1,51 @@
+{
+  "id": "uk-sdr",
+  "name": "UK SDR — Sustainability Disclosure Requirements",
+  "version": "FCA PS23/16 (November 2023)",
+  "status": "active",
+  "effectiveDate": "2024-07-31",
+  "description": "UK FCA fund labelling and disclosure regime for sustainability products",
+  "labels": {
+    "sustainabilityFocus": {
+      "label": "Sustainability Focus",
+      "description": "Invests in assets that are environmentally or socially sustainable",
+      "requirements": {
+        "minSustainableAssets": 70,
+        "minRenewable": 50,
+        "maxPue": 1.5,
+        "sustainabilityDisclosuresRequired": true
+      },
+      "scoringThreshold": 75,
+      "applicableRegion": "UK"
+    },
+    "sustainabilityImprovers": {
+      "label": "Sustainability Improvers",
+      "description": "Invests in assets with potential to improve sustainability over time",
+      "requirements": {
+        "improvementPlanRequired": true,
+        "minRenewable": 30,
+        "carbonReductionStrategyRequired": true
+      },
+      "scoringThreshold": 55,
+      "applicableRegion": "UK"
+    },
+    "sustainabilityImpact": {
+      "label": "Sustainability Impact",
+      "description": "Aims to achieve a positive measurable impact on environment or society",
+      "requirements": {
+        "impactMeasurementRequired": true,
+        "minRenewable": 70,
+        "maxPue": 1.4,
+        "netZeroRequired": true,
+        "taxonomyAlignmentRequired": true
+      },
+      "scoringThreshold": 80,
+      "applicableRegion": "UK"
+    }
+  },
+  "disclosureRequirements": {
+    "preContractual": "Sustainability label, objectives, investment policy",
+    "ongoing": "Annual sustainability report, KPI tracking",
+    "naming": "Fund names must not use sustainability terms unless labelled"
+  }
+}

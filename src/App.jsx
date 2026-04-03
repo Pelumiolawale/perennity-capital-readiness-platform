@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import perennityLogo from "./assets/perennity-logo.png";
+import { runAssessment as runScoringEngine, determineSfdrClassification, determineUkSdrEligibility, determineEuTaxonomyAlignment, REGION_WEIGHTS as ENGINE_REGION_WEIGHTS, REGION_THRESHOLDS as ENGINE_REGION_THRESHOLDS } from "./engine/scoring.js";
+import { downloadPdf } from "./export/pdfExport.js";
+import { downloadExcel } from "./export/excelExport.js";
+import { generateNarrative, answerRegulatoryQuestion } from "./engine/aiAnalysis.js";
+import { saveAssessment, listAssessments, loadAssessmentById, deleteAssessment, saveDraft, loadDraft, clearDraft } from "./hooks/useAssessmentStore.js";
 
 // ============================================================
 // PERENNITY CAPITAL READINESS PLATFORM — FULL MVP APPLICATION
@@ -919,8 +924,54 @@ export default function App() {
   const [onboardingForm, setOnboardingForm] = useState({ name: "", company: "", role: "developer", email: "" });
   const [tosAccepted, setTosAccepted] = useState(false);
   const [showTos, setShowTos] = useState(false);
+  // Enterprise features
+  const [aiNarrative, setAiNarrative] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [qaQuestion, setQaQuestion] = useState("");
+  const [qaHistory, setQaHistory] = useState([]);
+  const [qaStreaming, setQaStreaming] = useState(false);
+  const [historyList, setHistoryList] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [draftBanner, setDraftBanner] = useState(null);
 
   const currentAssessment = currentProject ? assessments[currentProject.id] : null;
+
+  // Load draft on mount
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) setDraftBanner(draft);
+  }, []);
+
+  // Auto-save wizard draft
+  useEffect(() => {
+    if (screen === "wizard") {
+      const t = setTimeout(() => saveDraft(projectDraft), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [projectDraft, screen]);
+
+  // Load AI narrative when results appear
+  useEffect(() => {
+    if (screen === "app" && navItem === "results" && currentAssessment && !aiNarrative) {
+      setAiLoading(true);
+      setAiNarrative("");
+      (async () => {
+        try {
+          for await (const chunk of generateNarrative(currentProject, currentAssessment)) {
+            setAiNarrative(prev => prev + chunk);
+          }
+        } catch (e) { /* API key not set or error */ }
+        setAiLoading(false);
+      })();
+    }
+  }, [screen, navItem, currentAssessment?.capitalReadinessScore]);
+
+  // Load history list when panel opens
+  useEffect(() => {
+    if (showHistory) {
+      listAssessments().then(setHistoryList).catch(() => {});
+    }
+  }, [showHistory]);
 
   function handleLogin(userData) {
     setUser(userData);
@@ -954,6 +1005,8 @@ export default function App() {
 
   function handleRunAssessment(project) {
     setCurrentProject(project);
+    setAiNarrative("");
+    setQaHistory([]);
     setScreen("assessing");
   }
 
@@ -966,8 +1019,16 @@ export default function App() {
       else if (!isNaN(v) && v !== "" && v !== true && v !== false && typeof v === "string") flatProject[k] = parseFloat(v);
       else flatProject[k] = v;
     });
-    const result = runAssessment(flatProject, currentProject.region || "UK");
+    const region = currentProject.region || "UK";
+    const result = runScoringEngine(flatProject, region);
+    // Augment with regulatory classifications
+    result.sfdr = determineSfdrClassification(flatProject, region);
+    result.taxonomy = determineEuTaxonomyAlignment(flatProject);
+    result.sdr = determineUkSdrEligibility(flatProject, result.capitalReadinessScore);
     setAssessments(prev => ({ ...prev, [currentProject.id]: result }));
+    // Save to IndexedDB history
+    const assessmentId = `PER-${currentProject.id.slice(-6).toUpperCase()}`;
+    saveAssessment(assessmentId, currentProject, result).catch(console.error);
     setScreen("app");
     setNavItem("results");
 
@@ -992,6 +1053,32 @@ export default function App() {
       "Hard Stop Reason": result.hardStopReason,
       "Timestamp": new Date().toISOString(),
     });
+  }
+
+  async function handleQaSubmit() {
+    if (!qaQuestion.trim() || qaStreaming || !currentAssessment) return;
+    const q = qaQuestion.trim();
+    setQaQuestion("");
+    const userMsg = { role: "user", content: q };
+    setQaHistory(prev => [...prev, userMsg]);
+    setQaStreaming(true);
+    let answer = "";
+    try {
+      const histForApi = [...qaHistory, userMsg].map(m => ({ role: m.role, content: m.content }));
+      for await (const chunk of answerRegulatoryQuestion(q, currentProject, currentAssessment, histForApi)) {
+        answer += chunk;
+        setQaHistory(prev => {
+          const updated = [...prev];
+          if (updated[updated.length - 1]?.role === "assistant") {
+            updated[updated.length - 1] = { role: "assistant", content: answer };
+          } else {
+            updated.push({ role: "assistant", content: answer });
+          }
+          return updated;
+        });
+      }
+    } catch (e) { /* no API key */ }
+    setQaStreaming(false);
   }
 
   function handleEditProject(project) {
@@ -1702,8 +1789,61 @@ export default function App() {
             </Card>
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
-            <Button variant="secondary" icon="download">Download Report</Button>
+          {/* SFDR + Taxonomy badges */}
+          {currentAssessment.sfdr && (
+            <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
+              <div style={{ padding: "8px 16px", borderRadius: 8, background: currentAssessment.sfdr.classification === "Article 9" ? "#05966922" : currentAssessment.sfdr.classification === "Article 8" ? "#2563eb22" : COLORS.surfaceRaised, border: `1px solid ${currentAssessment.sfdr.classification === "Article 9" ? "#059669" : currentAssessment.sfdr.classification === "Article 8" ? "#2563eb" : COLORS.border}` }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: currentAssessment.sfdr.classification === "Article 9" ? "#059669" : currentAssessment.sfdr.classification === "Article 8" ? "#2563eb" : COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>SFDR</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{currentAssessment.sfdr.classification}</div>
+                <div style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 1 }}>{currentAssessment.sfdr.label}</div>
+              </div>
+              {currentAssessment.taxonomy && (
+                <div style={{ padding: "8px 16px", borderRadius: 8, background: currentAssessment.taxonomy.aligned ? COLORS.greenBg : COLORS.redBg, border: `1px solid ${currentAssessment.taxonomy.aligned ? COLORS.green : COLORS.red}33` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: currentAssessment.taxonomy.aligned ? COLORS.green : COLORS.red, textTransform: "uppercase", letterSpacing: "0.04em" }}>EU Taxonomy</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{currentAssessment.taxonomy.aligned ? "Aligned" : "Not Aligned"}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 1 }}>{currentAssessment.taxonomy.aligned ? "Activity 8.1 criteria met" : `${currentAssessment.taxonomy.criteria?.filter(c => !c.met).length || 0} criteria unmet`}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Narrative Panel */}
+          {(aiLoading || aiNarrative) && (
+            <Card style={{ marginTop: 24, background: COLORS.accentSubtle, borderColor: `${COLORS.accent}33` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Icon name="star" size={16} color={COLORS.accent} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.accent }}>AI Regulatory Analysis</span>
+                {aiLoading && <span style={{ fontSize: 12, color: COLORS.textMuted, animation: "pulse 1s infinite" }}>Generating…</span>}
+              </div>
+              <div style={{ fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{aiNarrative}</div>
+            </Card>
+          )}
+
+          {/* Regulatory Q&A */}
+          <Card style={{ marginTop: 24 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Regulatory Q&A</h3>
+            <div style={{ maxHeight: 260, overflowY: "auto", marginBottom: 12 }}>
+              {qaHistory.map((msg, i) => (
+                <div key={i} style={{ marginBottom: 12, display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                  <div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: 8, background: msg.role === "user" ? COLORS.accent : COLORS.surfaceRaised, color: msg.role === "user" ? "#fff" : COLORS.text, fontSize: 13 }}>{msg.content}</div>
+                </div>
+              ))}
+              {qaStreaming && <div style={{ fontSize: 13, color: COLORS.textMuted, animation: "pulse 1s infinite" }}>Answering…</div>}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={qaQuestion} onChange={e => setQaQuestion(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && qaQuestion.trim() && !qaStreaming) handleQaSubmit(); }} placeholder="Ask about regulatory requirements…" style={{ flex: 1 }} />
+              <Button size="sm" disabled={!qaQuestion.trim() || qaStreaming} onClick={handleQaSubmit}>Ask</Button>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              {["Why didn't I qualify for Article 9?", "What's needed for EU Taxonomy alignment?", "How can I improve my score?"].map(q => (
+                <button key={q} onClick={() => { setQaQuestion(q); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 12, border: `1px solid ${COLORS.border}`, background: "transparent", cursor: "pointer", color: COLORS.textSecondary }}>{q}</button>
+              ))}
+            </div>
+          </Card>
+
+          <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
+            <Button variant="secondary" icon="download" onClick={() => { const id = `PER-${currentProject.id.slice(-6).toUpperCase()}`; downloadPdf(currentProject, currentAssessment, id); }}>Download PDF</Button>
+            <Button variant="secondary" icon="download" onClick={() => { const id = `PER-${currentProject.id.slice(-6).toUpperCase()}`; downloadExcel(currentProject, currentAssessment, id); }}>Download Excel</Button>
             <Button onClick={() => setNavItem("advisory")} icon="advisory">Request Advisory Support</Button>
           </div>
         </div>
@@ -1775,8 +1915,8 @@ export default function App() {
                       <div style={{ fontSize: 12, color: COLORS.textMuted }}>Score: {a.capitalReadinessScore} · {a.band.label} · {new Date(a.assessedAt).toLocaleDateString()}</div>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <Button size="sm" variant="secondary" icon="download">Capital Readiness Report</Button>
-                      <Button size="sm" variant="secondary" icon="download">Investor Summary</Button>
+                      <Button size="sm" variant="secondary" icon="download" onClick={() => { const id = `PER-${p.id.slice(-6).toUpperCase()}`; downloadPdf(p, a, id); }}>PDF Report</Button>
+                      <Button size="sm" variant="secondary" icon="download" onClick={() => { const id = `PER-${p.id.slice(-6).toUpperCase()}`; downloadExcel(p, a, id); }}>Excel</Button>
                     </div>
                   </div>
                 </Card>
@@ -1872,6 +2012,14 @@ export default function App() {
               </div>
             ))}
           </nav>
+          <div style={{ padding: "0 12px 8px" }}>
+            <div onClick={() => setShowHistory(true)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, cursor: "pointer", fontSize: 14, color: "rgba(255,255,255,0.55)", transition: "all 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <Icon name="reports" size={16} color="rgba(255,255,255,0.55)" />
+              <span>History</span>
+            </div>
+          </div>
           <div style={{ padding: "16px 20px", borderTop: `1px solid #1a3040` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1901,6 +2049,56 @@ export default function App() {
         </div>
       </div>
       {showTos && <TOSModal onClose={() => setShowTos(false)} onAccept={() => setShowTos(false)} />}
+
+      {/* Draft restore banner */}
+      {draftBanner && screen === "app" && navItem === "dashboard" && (
+        <div style={{ position: "fixed", bottom: 24, left: 260, right: 24, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100 }}>
+          <div>
+            <span style={{ fontSize: 14, fontWeight: 500 }}>Unsaved assessment draft from {new Date(draftBanner.savedAt).toLocaleDateString()}</span>
+            <span style={{ fontSize: 13, color: COLORS.textSecondary, marginLeft: 8 }}>Resume where you left off?</span>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button size="sm" onClick={() => { setProjectDraft(draftBanner.wizardData); setWizardStep(0); setScreen("wizard"); setDraftBanner(null); }}>Resume Draft</Button>
+            <Button size="sm" variant="ghost" onClick={() => { clearDraft(); setDraftBanner(null); }}>Dismiss</Button>
+          </div>
+        </div>
+      )}
+
+      {/* History slide-over */}
+      {showHistory && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200 }} onClick={() => setShowHistory(false)}>
+          <div style={{ position: "absolute", top: 0, right: 0, width: 400, height: "100%", background: COLORS.surface, borderLeft: `1px solid ${COLORS.border}`, display: "flex", flexDirection: "column", animation: "slideInRight 0.25s ease-out" }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: 17, fontWeight: 600 }}>Assessment History</h3>
+              <div onClick={() => setShowHistory(false)} style={{ cursor: "pointer", padding: 4 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.textSecondary} strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+              {historyList.length === 0 ? (
+                <div style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 14, marginTop: 40 }}>No saved assessments yet.</div>
+              ) : historyList.map(item => (
+                <Card key={item.id} style={{ marginBottom: 12, padding: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{item.projectName}</div>
+                      <div style={{ fontSize: 12, color: COLORS.textMuted }}>{item.region} · {new Date(item.savedAt).toLocaleDateString()}</div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: item.score >= 80 ? COLORS.green : item.score >= 60 ? COLORS.amber : COLORS.red }}>{item.score}/100</span>
+                        {item.sfdr && <span style={{ fontSize: 11, color: COLORS.textSecondary }}>{item.sfdr}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <Button size="sm" variant="secondary" onClick={() => { if (item.project && item.assessment) { setCurrentProject(item.project); setAssessments(prev => ({ ...prev, [item.project.id]: item.assessment })); setNavItem("results"); setShowHistory(false); } }}>Load</Button>
+                      <Button size="sm" variant="danger" onClick={() => { deleteAssessment(item.id).then(() => listAssessments().then(setHistoryList)); }}>Delete</Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

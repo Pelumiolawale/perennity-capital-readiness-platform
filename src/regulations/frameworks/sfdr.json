@@ -1,0 +1,50 @@
+{
+  "id": "sfdr",
+  "name": "SFDR — Sustainable Finance Disclosure Regulation",
+  "version": "Regulation (EU) 2019/2088 + RTS (2023)",
+  "status": "active",
+  "reform": "SFDR 2.0 under consultation (expected 2025-2026)",
+  "description": "Classification and disclosure requirements for sustainable investment products",
+  "classifications": {
+    "article9": {
+      "label": "Article 9 — Sustainable Investment",
+      "description": "Product has sustainable investment as its objective",
+      "requirements": {
+        "minRenewable": 80,
+        "maxPue": 1.5,
+        "taxonomyAlignmentRequired": true,
+        "paiDisclosureRequired": true,
+        "sustainabilityDisclosuresRequired": true,
+        "netZeroRequired": true
+      },
+      "scoringThreshold": 80,
+      "greenFinanceImpact": "Highest — preferred by pension funds, sovereign wealth, DFIs"
+    },
+    "article8": {
+      "label": "Article 8 — ESG Integration",
+      "description": "Product promotes environmental or social characteristics",
+      "requirements": {
+        "minRenewable": 40,
+        "maxPue": 1.8,
+        "sustainabilityDisclosuresRequired": true,
+        "carbonReductionStrategyRequired": true
+      },
+      "scoringThreshold": 60,
+      "greenFinanceImpact": "High — standard for most green bond issuance"
+    },
+    "article6": {
+      "label": "Article 6 — No Sustainability Claim",
+      "description": "Product considers sustainability risks but makes no specific claim",
+      "requirements": {},
+      "scoringThreshold": 0,
+      "greenFinanceImpact": "Conventional financing only"
+    }
+  },
+  "paiIndicators": [
+    { "id": "ghg_emissions", "name": "GHG Emissions (Scope 1+2)", "mandatory": true },
+    { "id": "carbon_footprint", "name": "Carbon Footprint", "mandatory": true },
+    { "id": "energy_consumption", "name": "Energy Consumption Intensity", "mandatory": true },
+    { "id": "renewable_energy", "name": "Share of Non-Renewable Energy", "mandatory": true },
+    { "id": "water_emissions", "name": "Emissions to Water", "mandatory": false }
+  ]
+}

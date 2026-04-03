@@ -1,0 +1,84 @@
+{
+  "id": "region-thresholds",
+  "name": "Regional Scoring Thresholds",
+  "version": "2026-Q1",
+  "status": "active",
+  "description": "Per-region thresholds used by the scoring engine. Update these values when regulations change — no code changes needed.",
+  "regions": {
+    "EU": {
+      "pue": {
+        "target": 1.3,
+        "compliantNew": 1.5,
+        "compliantExisting": 1.8,
+        "citation": "EU Taxonomy DA 2021/2139, Activity 8.1 — Climate Change Mitigation"
+      },
+      "renewableMin": 50,
+      "wue": {
+        "target": 0.5,
+        "acceptable": 1.0,
+        "citation": "EU Taxonomy DA 2021/2139, DNSH Water"
+      },
+      "weights": { "sa": 0.35, "epv": 0.20, "wre": 0.15, "csr": 0.15, "dfr": 0.15 },
+      "greenFinanceLabels": ["Article 8", "Article 9", "EU Green Bond"],
+      "hardStops": {
+        "noGridUS_EU": { "cap": 45, "reason": "No realistic grid access pathway" },
+        "greenRaiseWithoutTaxonomy": { "cap": 59, "minRenewable": 30, "reason": "Sustainability framework non-eligibility for EU green raise" }
+      }
+    },
+    "UK": {
+      "pue": {
+        "target": 1.35,
+        "compliantNew": 1.5,
+        "compliantExisting": 1.8,
+        "citation": "UK SDR PS23/16 and voluntary EU Taxonomy alignment"
+      },
+      "renewableMin": 40,
+      "wue": {
+        "target": 0.6,
+        "acceptable": 1.2,
+        "citation": "UK SDR and Environment Agency Water Abstraction guidance"
+      },
+      "weights": { "sa": 0.30, "epv": 0.25, "wre": 0.15, "csr": 0.15, "dfr": 0.15 },
+      "greenFinanceLabels": ["SDR Sustainability Focus", "SDR Sustainability Improvers", "SDR Sustainability Impact", "UK Green Bond"],
+      "hardStops": {
+        "greenRaiseWithoutTaxonomy": { "cap": 59, "minRenewable": 30, "reason": "Sustainability framework non-eligibility for UK green raise" }
+      }
+    },
+    "US": {
+      "pue": {
+        "target": 1.4,
+        "compliantNew": 1.6,
+        "compliantExisting": 2.0,
+        "citation": "EPA ENERGY STAR Data Center guidance, DOE Better Buildings"
+      },
+      "renewableMin": 30,
+      "wue": {
+        "target": 0.8,
+        "acceptable": 1.5,
+        "citation": "EPA WaterSense, ASHRAE TC 9.9"
+      },
+      "weights": { "sa": 0.20, "epv": 0.35, "wre": 0.15, "csr": 0.15, "dfr": 0.15 },
+      "greenFinanceLabels": ["Green Bond (ICMA)", "Sustainability-Linked Bond"],
+      "hardStops": {
+        "noGridUS_EU": { "cap": 45, "reason": "No realistic grid access pathway" }
+      }
+    },
+    "MENA": {
+      "pue": {
+        "target": 1.4,
+        "compliantNew": 1.6,
+        "compliantExisting": 2.0,
+        "citation": "UAE Smart Dubai Data Centre Policy, Saudi Vision 2030 Digital Infrastructure"
+      },
+      "renewableMin": 35,
+      "wue": {
+        "target": 0.9,
+        "acceptable": 1.8,
+        "citation": "UAE Water Security Strategy 2036"
+      },
+      "weights": { "sa": 0.30, "epv": 0.25, "wre": 0.15, "csr": 0.15, "dfr": 0.15 },
+      "greenFinanceLabels": ["Green Sukuk", "UAE Green Bond Framework", "Saudi Green Bond"],
+      "hardStops": {}
+    }
+  }
+}
