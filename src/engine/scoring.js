@@ -265,10 +265,10 @@ export function calculateWaterResourceEfficiency(project, region) {
 export function calculateClimateSiteResilience(project) {
   const explanations = { positive: [], negative: [] };
 
-  const flood = parseFloat(project.flood_risk_score) ?? 50;
-  const heat = parseFloat(project.extreme_heat_risk_score) ?? 50;
-  const storm = parseFloat(project.storm_risk_score) ?? 30;
-  const wildfire = parseFloat(project.wildfire_risk_score) ?? 20;
+  const flood = parseFloat(project.flood_risk_score) || 50;
+  const heat = parseFloat(project.extreme_heat_risk_score) || 50;
+  const storm = parseFloat(project.storm_risk_score) || 30;
+  const wildfire = parseFloat(project.wildfire_risk_score) || 20;
 
   let floodScore = Math.max(0, 100 - flood);
   let heatScore = Math.max(0, 100 - heat);
@@ -470,7 +470,7 @@ export function runAssessment(project, region) {
   const subscores = { sa: sa.score, epv: epv.score, wre: wre.score, csr: csr.score, dfr: dfr.score };
   const confidence = calculateConfidence(project);
   const recommendations = generateRecommendations(project, subscores, region);
-  const band = READINESS_BANDS.find(b => finalScore >= b.min);
+  const band = READINESS_BANDS.find(b => finalScore >= b.min) || READINESS_BANDS[READINESS_BANDS.length - 1];
 
   const sfdr = determineSfdrClassification(project, region);
   const sdr = region === 'UK' ? determineUkSdrEligibility(project, finalScore) : [];
