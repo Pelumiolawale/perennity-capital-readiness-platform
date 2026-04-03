@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Perennity — proprietary regulatory content (never commit)
+src/regulations/proprietary/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,0 +1,53 @@
+{
+  "id": "sfdr-current",
+  "name": "SFDR — Sustainable Finance Disclosure Regulation (Current)",
+  "version": "2019/2088",
+  "effectiveDate": "2021-03-10",
+  "status": "active",
+  "lastUpdated": "2026-04-03",
+  "source": "EU Regulation 2019/2088 (SFDR) and Delegated Regulation 2022/1288 (RTS)",
+  "notes": "Current SFDR Article 6/8/9 framework. Reform (SFDR 2.0) is under ESA consultation — see sfdr-2.0.json.",
+  "classifications": {
+    "article9": {
+      "label": "Article 9 — Sustainable Investment",
+      "description": "Products with sustainable investment as their objective",
+      "criteria": {
+        "minOverallScore": 85,
+        "minRenewablePercent": 75,
+        "maxPue": 1.5,
+        "paiDisclosureRequired": true,
+        "dnshRequired": true,
+        "sustainableInvestmentDefinition": "Investment that contributes to environmental/social objective with DNSH and good governance"
+      }
+    },
+    "article8": {
+      "label": "Article 8 — Environmental/Social Characteristics",
+      "description": "Products that promote E/S characteristics",
+      "criteria": {
+        "minOverallScore": 60,
+        "minRenewablePercent": 50,
+        "esgPromotionRequired": true,
+        "paiConsideration": "comply or explain"
+      }
+    },
+    "article6": {
+      "label": "Article 6 — Standard Disclosure",
+      "description": "Products that integrate sustainability risk (all products)",
+      "criteria": {
+        "sustainabilityRiskDisclosure": true
+      }
+    }
+  },
+  "paiIndicators": {
+    "mandatory": [
+      { "id": "pai1", "name": "GHG emissions (Scope 1+2)", "unit": "tCO2e" },
+      { "id": "pai2", "name": "Carbon footprint", "unit": "tCO2e/€M invested" },
+      { "id": "pai7", "name": "Renewable energy share", "unit": "%" },
+      { "id": "pai8", "name": "Energy consumption intensity", "unit": "kWh/€M revenue" }
+    ],
+    "optionalRelevantToDataCentres": [
+      { "id": "pai10", "name": "Water usage", "unit": "m³" },
+      { "id": "pai11", "name": "Hazardous waste ratio", "unit": "%" }
+    ]
+  }
+}

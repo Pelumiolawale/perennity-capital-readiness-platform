@@ -1,0 +1,63 @@
+{
+  "id": "eu-taxonomy-8.1",
+  "name": "EU Taxonomy — Data Centres (Activity 8.1)",
+  "version": "2021/2139-r1",
+  "effectiveDate": "2022-01-01",
+  "status": "active",
+  "lastUpdated": "2026-04-03",
+  "source": "EU Delegated Regulation 2021/2139 (Climate Delegated Act), Annex I, Section 8.1",
+  "notes": "Technical screening criteria for climate change mitigation substantial contribution by data transmission networks and data centre facilities.",
+  "changelog": [
+    { "date": "2022-01-01", "change": "Initial entry into force" },
+    { "date": "2026-04-03", "change": "Added 2027 PUE review note; clarified CNDCP WUE formula" }
+  ],
+  "substantialContribution": {
+    "description": "Climate Change Mitigation — Section 8.1",
+    "criteria": {
+      "pue": {
+        "newBuilds": {
+          "threshold": 1.5,
+          "complianceDate": "2022-01-01",
+          "futureTightening": { "threshold": 1.4, "date": "2027-01-01", "note": "Subject to Commission review" }
+        },
+        "existingFacilities": {
+          "threshold": 1.8,
+          "transitionTarget": 1.5,
+          "transitionDate": "2030-01-01"
+        }
+      },
+      "euCocRequired": true,
+      "euCocNote": "Registration as EU Code of Conduct for Data Centres Participant required",
+      "renewableEnergyRecommended": 100
+    }
+  },
+  "dnsh": {
+    "climateAdaptation": {
+      "requirement": "Physical and transition climate risk assessment required",
+      "standard": "TCFD-aligned",
+      "note": "Must assess heat stress, water scarcity, and extreme weather scenarios"
+    },
+    "water": {
+      "requirement": "CNDCP-compliant WUE target",
+      "formula": "WUEmax = 0.4 × K1(climate) × K2(cooling) × K3(recycled water)",
+      "climateFactors": {
+        "hot_arid": 1.4,
+        "hot_semi_arid": 1.2,
+        "temperate": 1.0
+      }
+    },
+    "circularEconomy": {
+      "requirement": "Certified e-waste management programme",
+      "minimumStandard": "basic",
+      "note": "R2 or e-Stewards certification preferred. Chain-of-custody documentation required."
+    },
+    "pollutionPrevention": {
+      "requirement": "Refrigerant management programme and emissions monitoring",
+      "note": "Cannot assume compliance — documentary evidence required"
+    },
+    "biodiversity": {
+      "requirement": "Site biodiversity impact assessment",
+      "note": "Required for new builds and major expansions"
+    }
+  }
+}

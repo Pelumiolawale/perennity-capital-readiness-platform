@@ -1,0 +1,62 @@
+{
+  "id": "tcfd",
+  "name": "Task Force on Climate-related Financial Disclosures (TCFD)",
+  "version": "2017-final",
+  "effectiveDate": "2017-06-01",
+  "status": "active",
+  "lastUpdated": "2026-04-03",
+  "source": "TCFD Final Recommendations (June 2017); ISSB IFRS S2 (supersedes TCFD from 2024)",
+  "notes": "TCFD has been absorbed into IFRS S2 Climate Disclosures (2024). ESRS E1 is TCFD-aligned. Still referenced in EU Taxonomy and SFDR requirements.",
+  "pillars": {
+    "governance": {
+      "pillar": "Governance",
+      "description": "Board oversight of climate-related risks and opportunities; management's role in assessing and managing climate risks",
+      "formField": "tcfdGovernance",
+      "points": 6,
+      "keyQuestions": [
+        "Does the board oversee climate-related risks?",
+        "Does management have a climate risk committee or designated officer?"
+      ]
+    },
+    "strategy": {
+      "pillar": "Strategy",
+      "description": "Climate-related risks and opportunities and their impact on the organisation's business, strategy, and financial planning",
+      "formField": "tcfdStrategy",
+      "points": 6,
+      "keyQuestions": [
+        "Are climate scenarios (1.5°C, 2°C, 3°C) used in strategic planning?",
+        "Are climate-related risks integrated into capex/opex decisions?"
+      ]
+    },
+    "riskManagement": {
+      "pillar": "Risk Management",
+      "description": "Processes used to identify, assess, and manage climate-related risks",
+      "formField": "tcfdRiskManagement",
+      "points": 6,
+      "keyQuestions": [
+        "Is there a formal climate risk identification process?",
+        "Are climate risks integrated into the enterprise risk management (ERM) system?"
+      ]
+    },
+    "metricsTargets": {
+      "pillar": "Metrics & Targets",
+      "description": "Metrics and targets used to assess and manage climate-related risks and opportunities",
+      "formField": "tcfdMetrics",
+      "points": 6,
+      "keyQuestions": [
+        "Are Scope 1, 2, and 3 GHG emissions disclosed?",
+        "Are there science-based or Paris-aligned emission reduction targets?"
+      ]
+    },
+    "climateRiskAssessment": {
+      "pillar": "Climate Risk Assessment",
+      "description": "Formal assessment of physical and transition climate risks for the facility",
+      "formField": "climateRiskAssessment",
+      "points": 6,
+      "keyQuestions": [
+        "Has a physical risk assessment (heat, flooding, water scarcity) been conducted?",
+        "Has a transition risk assessment (carbon pricing, regulatory change) been conducted?"
+      ]
+    }
+  }
+}

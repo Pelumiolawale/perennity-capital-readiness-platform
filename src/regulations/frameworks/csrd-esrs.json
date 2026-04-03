@@ -1,0 +1,66 @@
+{
+  "id": "csrd-esrs",
+  "name": "CSRD — European Sustainability Reporting Standards (ESRS)",
+  "version": "ESRS-2023",
+  "effectiveDate": "2025-01-01",
+  "status": "active",
+  "lastUpdated": "2026-04-03",
+  "source": "EU Directive 2022/2464 (CSRD); ESRS Delegated Regulation 2023/2772",
+  "notes": "Mandatory for large companies from FY2024 (reporting in 2025). Listed SMEs from FY2025.",
+  "relevantStandards": {
+    "esrsE1": {
+      "id": "ESRS E1",
+      "name": "Climate Change",
+      "mandatory": true,
+      "keyDisclosures": [
+        "Scope 1, 2, and 3 GHG emissions (tCO2e)",
+        "Energy consumption and mix (MWh)",
+        "Science-based targets or transition plan",
+        "Physical and transition climate risks (TCFD-aligned)",
+        "Carbon removal activities"
+      ],
+      "scoringWeights": {
+        "scope1Data": 20,
+        "scope2MarketBased": 20,
+        "scope2LocationBased": 10,
+        "energyData": 20,
+        "transitionPlan": 20,
+        "tcfdMetrics": 10
+      }
+    },
+    "esrsE3": {
+      "id": "ESRS E3",
+      "name": "Water and Marine Resources",
+      "mandatory": "subject to materiality",
+      "keyDisclosures": [
+        "Total water withdrawal by source (m³)",
+        "Water consumption in water-stressed areas",
+        "Water recycling and reuse metrics",
+        "Marine resource impacts"
+      ],
+      "scoringWeights": {
+        "waterWithdrawalData": 40,
+        "waterStressAssessment": 30,
+        "recyclingProgram": 15,
+        "alternativeSource": 15
+      }
+    },
+    "esrsE5": {
+      "id": "ESRS E5",
+      "name": "Resource Use and Circular Economy",
+      "mandatory": "subject to materiality",
+      "keyDisclosures": [
+        "Total waste generated (tonnes) by type and disposal method",
+        "Waste recovery and recycling rate (%)",
+        "Hazardous waste management",
+        "Product/equipment end-of-life management"
+      ],
+      "scoringWeights": {
+        "wasteData": 30,
+        "recoveryRate": 30,
+        "ewasteProgram": 25,
+        "equipmentReuse": 15
+      }
+    }
+  }
+}

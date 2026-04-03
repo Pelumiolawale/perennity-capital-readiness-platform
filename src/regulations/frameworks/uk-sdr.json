@@ -1,0 +1,52 @@
+{
+  "id": "uk-sdr",
+  "name": "UK Sustainability Disclosure Requirements (SDR)",
+  "version": "FCA-PS23-16",
+  "effectiveDate": "2024-07-31",
+  "status": "active",
+  "lastUpdated": "2026-04-03",
+  "source": "FCA Policy Statement PS23/16 — Sustainability Disclosure Requirements and investment labels",
+  "notes": "UK SDR applies to UK-authorised investment products. Fund labels became available July 2024. Naming rules effective April 2025.",
+  "labels": {
+    "sustainabilityFocus": {
+      "label": "Sustainability Focus",
+      "description": "Products investing in assets that are environmentally or socially sustainable",
+      "criteria": {
+        "minOverallScore": 75,
+        "minRenewablePercent": 70,
+        "note": "Assets must meet a credible standard of environmental sustainability — not just improving"
+      }
+    },
+    "sustainabilityImprovers": {
+      "label": "Sustainability Improvers",
+      "description": "Products investing in assets with potential to improve their sustainability over time",
+      "criteria": {
+        "minOverallScore": 50,
+        "requiresTransitionPlan": true,
+        "note": "Must have a credible, time-bound improvement plan with measurable milestones"
+      }
+    },
+    "sustainabilityImpact": {
+      "label": "Sustainability Impact",
+      "description": "Products aiming to achieve a pre-defined positive environmental or social impact",
+      "criteria": {
+        "minOverallScore": 80,
+        "requiresClimateRiskAssessment": true,
+        "requiresMeasurableImpact": true,
+        "note": "Must demonstrate additionality and measurable positive outcomes with independent verification"
+      }
+    },
+    "sustainabilityMixed": {
+      "label": "Sustainability Mixed Goals",
+      "description": "Products with a mix of the above approaches",
+      "criteria": {
+        "note": "Applies a combination of the above criteria proportionate to each sleeve"
+      }
+    }
+  },
+  "namingRules": {
+    "effectiveDate": "2025-04-02",
+    "restrictedTerms": ["sustainable", "sustainability", "green", "ESG", "responsible", "impact", "ethical"],
+    "note": "Products using these terms in fund names or marketing must hold the appropriate SDR label or demonstrate FCA-approved justification"
+  }
+}

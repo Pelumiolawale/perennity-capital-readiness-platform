@@ -1,0 +1,39 @@
+{
+  "id": "sfdr-2.0",
+  "name": "SFDR 2.0 — Reform Proposal",
+  "version": "2.0-draft",
+  "effectiveDate": "2027-01-01",
+  "status": "proposed",
+  "lastUpdated": "2026-04-03",
+  "source": "ESA Consultation Paper on SFDR Reform (January 2026)",
+  "notes": "Proposed reform replaces Article 6/8/9 with a simpler category system. Not yet law. Update this file when the Regulation is finalised.",
+  "proposedCategories": {
+    "sustainable": {
+      "label": "Sustainable",
+      "description": "Products primarily investing in activities aligned to environmental or social objectives",
+      "proposedCriteria": {
+        "note": "Criteria under consultation — expected to include minimum taxonomy alignment % and PAI thresholds"
+      }
+    },
+    "transition": {
+      "label": "Transition",
+      "description": "Products investing in activities on a credible transition pathway",
+      "proposedCriteria": {
+        "note": "Requires documented transition plan aligned to Paris Agreement"
+      }
+    },
+    "esg": {
+      "label": "ESG Collection",
+      "description": "Products integrating ESG factors without a specific sustainability objective",
+      "proposedCriteria": {
+        "note": "Baseline ESG integration and disclosure requirements"
+      }
+    }
+  },
+  "keyChanges": [
+    "Replaces Article 6/8/9 with Sustainable/Transition/ESG categories",
+    "Stricter product categorisation requirements",
+    "Mandatory PAI disclosure at product level (not just entity level)",
+    "Expected to align more closely with EU Taxonomy alignment percentage requirements"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "lastUpdated": "2026-04-03",
+  "activeFrameworks": [
+    {
+      "id": "eu-taxonomy-8.1",
+      "file": "frameworks/eu-taxonomy-8.1.json",
+      "status": "active"
+    },
+    {
+      "id": "sfdr-current",
+      "file": "frameworks/sfdr-current.json",
+      "status": "active"
+    },
+    {
+      "id": "sfdr-2.0",
+      "file": "frameworks/sfdr-2.0.json",
+      "status": "proposed"
+    },
+    {
+      "id": "uk-sdr",
+      "file": "frameworks/uk-sdr.json",
+      "status": "active"
+    },
+    {
+      "id": "csrd-esrs",
+      "file": "frameworks/csrd-esrs.json",
+      "status": "active"
+    },
+    {
+      "id": "tcfd",
+      "file": "frameworks/tcfd.json",
+      "status": "active"
+    }
+  ]
+}
