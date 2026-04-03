@@ -30,12 +30,22 @@ async function sendToAirtable(tableName, fields) {
     if (!res.ok) {
       const error = await res.json();
       console.error("❌ Airtable error:", error);
+      if (tableName === "Users") {
+        console.error('Airtable Users error:', error);
+      }
       return false;
     }
+    const result = await res.json();
     console.log(`✅ Successfully sent to Airtable table "${tableName}"`);
+    if (tableName === "Users") {
+      console.log('Airtable Users response:', result);
+    }
     return true;
-  } catch (e) {
-    console.error("❌ Airtable send failed:", e);
+  } catch (err) {
+    console.error("❌ Airtable send failed:", err);
+    if (tableName === "Users") {
+      console.error('Airtable Users error:', err);
+    }
     return false;
   }
 }
@@ -983,7 +993,6 @@ export default function App() {
       Name: userData.name,
       Company: userData.company,
       Role: userData.role,
-      Email: userData.email,
       Timestamp: new Date().toISOString(),
     });
   }
@@ -1108,10 +1117,11 @@ export default function App() {
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
           <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 48px", borderBottom: `1px solid ${COLORS.border}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, #1B6B4A, #2A8C62)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon name="shield" size={16} color="#fff" />
-              </div>
-              <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Perennity</span>
+              <img
+                src={perennityLogo}
+                alt="Perennity"
+                style={{ height: "36px", width: "auto", maxWidth: "180px", objectFit: "contain" }}
+              />
             </div>
             <Button onClick={() => setScreen("onboarding")}>Get Started</Button>
           </nav>
@@ -1157,10 +1167,11 @@ export default function App() {
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Card style={{ width: 440, animation: "fadeIn 0.4s ease-out" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: `linear-gradient(135deg, #1B6B4A, #2A8C62)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon name="shield" size={18} color="#fff" />
-              </div>
-              <span style={{ fontSize: 20, fontWeight: 700 }}>Perennity</span>
+              <img
+                src={perennityLogo}
+                alt="Perennity"
+                style={{ height: "48px", width: "auto", maxWidth: "220px", objectFit: "contain" }}
+              />
             </div>
             <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Create your account</h2>
             <p style={{ color: COLORS.textSecondary, fontSize: 14, marginBottom: 28 }}>Get started with your first capital readiness assessment.</p>
