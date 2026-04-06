@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import perennityLogo from "./assets/perennity-logo.png";
+import pbDarkLogo from "./assets/pb_dark_v2.png";
+import pbRgbaLogo from "./assets/pb_rgba.png";
 import { runAssessment as runScoringEngine, determineSfdrClassification, determineUkSdrEligibility, determineEuTaxonomyAlignment, REGION_WEIGHTS as ENGINE_REGION_WEIGHTS, REGION_THRESHOLDS as ENGINE_REGION_THRESHOLDS } from "./engine/scoring.js";
 import { downloadPdf } from "./export/pdfExport.js";
 import { downloadExcel } from "./export/excelExport.js";
@@ -733,9 +734,9 @@ export default function App() {
           <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 48px", borderBottom: `1px solid ${COLORS.border}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <img
-                src={perennityLogo}
-                alt="Perennity"
-                style={{ height: "36px", width: "auto", maxWidth: "180px", objectFit: "contain" }}
+                src={pbRgbaLogo}
+                alt="Perennity Bridge"
+                style={{ display: "block", width: "160px", height: "auto" }}
               />
             </div>
             <Button onClick={() => setScreen("onboarding")}>Get Started</Button>
@@ -810,9 +811,9 @@ export default function App() {
           <Card style={{ width: 440, animation: "fadeIn 0.4s ease-out" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
               <img
-                src={perennityLogo}
-                alt="Perennity"
-                style={{ height: "48px", width: "auto", maxWidth: "220px", objectFit: "contain" }}
+                src={pbRgbaLogo}
+                alt="Perennity Bridge"
+                style={{ display: "block", width: "220px", height: "auto" }}
               />
             </div>
             <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Create your account</h2>
@@ -1643,9 +1644,8 @@ export default function App() {
       <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         {/* Sidebar */}
         <div style={{ width: 240, borderRight: `1px solid #1a3040`, display: "flex", flexDirection: "column", background: "#0d2030", flexShrink: 0 }}>
-          <div style={{ padding: "20px 20px 24px", display: "flex", alignItems: "center", gap: 10 }}>
-            <img src={perennityLogo} alt="Perennity" style={{ width: 32, height: 32, objectFit: "contain" }} />
-            <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em", color: "#ffffff" }}>Perennity</span>
+          <div style={{ padding: "20px 20px 24px" }}>
+            <img src={pbDarkLogo} alt="Perennity Bridge" style={{ display: "block", width: "160px", height: "auto" }} />
           </div>
           <nav style={{ flex: 1, padding: "0 12px" }}>
             {navItems.map(item => (
