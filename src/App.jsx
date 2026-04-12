@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+
+const SIDEBAR_KEY = "pb_sidebar_collapsed";
 import pbDarkLogo from "./assets/pb_dark_v2.png";
 import pbRgbaLogo from "./assets/pb_rgba.png";
 import { runAssessment as runScoringEngine, determineSfdrClassification, determineUkSdrEligibility, determineEuTaxonomyAlignment, REGION_WEIGHTS as ENGINE_REGION_WEIGHTS, REGION_THRESHOLDS as ENGINE_REGION_THRESHOLDS } from "./engine/scoring.js";
@@ -137,6 +139,11 @@ input[type="checkbox"] { width: auto; accent-color: ${COLORS.accent}; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 @keyframes scoreReveal { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes ringFill { from { stroke-dashoffset: 440; } }
+
+@media (max-width: 640px) {
+  .step-indicator-desktop { display: none !important; }
+  .step-indicator-mobile { display: block !important; }
+}
 `;
 
 // ─── COMPONENTS ─────────────────────────────────────────────
@@ -163,6 +170,9 @@ function Icon({ name, size = 18, color = "currentColor" }) {
     target: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
     user: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
     logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
+    panelClose: <><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><polyline points="15 9 12 12 15 15"/></>,
+    panelOpen: <><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><polyline points="13 9 16 12 13 15"/></>,
+    helpCircle: <><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -208,14 +218,33 @@ function Card({ children, style = {}, onClick }) {
   );
 }
 
-function FormField({ label, help, required, children }) {
+function Tooltip({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: "relative", display: "inline-block", marginLeft: 4, verticalAlign: "middle" }}>
+      <span onClick={() => setOpen(o => !o)} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} style={{ cursor: "pointer", color: COLORS.textMuted, display: "inline-flex" }}>
+        <Icon name="helpCircle" size={14} color={COLORS.textMuted} />
+      </span>
+      {open && (
+        <span style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", width: 280, padding: "8px 12px", fontSize: 12, lineHeight: 1.5, color: "#fff", background: "#1e293b", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 100, pointerEvents: "none" }}>
+          {text}
+          <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", border: "5px solid transparent", borderTopColor: "#1e293b" }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function FormField({ label, help, required, tooltip, error, children }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: COLORS.textSecondary, marginBottom: 6 }}>
         {label} {required && <span style={{ color: COLORS.red }}>*</span>}
+        {tooltip && <Tooltip text={tooltip} />}
       </label>
       {children}
-      {help && <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{help}</div>}
+      {help && !error && <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{help}</div>}
+      {error && <div style={{ fontSize: 12, color: COLORS.red, fontWeight: 500, marginTop: 4 }}>{error}</div>}
     </div>
   );
 }
@@ -265,23 +294,42 @@ function PillarCard({ name, score, icon, weight, onClick }) {
 }
 
 function StepIndicator({ steps, currentStep, onStepClick }) {
+  const shortLabels = ["Project", "Specs", "Energy", "Water", "Climate", "Sustain.", "Delivery", "Review"];
   return (
-    <div style={{ display: "flex", gap: 4, padding: "16px 0" }}>
-      {steps.map((step, i) => (
-        <div key={i} onClick={() => onStepClick?.(i)} style={{
-          flex: 1, cursor: "pointer", textAlign: "center",
-        }}>
-          <div style={{
-            height: 3, borderRadius: 2, marginBottom: 8,
-            background: i <= currentStep ? COLORS.accent : COLORS.border,
-            transition: "background 0.3s",
-          }} />
-          <div style={{ fontSize: 11, color: i <= currentStep ? COLORS.text : COLORS.textMuted, fontWeight: i === currentStep ? 600 : 400 }}>
-            {step}
+    <>
+      {/* Desktop: numbered circles with connecting lines */}
+      <div className="step-indicator-desktop" style={{ display: "flex", alignItems: "flex-start", padding: "16px 0" }}>
+        {steps.map((step, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : "none" }}>
+            <div onClick={() => onStepClick?.(i)} style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", minWidth: 32 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 700, transition: "all 0.2s",
+                background: i < currentStep ? "#0B1F2A" : i === currentStep ? "#4ECDA4" : "transparent",
+                color: i <= currentStep ? "#fff" : COLORS.textMuted,
+                border: i > currentStep ? `2px solid ${COLORS.border}` : "2px solid transparent",
+                boxShadow: i === currentStep ? "0 2px 8px rgba(78,205,164,0.3)" : "none",
+              }}>
+                {i < currentStep ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : i + 1}
+              </div>
+              <div style={{ fontSize: 10, marginTop: 4, color: i === currentStep ? COLORS.text : COLORS.textMuted, fontWeight: i === currentStep ? 600 : 400, textAlign: "center", maxWidth: 56, lineHeight: 1.2 }}>
+                {shortLabels[i] || step}
+              </div>
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{ flex: 1, height: 2, margin: "0 4px", marginBottom: 18, background: i < currentStep ? "#0B1F2A" : COLORS.border, transition: "background 0.2s", minWidth: 12 }} />
+            )}
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      {/* Mobile: compact text */}
+      <div className="step-indicator-mobile" style={{ display: "none", textAlign: "center", padding: "12px 0" }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "#4ECDA4" }}>Step {currentStep + 1} of {steps.length}</span>
+        <span style={{ fontSize: 13, color: COLORS.textSecondary, marginLeft: 8 }}>{shortLabels[currentStep] || steps[currentStep]}</span>
+      </div>
+    </>
   );
 }
 
@@ -559,6 +607,14 @@ export default function App() {
   const [historyList, setHistoryList] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [draftBanner, setDraftBanner] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_KEY) === "true"; } catch { return false; }
+  });
+
+  // Persist sidebar state
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_KEY, String(sidebarCollapsed)); } catch {}
+  }, [sidebarCollapsed]);
 
   const currentAssessment = currentProject ? assessments[currentProject.id] : null;
 
@@ -905,9 +961,43 @@ export default function App() {
   }
 
   // ─── WIZARD ───────────────────────────────────────────────
+
+  // FIX 3: Validation
+  function validateWizardStep(step, d) {
+    const errors = {};
+    const num = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+    if (step === 1) {
+      if (d.planned_capacity_mw !== "" && d.planned_capacity_mw !== undefined) {
+        const v = num(d.planned_capacity_mw);
+        if (v === null) errors.planned_capacity_mw = "Please enter a valid number.";
+        else if (v <= 0 || v >= 10000) errors.planned_capacity_mw = "IT load must be greater than 0 MW and less than 10,000 MW.";
+      }
+      if (d.pue !== "" && d.pue !== undefined) {
+        const v = num(d.pue);
+        if (v === null) errors.pue = "Please enter a valid number.";
+        else if (v < 1.0 || v > 5.0) errors.pue = "PUE must be between 1.0 and 5.0. A value below 1.0 is physically impossible; above 5.0 is outside normal data centre range.";
+      }
+      if (d.wue !== "" && d.wue !== undefined) {
+        const v = num(d.wue);
+        if (v === null) errors.wue = "Please enter a valid number.";
+        else if (v < 0.0 || v > 20.0) errors.wue = "WUE must be between 0.0 and 20.0 m\u00b3/MWh.";
+      }
+    }
+    if (step === 2) {
+      if (d.renewable_energy_share_pct !== "" && d.renewable_energy_share_pct !== undefined) {
+        const v = num(d.renewable_energy_share_pct);
+        if (v === null) errors.renewable_energy_share_pct = "Please enter a valid number.";
+        else if (v < 0 || v > 100) errors.renewable_energy_share_pct = "Renewable energy percentage must be between 0 and 100.";
+      }
+    }
+    return errors;
+  }
+
   if (screen === "wizard") {
     const steps = ["Project Basics", "Technical Specs", "Energy Profile", "Water & Resources", "Site & Climate", "Sustainability", "Delivery Readiness", "Review & Submit"];
     const d = projectDraft;
+    const wizardErrors = validateWizardStep(wizardStep, d);
+    const hasWizardErrors = Object.keys(wizardErrors).length > 0;
 
     function renderWizardContent() {
       switch (wizardStep) {
@@ -932,10 +1022,10 @@ export default function App() {
         );
         case 1: return (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-            <FormField label="Planned Capacity (MW)" required help="Total planned power load"><input type="number" step="0.1" value={d.planned_capacity_mw} onChange={e => updateDraft("planned_capacity_mw", e.target.value)} placeholder="e.g. 80" /></FormField>
+            <FormField label="Planned Capacity (MW)" required help="Total planned power load" error={wizardErrors.planned_capacity_mw}><input type="number" step="0.1" value={d.planned_capacity_mw} onChange={e => updateDraft("planned_capacity_mw", e.target.value)} placeholder="e.g. 80" style={wizardErrors.planned_capacity_mw ? { borderColor: COLORS.red, background: "rgba(166,61,47,0.04)" } : {}} /></FormField>
             <FormField label="IT Load (MW)" help="IT load only, if known"><input type="number" step="0.1" value={d.it_load_mw} onChange={e => updateDraft("it_load_mw", e.target.value)} placeholder="e.g. 60" /></FormField>
-            <FormField label="PUE" required help="Power Usage Effectiveness — ratio of total power to IT load. Industry average is ~1.58, best-in-class below 1.2"><input type="number" step="0.01" value={d.pue} onChange={e => updateDraft("pue", e.target.value)} placeholder="e.g. 1.30" /></FormField>
-            <FormField label="WUE" help="Water Usage Effectiveness — litres per kWh. Lower is better."><input type="number" step="0.01" value={d.wue} onChange={e => updateDraft("wue", e.target.value)} placeholder="e.g. 0.45" /></FormField>
+            <FormField label="PUE" required tooltip="Power Usage Effectiveness — the ratio of total data centre energy use to IT equipment energy use. A PUE of 1.0 is perfect; 1.3 is best practice for new builds under EU Taxonomy." error={wizardErrors.pue}><input type="number" step="0.01" value={d.pue} onChange={e => updateDraft("pue", e.target.value)} placeholder="e.g. 1.30" style={wizardErrors.pue ? { borderColor: COLORS.red, background: "rgba(166,61,47,0.04)" } : {}} /></FormField>
+            <FormField label="WUE" tooltip="Water Usage Effectiveness — annual data centre water consumption (m³) divided by annual IT equipment energy consumption (MWh). Lower is better. Calculated per ISO/IEC 30134-5." error={wizardErrors.wue}><input type="number" step="0.01" value={d.wue} onChange={e => updateDraft("wue", e.target.value)} placeholder="e.g. 0.45" style={wizardErrors.wue ? { borderColor: COLORS.red, background: "rgba(166,61,47,0.04)" } : {}} /></FormField>
             <FormField label="Cooling Type" required help="Primary cooling technology">
               <select value={d.cooling_type} onChange={e => updateDraft("cooling_type", e.target.value)}>
                 <option value="">Select cooling</option><option value="air">Air</option><option value="evaporative">Evaporative</option><option value="liquid">Liquid</option><option value="hybrid">Hybrid</option>
@@ -963,8 +1053,8 @@ export default function App() {
             </FormField>
             <FormField label="Grid Capacity Secured (MW)"><input type="number" step="0.1" value={d.grid_capacity_secured_mw} onChange={e => updateDraft("grid_capacity_secured_mw", e.target.value)} placeholder="e.g. 40" /></FormField>
             <FormField label="Interconnection Timeline (months)" help="Estimated time to grid connection"><input type="number" value={d.interconnection_timeline_months} onChange={e => updateDraft("interconnection_timeline_months", e.target.value)} placeholder="e.g. 18" /></FormField>
-            <FormField label="Renewable Energy Share (%)" required help="Percentage of power from renewable sources"><input type="number" step="1" value={d.renewable_energy_share_pct} onChange={e => updateDraft("renewable_energy_share_pct", e.target.value)} placeholder="e.g. 65" /></FormField>
-            <FormField label="Renewable Energy Source" required>
+            <FormField label="Renewable Energy Share (%)" required tooltip="The proportion of electricity consumed that comes from renewable sources on a market basis. Source quality matters — a matched Power Purchase Agreement scores higher than a Renewable Energy Certificate." error={wizardErrors.renewable_energy_share_pct}><input type="number" step="1" value={d.renewable_energy_share_pct} onChange={e => updateDraft("renewable_energy_share_pct", e.target.value)} placeholder="e.g. 65" style={wizardErrors.renewable_energy_share_pct ? { borderColor: COLORS.red, background: "rgba(166,61,47,0.04)" } : {}} /></FormField>
+            <FormField label="Renewable Energy Source" required tooltip="Tier 1 (matched PPA or on-site generation) satisfies EU Taxonomy additionality requirements. Tier 2 (GOs/RECs) is accepted by most Article 8 funds. Tier 3 (green tariff) does not satisfy additionality requirements.">
               <select value={d.renewable_energy_source} onChange={e => updateDraft("renewable_energy_source", e.target.value)}>
                 <option value="">Select source</option><option value="ppa">PPA</option><option value="rec">REC</option><option value="onsite">Onsite</option><option value="utility_green_tariff">Utility Green Tariff</option><option value="mixed">Mixed</option>
               </select>
@@ -1177,7 +1267,7 @@ export default function App() {
                   <div style={{ display: "flex", gap: 12 }}>
                     <Button variant="secondary" onClick={d.id ? handleUpdateProject : handleSaveProject}>Save Draft</Button>
                     {wizardStep < 7 ? (
-                      <Button icon="arrow" onClick={() => setWizardStep(wizardStep + 1)}>Continue</Button>
+                      <Button icon="arrow" onClick={() => setWizardStep(wizardStep + 1)} disabled={hasWizardErrors}>Continue</Button>
                     ) : (
                       <Button onClick={() => {
                         if (!d.id) handleSaveProject();
@@ -1393,6 +1483,7 @@ export default function App() {
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 4 }}>{currentProject?.project_name} · {a.region} · {new Date(a.assessedAt).toLocaleDateString()}</div>
             <h1 style={{ fontSize: 26, fontWeight: 700 }}>Assessment Results</h1>
+            <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>Assessment generated: {new Date(a.assessedAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} · Methodology: Perennity Bridge v3.1 · April 2026</div>
           </div>
 
           {a.hardStopTriggered && (
@@ -1643,55 +1734,70 @@ export default function App() {
       <style>{css}</style>
       <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         {/* Sidebar */}
-        <div style={{ width: 240, borderRight: `1px solid #1a3040`, display: "flex", flexDirection: "column", background: "#0d2030", flexShrink: 0 }}>
-          <div style={{ padding: "20px 20px 24px" }}>
-            <img src={pbDarkLogo} alt="Perennity Bridge" style={{ display: "block", width: "160px", height: "auto" }} />
+        <div style={{ width: sidebarCollapsed ? 48 : 240, borderRight: `1px solid #1a3040`, display: "flex", flexDirection: "column", background: "#0d2030", flexShrink: 0, transition: "width 0.2s ease", overflow: "hidden" }}>
+          <div style={{ padding: sidebarCollapsed ? "20px 8px 24px" : "20px 20px 24px", display: "flex", alignItems: "center", justifyContent: sidebarCollapsed ? "center" : "space-between" }}>
+            {!sidebarCollapsed && <img src={pbDarkLogo} alt="Perennity Bridge" style={{ display: "block", width: "140px", height: "auto" }} />}
+            <div onClick={() => setSidebarCollapsed(c => !c)} style={{ cursor: "pointer", padding: 4, borderRadius: 4, transition: "background 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <Icon name={sidebarCollapsed ? "panelOpen" : "panelClose"} size={16} color="rgba(255,255,255,0.55)" />
+            </div>
           </div>
-          <nav style={{ flex: 1, padding: "0 12px" }}>
+          <nav style={{ flex: 1, padding: sidebarCollapsed ? "0 4px" : "0 12px" }}>
             {navItems.map(item => (
               <div key={item.key} onClick={() => { setNavItem(item.key); setSelectedPillar(null); }}
+                title={sidebarCollapsed ? item.label : undefined}
                 style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8,
+                  display: "flex", alignItems: "center", gap: 10, padding: sidebarCollapsed ? "10px 0" : "10px 12px", borderRadius: 8,
                   cursor: "pointer", marginBottom: 2, fontSize: 14, fontWeight: navItem === item.key ? 500 : 400,
                   color: navItem === item.key ? "#ffffff" : "rgba(255,255,255,0.55)",
                   background: navItem === item.key ? "rgba(78, 205, 164, 0.15)" : "transparent",
-                  transition: "all 0.15s",
+                  transition: "all 0.15s", justifyContent: sidebarCollapsed ? "center" : "flex-start",
                 }}
                 onMouseEnter={e => { if (navItem !== item.key) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
                 onMouseLeave={e => { if (navItem !== item.key) e.currentTarget.style.background = "transparent"; }}
               >
                 <Icon name={item.icon} size={16} color={navItem === item.key ? "#4ECDA4" : "rgba(255,255,255,0.55)"} />
-                <span>{item.label}</span>
+                {!sidebarCollapsed && <span>{item.label}</span>}
               </div>
             ))}
           </nav>
-          <div style={{ padding: "0 12px 8px" }}>
-            <div onClick={() => setShowHistory(true)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, cursor: "pointer", fontSize: 14, color: "rgba(255,255,255,0.55)", transition: "all 0.15s" }}
+          <div style={{ padding: sidebarCollapsed ? "0 4px 8px" : "0 12px 8px" }}>
+            <div onClick={() => setShowHistory(true)} title={sidebarCollapsed ? "History" : undefined} style={{ display: "flex", alignItems: "center", gap: 10, padding: sidebarCollapsed ? "10px 0" : "10px 12px", borderRadius: 8, cursor: "pointer", fontSize: 14, color: "rgba(255,255,255,0.55)", transition: "all 0.15s", justifyContent: sidebarCollapsed ? "center" : "flex-start" }}
               onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               <Icon name="reports" size={16} color="rgba(255,255,255,0.55)" />
-              <span>History</span>
+              {!sidebarCollapsed && <span>History</span>}
             </div>
           </div>
-          <div style={{ padding: "16px 20px", borderTop: `1px solid #1a3040` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {!sidebarCollapsed && (
+            <div style={{ padding: "16px 20px", borderTop: `1px solid #1a3040` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon name="user" size={14} color="rgba(255,255,255,0.7)" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#ffffff" }}>{user?.name}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{user?.role}</div>
+                </div>
+              </div>
+              <div
+                onClick={() => setShowTos(true)}
+                style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", cursor: "pointer", padding: "4px 0" }}
+                onMouseEnter={e => e.currentTarget.style.color = "#4ECDA4"}
+                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.55)"}
+              >
+                Terms of Service & Confidentiality
+              </div>
+            </div>
+          )}
+          {sidebarCollapsed && (
+            <div style={{ padding: "12px 4px", borderTop: `1px solid #1a3040`, display: "flex", justifyContent: "center" }}>
+              <div onClick={() => setShowTos(true)} title="User" style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Icon name="user" size={14} color="rgba(255,255,255,0.7)" />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#ffffff" }}>{user?.name}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{user?.role}</div>
-              </div>
             </div>
-            <div
-              onClick={() => setShowTos(true)}
-              style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", cursor: "pointer", padding: "4px 0" }}
-              onMouseEnter={e => e.currentTarget.style.color = "#4ECDA4"}
-              onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.55)"}
-            >
-              Terms of Service & Confidentiality
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Main content */}
