@@ -417,6 +417,15 @@ const INITIAL_PROJECT = {
   flood_risk_score: "", extreme_heat_risk_score: "", storm_risk_score: "",
   adaptation_measures_present: false, flood_mitigation_details: "",
   thermal_resilience_strategy: "", business_continuity_plan_ready: false,
+  // CNDCP WUEmax inputs
+  k1_climate: "", k2_stress: "", k3_water: "",
+  // Renewable source tier
+  renewable_source_tier: "",
+  // DNSH checklist
+  dnsh_climate_vulnerability: false, dnsh_protected_areas: false,
+  dnsh_low_gwp_refrigerants: false, dnsh_weee_compliance: false,
+  dnsh_human_rights_dd: false, dnsh_supply_chain_labour: false,
+  // Existing fields
   target_financing_label: "", taxonomy_alignment_claimed: false,
   net_zero_commitment_present: false, sustainability_disclosures_ready: false,
   third_party_certification_target: "", carbon_reduction_strategy_present: false,
@@ -823,7 +832,7 @@ export default function App() {
                     sustainability_disclosures_ready: true, carbon_reduction_strategy_present: true,
                     financing_strategy_defined: true, investment_memo_ready: false,
                     site_control_secured: true, permitting_status: "underway", contractor_or_epc_identified: true,
-                    schedule_confidence_level: "high", target_financing_label: "green",
+                    schedule_confidence_level: "high", target_financing_label: "sfdr_article_8",
                   };
                   const region = sampleProject.region;
                   const result = runScoringEngine(sampleProject, region);
@@ -1059,6 +1068,14 @@ export default function App() {
                 <option value="">Select source</option><option value="ppa">PPA</option><option value="rec">REC</option><option value="onsite">Onsite</option><option value="utility_green_tariff">Utility Green Tariff</option><option value="mixed">Mixed</option>
               </select>
             </FormField>
+            <FormField label="Renewable Source Quality Tier" tooltip="Tier 1 (matched PPA or on-site generation) satisfies EU Taxonomy additionality requirements. Tier 2 (GOs/RECs) is accepted by most Article 8 funds. Tier 3 (green tariff) does not satisfy additionality requirements.">
+              <select value={d.renewable_source_tier} onChange={e => updateDraft("renewable_source_tier", e.target.value)}>
+                <option value="">Auto-detect from source</option>
+                <option value="1">Tier 1 — Matched PPA / On-site generation</option>
+                <option value="2">Tier 2 — Guarantees of Origin (GOs) / RECs</option>
+                <option value="3">Tier 3 — Utility green tariff only</option>
+              </select>
+            </FormField>
             <FormField label="PPA Secured?" help="Whether a Power Purchase Agreement is in place">
               <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
                 <input type="checkbox" checked={d.ppa_secured} onChange={e => updateDraft("ppa_secured", e.target.checked)} />
@@ -1080,6 +1097,30 @@ export default function App() {
             <FormField label="Water Source Type">
               <select value={d.water_source_type} onChange={e => updateDraft("water_source_type", e.target.value)}>
                 <option value="">Select source</option><option value="municipal">Municipal</option><option value="recycled">Recycled</option><option value="groundwater">Groundwater</option><option value="mixed">Mixed</option>
+              </select>
+            </FormField>
+            <FormField label="K1 — Climate Zone" tooltip="Cooling degree days above 21°C. MENA locations default to Warm (K1=1.1). Affects your WUEmax target under the CNDCP formula.">
+              <select value={d.k1_climate} onChange={e => updateDraft("k1_climate", e.target.value)}>
+                <option value="">Select climate zone</option>
+                <option value="cold">Cold (&lt; 50 CDD above 21°C) — K1 = 1.0</option>
+                <option value="warm">Warm (≥ 50 CDD above 21°C) — K1 = 1.1</option>
+              </select>
+            </FormField>
+            <FormField label="K2 — Water Stress Level" tooltip="Based on the EU Water Exploitation Index (WEI+) for your location. MENA locations are typically high stress (WEI+ > 40). This affects your site-specific WUEmax target under the Climate Neutral Data Centre Pact.">
+              <select value={d.k2_stress} onChange={e => updateDraft("k2_stress", e.target.value)}>
+                <option value="">Select water stress</option>
+                <option value="low">Low stress (WEI+ ≤ 10) — K2 = 5.0</option>
+                <option value="low_medium">Low-medium stress (WEI+ 11–20) — K2 = 4.0</option>
+                <option value="medium_high">Medium-high stress (WEI+ 21–40) — K2 = 2.5</option>
+                <option value="high">High stress (WEI+ &gt; 40) — K2 = 1.0</option>
+              </select>
+            </FormField>
+            <FormField label="K3 — Water Source Type (CNDCP)" tooltip="The type of water used for cooling affects your WUEmax target. Using brackish or sea water allows a higher WUE target than potable water under the CNDCP formula.">
+              <select value={d.k3_water} onChange={e => updateDraft("k3_water", e.target.value)}>
+                <option value="">Select water source</option>
+                <option value="potable">Potable / fresh water — K3 = 1.0</option>
+                <option value="grey">Grey water — K3 = 3.0</option>
+                <option value="brackish">Brackish / sea water — K3 = 6.0</option>
               </select>
             </FormField>
             <FormField label="Water Recycling Included?">
@@ -1128,7 +1169,32 @@ export default function App() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
             <FormField label="Target Financing Label" help="What type of capital are you seeking?">
               <select value={d.target_financing_label} onChange={e => updateDraft("target_financing_label", e.target.value)}>
-                <option value="">Select label</option><option value="conventional">Conventional</option><option value="green">Green</option><option value="sustainable">Sustainable</option><option value="article_8_9">Article 8/9 Style</option>
+                <option value="">Select label</option>
+                <optgroup label="EU Frameworks — Fund Level">
+                  <option value="sfdr_article_8">SFDR Article 8 — promotes environmental/social characteristics</option>
+                  <option value="sfdr_article_9">SFDR Article 9 — sustainable investment objective</option>
+                </optgroup>
+                <optgroup label="EU Taxonomy">
+                  <option value="eu_taxonomy_8_1">EU Taxonomy aligned — Activity 8.1 (climate change mitigation)</option>
+                </optgroup>
+                <optgroup label="EU Bond Instruments">
+                  <option value="eugbs">European Green Bond (EuGBS) — Regulation (EU) 2023/2631</option>
+                  <option value="icma_green_bond">ICMA Green Bond Principles</option>
+                  <option value="icma_slb">ICMA Sustainability-Linked Bond Principles</option>
+                  <option value="icma_social_bond">ICMA Social Bond Principles</option>
+                </optgroup>
+                <optgroup label="UK Frameworks">
+                  <option value="uk_sdr_focus">UK SDR — Sustainability Focus</option>
+                  <option value="uk_sdr_improvers">UK SDR — Sustainability Improvers</option>
+                  <option value="uk_sdr_impact">UK SDR — Sustainability Impact</option>
+                  <option value="uk_sdr_mixed">UK SDR — Sustainability Mixed Goals</option>
+                </optgroup>
+                <optgroup label="Development Finance">
+                  <option value="eib">EIB green finance</option>
+                  <option value="ifc">IFC / World Bank green finance</option>
+                  <option value="ebrd">EBRD green finance</option>
+                  <option value="afdb">AfDB green finance</option>
+                </optgroup>
               </select>
             </FormField>
             <FormField label="Third-Party Certification Target">
@@ -1158,6 +1224,46 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
                 <input type="checkbox" checked={d.carbon_reduction_strategy_present} onChange={e => updateDraft("carbon_reduction_strategy_present", e.target.checked)} />
                 <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.carbon_reduction_strategy_present ? "Yes" : "No"}</span>
+              </div>
+            </FormField>
+            <div style={{ gridColumn: "1 / -1", borderTop: `1px solid ${COLORS.border}`, paddingTop: 20, marginTop: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>DNSH & Minimum Social Safeguards Checklist</div>
+              <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>EU Taxonomy — Do No Significant Harm requirements and Article 18 minimum safeguards</div>
+            </div>
+            <FormField label="Climate vulnerability & physical risk assessment conducted?" help="Including identification of physical climate risks per the IPCC risk taxonomy (DNSH Objective 2 — Climate adaptation)">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                <input type="checkbox" checked={d.dnsh_climate_vulnerability} onChange={e => updateDraft("dnsh_climate_vulnerability", e.target.checked)} />
+                <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.dnsh_climate_vulnerability ? "Yes" : "No"}</span>
+              </div>
+            </FormField>
+            <FormField label="Site outside protected areas?" help="Natura 2000, UNESCO World Heritage, Key Biodiversity Areas, primary forests (DNSH Objective 6 — Biodiversity)">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                <input type="checkbox" checked={d.dnsh_protected_areas} onChange={e => updateDraft("dnsh_protected_areas", e.target.checked)} />
+                <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.dnsh_protected_areas ? "Yes" : "No"}</span>
+              </div>
+            </FormField>
+            <FormField label="Low-GWP refrigerants in cooling system?" help="Compliant with EU F-Gas Regulation (EU) 517/2014 (DNSH Objective 5 — Pollution prevention)">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                <input type="checkbox" checked={d.dnsh_low_gwp_refrigerants} onChange={e => updateDraft("dnsh_low_gwp_refrigerants", e.target.checked)} />
+                <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.dnsh_low_gwp_refrigerants ? "Yes" : "No"}</span>
+              </div>
+            </FormField>
+            <FormField label="IT equipment end-of-life plan (WEEE)?" help="Compliant with the WEEE Directive (2012/19/EU) (DNSH Objective 4 — Circular economy)">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                <input type="checkbox" checked={d.dnsh_weee_compliance} onChange={e => updateDraft("dnsh_weee_compliance", e.target.checked)} />
+                <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.dnsh_weee_compliance ? "Yes" : "No"}</span>
+              </div>
+            </FormField>
+            <FormField label="Human rights due diligence policy?" help="Aligned to UN Guiding Principles (UNGPs) and OECD Guidelines for Multinational Enterprises (Article 18 Minimum Social Safeguards)">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                <input type="checkbox" checked={d.dnsh_human_rights_dd} onChange={e => updateDraft("dnsh_human_rights_dd", e.target.checked)} />
+                <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.dnsh_human_rights_dd ? "Yes" : "No"}</span>
+              </div>
+            </FormField>
+            <FormField label="Supply chain labour standards policy?" help="Article 18 Minimum Social Safeguards — EU Taxonomy">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                <input type="checkbox" checked={d.dnsh_supply_chain_labour} onChange={e => updateDraft("dnsh_supply_chain_labour", e.target.checked)} />
+                <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.dnsh_supply_chain_labour ? "Yes" : "No"}</span>
               </div>
             </FormField>
           </div>

@@ -125,28 +125,157 @@ export function determineEuTaxonomyAlignment(project) {
   return { aligned, criteria, dnsh };
 }
 
+// ── PUE scoring — EU Taxonomy Climate Delegated Act (EU) 2021/2139, Annex I, Activity 8.1
+export function calculatePueScore(pue, project, region) {
+  const isNew = project.development_stage === 'concept' || project.development_stage === 'site_shortlisted' || project.development_stage === 'site_selected' || project.development_stage === 'pre_permitting' || project.is_new_build;
+  const isMena = region === 'MENA';
+  let score, label, taxonomyGate;
+  const flags = [];
+
+  if (isNew) {
+    if (pue <= 1.2) { score = 95; label = 'Capital ready'; taxonomyGate = 'Pass — meets post-2025 new build threshold'; }
+    else if (pue <= 1.3) { score = 80; label = 'Capital ready'; taxonomyGate = 'Pass — meets 2021–2025 new build threshold / CNDCP target'; }
+    else if (pue <= 1.5) { score = 57; label = 'Conditional'; taxonomyGate = 'Fail for new build — passes existing DC threshold only'; if (isMena) flags.push(`Gap vs EU new-build threshold (≤1.3): ${(pue - 1.3).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.`); }
+    else if (pue <= 1.8) { score = 32; label = 'Development'; taxonomyGate = 'Fail'; }
+    else { score = 10; label = 'Pre-development'; taxonomyGate = 'Fail'; }
+  } else {
+    if (pue <= 1.5) { score = 77; label = 'Capital ready'; taxonomyGate = 'Pass — existing DC threshold'; }
+    else if (pue <= 1.8) { score = 47; label = 'Conditional'; taxonomyGate = 'Conditional — improvement plan required'; }
+    else { score = 15; label = 'Development'; taxonomyGate = 'Fail'; }
+  }
+
+  if (isMena && pue > 1.3 && flags.length === 0) {
+    flags.push(`Gap vs EU new-build threshold (≤1.3): ${(pue - 1.3).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.`);
+  }
+
+  return { score, label, taxonomyGate, flags };
+}
+
+// ── WUE scoring — CNDCP WUEmax formula (EUDCA White Paper October 2024)
+export function calculateWueMax(project, region) {
+  const isMena = region === 'MENA';
+  const k1Map = { cold: 1.0, warm: 1.1 };
+  const k2Map = { low: 5.0, low_medium: 4.0, medium_high: 2.5, high: 1.0 };
+  const k3Map = { potable: 1.0, grey: 3.0, brackish: 6.0 };
+
+  const k1 = k1Map[project.k1_climate] || (isMena ? 1.1 : 1.0);
+  const k2 = k2Map[project.k2_stress] || (isMena ? 1.0 : 5.0);
+  const k3 = k3Map[project.k3_water] || 1.0;
+  const wueMax = 0.4 * k1 * k2 * k3;
+
+  const notes = [];
+  if (isMena && !project.k2_stress) {
+    notes.push('Conservative assumption applied: high water stress (WEI+ > 40). Override if local water authority data is available.');
+  }
+
+  return { wueMax, k1, k2, k3, notes };
+}
+
+export function scoreWueVsMax(wue, wueMax) {
+  if (wue <= wueMax * 0.8) return { score: 92, label: 'Exceeds CNDCP target' };
+  if (wue <= wueMax) return { score: 75, label: 'Meets CNDCP WUEmax target' };
+  if (wue <= wueMax * 1.2) return { score: 52, label: 'Marginally above target — remediation required' };
+  return { score: 20, label: 'Fails CNDCP WUEmax target' };
+}
+
+// ── Renewable energy three-tier source quality scoring
+export function calculateRenewableTierScore(renewPct, project) {
+  const source = project.renewable_energy_source || '';
+  const tierOverride = project.renewable_source_tier;
+  let tier;
+
+  if (tierOverride === '1' || tierOverride === '2' || tierOverride === '3') {
+    tier = parseInt(tierOverride, 10);
+  } else if (source === 'ppa' || source === 'onsite' || source === 'solar_wind') {
+    tier = 1;
+  } else if (source === 'rec' || source === 'mixed') {
+    tier = 2;
+  } else if (source === 'utility_green_tariff') {
+    tier = 3;
+  } else {
+    tier = 1; // default
+  }
+
+  let score;
+  const flags = [];
+
+  if (tier === 3) {
+    score = Math.min(40, renewPct >= 100 ? 40 : renewPct >= 75 ? 30 : renewPct >= 50 ? 20 : 10);
+    flags.push('Utility green tariff does not satisfy EU Taxonomy additionality requirements. Upgrade to matched PPA or GOs recommended.');
+  } else if (tier === 2) {
+    if (renewPct >= 100) score = 72;
+    else if (renewPct >= 75) score = 55;
+    else score = Math.min(44, Math.round(renewPct * 0.58));
+  } else {
+    if (renewPct >= 100) score = 95;
+    else if (renewPct >= 75) score = 80;
+    else if (renewPct >= 50) score = 57;
+    else score = Math.min(44, Math.round(renewPct * 0.88));
+  }
+
+  return { score, tier, flags };
+}
+
+// ── DNSH governance scoring
+export function calculateDnshGovernance(project) {
+  const items = [
+    { key: 'dnsh_climate_vulnerability', points: 2, label: 'Climate vulnerability assessment (DNSH Obj 2)' },
+    { key: 'dnsh_protected_areas', points: 2, label: 'Site outside protected areas (DNSH Obj 6)' },
+    { key: 'dnsh_low_gwp_refrigerants', points: 1, label: 'Low-GWP refrigerants (DNSH Obj 5)' },
+    { key: 'dnsh_weee_compliance', points: 1, label: 'WEEE end-of-life plan (DNSH Obj 4)' },
+    { key: 'dnsh_human_rights_dd', points: 2, label: 'Human rights due diligence (Art 18)' },
+    { key: 'dnsh_supply_chain_labour', points: 1, label: 'Supply chain labour policy (Art 18)' },
+  ];
+
+  let totalPoints = 0;
+  const maxPoints = 9;
+  const explanations = { positive: [], negative: [] };
+
+  items.forEach(item => {
+    if (project[item.key]) {
+      totalPoints += item.points;
+      explanations.positive.push(`${item.label} — confirmed (+${item.points})`);
+    } else {
+      explanations.negative.push(`${item.label} — not confirmed`);
+    }
+  });
+
+  return { score: Math.round((totalPoints / maxPoints) * 100), explanations };
+}
+
 // ── Pillar scoring functions ──────────────────────────────────
 export function calculateSustainabilityAlignment(project, region) {
   let score = 100;
-  const thresholds = REGION_THRESHOLDS[region] || REGION_THRESHOLDS.UK;
   const explanations = { positive: [], negative: [] };
 
+  // CHANGE 1: PUE scoring with EU Taxonomy thresholds
   const pue = parseFloat(project.pue);
-  if (pue && pue > thresholds.pue) {
-    const penalty = Math.min(20, Math.round((pue - thresholds.pue) * 40));
-    score -= penalty;
-    explanations.negative.push(`PUE ${pue} above ${region} threshold ${thresholds.pue} (−${penalty})`);
-  } else if (pue) {
-    explanations.positive.push(`PUE ${pue} meets ${region} benchmark`);
+  if (pue) {
+    const pueResult = calculatePueScore(pue, project, region);
+    // Map PUE score (0-100) to a penalty/bonus on the SA pillar
+    if (pueResult.score >= 70) {
+      explanations.positive.push(`PUE ${pue}: ${pueResult.label} — ${pueResult.taxonomyGate}`);
+    } else {
+      const penalty = Math.min(25, Math.round((100 - pueResult.score) * 0.25));
+      score -= penalty;
+      explanations.negative.push(`PUE ${pue}: ${pueResult.label} — ${pueResult.taxonomyGate} (−${penalty})`);
+    }
+    pueResult.flags.forEach(f => explanations.negative.push(f));
   }
 
+  // CHANGE 3: Renewable energy with three-tier source quality scoring
   const renewPct = parseFloat(project.renewable_energy_share_pct) || 0;
-  if (renewPct < thresholds.renewableMin) {
-    const penalty = Math.min(25, Math.round((thresholds.renewableMin - renewPct) * 0.5));
-    score -= penalty;
-    explanations.negative.push(`Renewable share ${renewPct}% below ${thresholds.renewableMin}% target (−${penalty})`);
+  const renewResult = calculateRenewableTierScore(renewPct, project);
+  if (renewResult.score >= 65) {
+    explanations.positive.push(`Renewable ${renewPct}% (Tier ${renewResult.tier}): score ${renewResult.score}`);
   } else {
-    explanations.positive.push(`Renewable energy share ${renewPct}% exceeds regional target`);
+    const penalty = Math.min(20, Math.round((65 - renewResult.score) * 0.3));
+    score -= penalty;
+    explanations.negative.push(`Renewable ${renewPct}% (Tier ${renewResult.tier}): score ${renewResult.score} (−${penalty})`);
+  }
+  renewResult.flags.forEach(f => explanations.negative.push(f));
+  if (renewResult.tier <= 2 && renewPct > 0) {
+    explanations.positive.push('Source quality assessed against GHG Protocol Scope 2 Guidance (2015) and EU Taxonomy Climate Delegated Act Activity 8.1.');
   }
 
   if (project.backup_power_type === 'diesel') {
@@ -225,16 +354,22 @@ export function calculateEnergyPowerViability(project, region) {
 
 export function calculateWaterResourceEfficiency(project, region) {
   const explanations = { positive: [], negative: [] };
-  const thresholds = REGION_THRESHOLDS[region] || REGION_THRESHOLDS.UK;
 
-  let wueScore = 50;
+  // CHANGE 2: CNDCP WUEmax formula scoring
   const wue = parseFloat(project.wue);
+  const { wueMax, k1, k2, k3, notes } = calculateWueMax(project, region);
+  let wueScore = 50;
+
   if (wue) {
-    if (wue <= 0.3) { wueScore = 95; explanations.positive.push('Best-in-class WUE'); }
-    else if (wue <= thresholds.wue) { wueScore = 80; explanations.positive.push(`WUE ${wue} meets ${region} target`); }
-    else if (wue <= 1.0) { wueScore = 60; }
-    else if (wue <= 1.5) { wueScore = 40; explanations.negative.push('WUE above acceptable range'); }
-    else { wueScore = 20; explanations.negative.push('Poor WUE performance'); }
+    const wueResult = scoreWueVsMax(wue, wueMax);
+    wueScore = wueResult.score;
+    if (wueScore >= 65) {
+      explanations.positive.push(`${wueResult.label} — WUE ${wue} vs WUEmax ${wueMax.toFixed(2)} m³/MWh`);
+    } else {
+      explanations.negative.push(`${wueResult.label} — WUE ${wue} vs WUEmax ${wueMax.toFixed(2)} m³/MWh`);
+    }
+    explanations.positive.push(`Your site WUEmax (CNDCP formula): ${wueMax.toFixed(2)} m³/MWh (K1=${k1}, K2=${k2}, K3=${k3})`);
+    notes.forEach(n => explanations.negative.push(n));
   }
 
   let coolingScore = 50;
@@ -259,7 +394,7 @@ export function calculateWaterResourceEfficiency(project, region) {
   }
 
   const score = wueScore * 0.50 + coolingScore * 0.25 + contextScore * 0.25;
-  return { score: Math.max(0, Math.min(100, Math.round(score))), explanations };
+  return { score: Math.max(0, Math.min(100, Math.round(score))), explanations, wueMax };
 }
 
 export function calculateClimateSiteResilience(project) {
@@ -449,9 +584,13 @@ export function runAssessment(project, region) {
   const wre = calculateWaterResourceEfficiency(project, region);
   const csr = calculateClimateSiteResilience(project);
   const dfr = calculateDeliveryFundingReadiness(project);
+  const dnsh = calculateDnshGovernance(project);
+
+  // Blend DNSH governance into sustainability alignment (weighted)
+  const saAdjusted = { ...sa, score: Math.round(sa.score * 0.7 + dnsh.score * 0.3), explanations: { positive: [...sa.explanations.positive, ...dnsh.explanations.positive], negative: [...sa.explanations.negative, ...dnsh.explanations.negative] } };
 
   const weights = REGION_WEIGHTS[region] || REGION_WEIGHTS.UK;
-  const rawScore = sa.score * weights.sa + epv.score * weights.epv + wre.score * weights.wre + csr.score * weights.csr + dfr.score * weights.dfr;
+  const rawScore = saAdjusted.score * weights.sa + epv.score * weights.epv + wre.score * weights.wre + csr.score * weights.csr + dfr.score * weights.dfr;
 
   const hardStops = evaluateHardStops(project, region);
   let finalScore = Math.round(rawScore);
@@ -467,7 +606,7 @@ export function runAssessment(project, region) {
     }
   }
 
-  const subscores = { sa: sa.score, epv: epv.score, wre: wre.score, csr: csr.score, dfr: dfr.score };
+  const subscores = { sa: saAdjusted.score, epv: epv.score, wre: wre.score, csr: csr.score, dfr: dfr.score };
   const confidence = calculateConfidence(project);
   const recommendations = generateRecommendations(project, subscores, region);
   const band = READINESS_BANDS.find(b => finalScore >= b.min) || READINESS_BANDS[READINESS_BANDS.length - 1];
@@ -477,8 +616,8 @@ export function runAssessment(project, region) {
   const taxonomy = determineEuTaxonomyAlignment(project);
 
   const allExplanations = {
-    positive: [...sa.explanations.positive, ...epv.explanations.positive, ...wre.explanations.positive, ...csr.explanations.positive, ...dfr.explanations.positive],
-    negative: [...sa.explanations.negative, ...epv.explanations.negative, ...wre.explanations.negative, ...csr.explanations.negative, ...dfr.explanations.negative],
+    positive: [...saAdjusted.explanations.positive, ...epv.explanations.positive, ...wre.explanations.positive, ...csr.explanations.positive, ...dfr.explanations.positive],
+    negative: [...saAdjusted.explanations.negative, ...epv.explanations.negative, ...wre.explanations.negative, ...csr.explanations.negative, ...dfr.explanations.negative],
   };
 
   return {
@@ -496,7 +635,7 @@ export function runAssessment(project, region) {
     sdr,
     taxonomy,
     pillarDetails: {
-      sa: { ...sa, weight: weights.sa },
+      sa: { ...saAdjusted, weight: weights.sa, dnshScore: dnsh.score },
       epv: { ...epv, weight: weights.epv },
       wre: { ...wre, weight: weights.wre },
       csr: { ...csr, weight: weights.csr },
