@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertTriangle, XCircle, Building2, Zap, Droplets, Recycle, ThermometerSun, Award, FileText, TrendingUp } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertTriangle, XCircle, Building2, Zap, Droplets, Recycle, ThermometerSun, Award, FileText, TrendingUp, Shield, HelpCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import generatePDFReport from '../utils/pdfReportGenerator';
 
 // ============================================
 // REGULATORY THRESHOLDS & ASSESSMENT LOGIC
@@ -104,12 +105,13 @@ function calculateComplianceScore(formData) {
     energy: calculateEnergyScore(formData),
     water: calculateWaterScore(formData),
     circularEconomy: calculateCircularScore(formData),
-    climateRisk: calculateClimateRiskScore(formData)
+    climateRisk: calculateClimateRiskScore(formData),
+    governance: calculateGovernanceScore(formData)
   };
-  
+
   // Weighted overall score
-  const weights = { energy: 0.35, water: 0.25, circularEconomy: 0.20, climateRisk: 0.20 };
-  const overallScore = Object.entries(scores).reduce((acc, [key, val]) => 
+  const weights = { energy: 0.30, water: 0.20, circularEconomy: 0.15, climateRisk: 0.15, governance: 0.20 };
+  const overallScore = Object.entries(scores).reduce((acc, [key, val]) =>
     acc + (val.score * weights[key]), 0
   );
   
@@ -129,47 +131,106 @@ function calculateComplianceScore(formData) {
   };
 }
 
+function calculatePueScore(pue, facilityType, isMena) {
+  // EU Taxonomy Climate Delegated Act (EU) 2021/2139, Annex I, Activity 8.1
+  const flags = [];
+  let score, label, taxonomyGate;
+
+  if (facilityType === 'new') {
+    if (pue <= 1.2) {
+      score = 95; label = 'Capital ready'; taxonomyGate = 'Pass — meets post-2025 new build threshold';
+    } else if (pue <= 1.3) {
+      score = 80; label = 'Capital ready'; taxonomyGate = 'Pass — meets 2021–2025 new build threshold / CNDCP target';
+    } else if (pue <= 1.5) {
+      score = 57; label = 'Conditional'; taxonomyGate = 'Fail for new build — passes existing DC threshold only';
+      if (isMena) flags.push('Gap vs EU new-build threshold (≤1.3): ' + (pue - 1.3).toFixed(2) + '. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.');
+    } else if (pue <= 1.8) {
+      score = 32; label = 'Development'; taxonomyGate = 'Fail';
+    } else {
+      score = 10; label = 'Pre-development'; taxonomyGate = 'Fail';
+    }
+  } else {
+    // existing facility
+    if (pue <= 1.5) {
+      score = 77; label = 'Capital ready'; taxonomyGate = 'Pass — existing DC threshold';
+    } else if (pue <= 1.8) {
+      score = 47; label = 'Conditional'; taxonomyGate = 'Conditional — improvement plan required';
+    } else {
+      score = 15; label = 'Development'; taxonomyGate = 'Fail';
+    }
+  }
+
+  // MENA gap warning for PUE > 1.3
+  if (isMena && pue > 1.3 && !flags.length) {
+    flags.push('Gap vs EU new-build threshold (≤1.3): ' + (pue - 1.3).toFixed(2) + '. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.');
+  }
+
+  return { score, label, taxonomyGate, flags };
+}
+
+function calculateRenewableScore(renewable, tier) {
+  // GHG Protocol Scope 2 Guidance (2015) and EU Taxonomy Climate Delegated Act Activity 8.1
+  let score;
+  const flags = [];
+
+  if (tier === '3') {
+    score = Math.min(40, renewable >= 100 ? 40 : renewable >= 75 ? 30 : renewable >= 50 ? 20 : 10);
+    flags.push('Utility green tariff does not satisfy EU Taxonomy additionality requirements. Upgrade to matched PPA or GOs recommended.');
+  } else if (tier === '2') {
+    if (renewable >= 100) score = 72;
+    else if (renewable >= 75) score = 55;
+    else score = Math.min(44, Math.round(renewable * 0.58));
+  } else {
+    // tier 1 (default)
+    if (renewable >= 100) score = 95;
+    else if (renewable >= 75) score = 80;
+    else if (renewable >= 50) score = 57;
+    else score = Math.min(44, Math.round(renewable * 0.88));
+  }
+
+  return { score, flags };
+}
+
 function calculateEnergyScore(formData) {
   let score = 0;
   const gaps = [];
   const details = [];
-  
-  // PUE Assessment (40 points max)
+
   const pue = parseFloat(formData.pueTarget) || 1.8;
-  if (pue <= 1.3) {
-    score += 40;
-    details.push({ metric: 'PUE', status: 'excellent', value: pue, message: 'Best-in-class efficiency' });
-  } else if (pue <= 1.5) {
-    score += 35;
-    details.push({ metric: 'PUE', status: 'compliant', value: pue, message: 'EU Taxonomy compliant' });
-  } else if (pue <= 1.6) {
-    score += 25;
-    gaps.push({ metric: 'PUE', gap: 'Above EU Taxonomy threshold of 1.5', severity: 'medium' });
-    details.push({ metric: 'PUE', status: 'warning', value: pue, message: 'Above threshold' });
-  } else {
-    score += 10;
-    gaps.push({ metric: 'PUE', gap: 'Significantly above industry standard', severity: 'high' });
-    details.push({ metric: 'PUE', status: 'critical', value: pue, message: 'Requires improvement' });
+  const facilityType = formData.facilityType || 'new';
+  const isMena = MENA_COUNTRIES.some(c => c.code === formData.country);
+  const pueResult = calculatePueScore(pue, facilityType, isMena);
+
+  // PUE contributes up to 40 points
+  const puePoints = Math.round(pueResult.score * 0.4);
+  score += puePoints;
+
+  const pueStatus = pueResult.score >= 70 ? 'excellent' : pueResult.score >= 45 ? 'compliant' : pueResult.score >= 20 ? 'warning' : 'critical';
+  details.push({ metric: 'PUE', status: pueStatus, value: pue, message: `${pueResult.label} — ${pueResult.taxonomyGate}` });
+  if (pueResult.score < 70) {
+    gaps.push({ metric: 'PUE', gap: pueResult.taxonomyGate, severity: pueResult.score < 45 ? 'high' : 'medium' });
   }
-  
+  if (pueResult.flags.length > 0) {
+    details.push({ metric: 'PUE MENA Warning', status: 'warning', value: '', message: pueResult.flags[0] });
+  }
+
   // Renewable Energy Assessment (40 points max)
   const renewable = parseFloat(formData.renewablePercent) || 0;
-  if (renewable >= 100) {
-    score += 40;
-    details.push({ metric: 'Renewable Energy', status: 'excellent', value: `${renewable}%`, message: '100% renewable' });
-  } else if (renewable >= 75) {
-    score += 32;
-    details.push({ metric: 'Renewable Energy', status: 'compliant', value: `${renewable}%`, message: 'SFDR Article 9 eligible' });
-  } else if (renewable >= 50) {
-    score += 22;
-    gaps.push({ metric: 'Renewable Energy', gap: 'Below 75% for Article 9 alignment', severity: 'medium' });
-    details.push({ metric: 'Renewable Energy', status: 'warning', value: `${renewable}%`, message: 'Article 8 eligible' });
-  } else {
-    score += Math.max(5, renewable / 5);
-    gaps.push({ metric: 'Renewable Energy', gap: 'Insufficient renewable energy sourcing', severity: 'high' });
-    details.push({ metric: 'Renewable Energy', status: 'critical', value: `${renewable}%`, message: 'Below minimum threshold' });
+  const tier = formData.renewableSourceTier || '1';
+  const renewResult = calculateRenewableScore(renewable, tier);
+  const renewPoints = Math.round(renewResult.score * 0.4);
+  score += renewPoints;
+
+  const renewStatus = renewResult.score >= 70 ? 'excellent' : renewResult.score >= 45 ? 'compliant' : renewResult.score >= 20 ? 'warning' : 'critical';
+  details.push({ metric: 'Renewable Energy', status: renewStatus, value: `${renewable}%`, message: `Tier ${tier} source — score ${renewResult.score}` });
+  details.push({ metric: 'Renewable Source Quality', status: 'compliant', value: `Tier ${tier}`, message: 'Source quality assessed against GHG Protocol Scope 2 Guidance (2015) and EU Taxonomy Climate Delegated Act Activity 8.1.' });
+  if (renewResult.score < 45) {
+    gaps.push({ metric: 'Renewable Energy', gap: 'Insufficient renewable energy sourcing or low source quality tier', severity: 'high' });
   }
-  
+  if (renewResult.flags.length > 0) {
+    details.push({ metric: 'Renewable Tier Warning', status: 'warning', value: '', message: renewResult.flags[0] });
+  }
+
   // On-site Generation Bonus (10 points max)
   const onsite = parseFloat(formData.onsiteGeneration) || 0;
   if (onsite >= 25) {
@@ -182,46 +243,74 @@ function calculateEnergyScore(formData) {
     score += 2;
     details.push({ metric: 'On-site Generation', status: 'warning', value: `${onsite}%`, message: 'Consider expansion' });
   }
-  
+
   // Certification Bonus (10 points max)
   const hasEnergyCert = formData.certifications?.includes('iso50001') || formData.certifications?.includes('eu_coc');
   if (hasEnergyCert) {
     score += 10;
     details.push({ metric: 'Energy Certifications', status: 'compliant', value: 'Present', message: 'ISO 50001 / EU CoC' });
   }
-  
-  return { score: Math.min(100, score), gaps, details };
+
+  return { score: Math.min(100, score), gaps, details, pueResult };
+}
+
+function calculateWueMax(formData) {
+  // CNDCP WUEmax formula from EUDCA White Paper (October 2024)
+  // WUEmax = 0.4 × K1_climate × K2_stress × K3_water
+  const isMena = MENA_COUNTRIES.some(c => c.code === formData.country);
+  const k1Map = { cold: 1.0, warm: 1.1 };
+  const k2Map = { low: 5.0, low_medium: 4.0, medium_high: 2.5, high: 1.0 };
+  const k3Map = { potable: 1.0, grey: 3.0, brackish: 6.0 };
+
+  const k1 = k1Map[formData.k1Climate] || (isMena ? 1.1 : 1.0);
+  const k2 = k2Map[formData.k2Stress] || (isMena ? 1.0 : 5.0);
+  const k3 = k3Map[formData.k3Water] || 1.0;
+
+  const wueMax = 0.4 * k1 * k2 * k3;
+
+  const notes = [];
+  if (isMena && !formData.k2Stress) {
+    notes.push('Conservative assumption applied: high water stress (WEI+ > 40). Override if local water authority data is available.');
+  }
+
+  return { wueMax, k1, k2, k3, notes };
 }
 
 function calculateWaterScore(formData) {
   let score = 0;
   const gaps = [];
   const details = [];
-  
-  // WUE Assessment (50 points max)
+
   const wue = parseFloat(formData.wueMetric) || 2.0;
   const country = MENA_COUNTRIES.find(c => c.code === formData.country);
   const isWaterStressed = country?.waterStress === 'high';
-  
-  // Adjust thresholds for water-stressed regions
-  const wueThreshold = isWaterStressed ? 0.5 : 0.8;
-  
-  if (wue <= 0.3) {
-    score += 50;
-    details.push({ metric: 'WUE', status: 'excellent', value: wue, message: 'Best-in-class water efficiency' });
-  } else if (wue <= wueThreshold) {
-    score += 40;
-    details.push({ metric: 'WUE', status: 'compliant', value: wue, message: 'Meets regional targets' });
-  } else if (wue <= 1.2) {
-    score += 25;
-    gaps.push({ metric: 'WUE', gap: `Above target for ${isWaterStressed ? 'water-stressed' : 'normal'} region`, severity: 'medium' });
-    details.push({ metric: 'WUE', status: 'warning', value: wue, message: 'Improvement needed' });
+  const { wueMax, k1, k2, k3, notes } = calculateWueMax(formData);
+
+  // WUE vs WUEmax Assessment (50 points max)
+  let wueScore, wueLabel;
+  if (wue <= wueMax * 0.8) {
+    wueScore = 92; wueLabel = 'Exceeds CNDCP target';
+  } else if (wue <= wueMax) {
+    wueScore = 75; wueLabel = 'Meets CNDCP WUEmax target';
+  } else if (wue <= wueMax * 1.2) {
+    wueScore = 52; wueLabel = 'Marginally above target — remediation required';
   } else {
-    score += 10;
-    gaps.push({ metric: 'WUE', gap: 'Significant water efficiency concern', severity: 'high' });
-    details.push({ metric: 'WUE', status: 'critical', value: wue, message: 'Critical improvement required' });
+    wueScore = 20; wueLabel = 'Fails CNDCP WUEmax target';
   }
-  
+
+  const wuePoints = Math.round(wueScore * 0.5);
+  score += wuePoints;
+
+  const wueStatus = wueScore >= 85 ? 'excellent' : wueScore >= 65 ? 'compliant' : wueScore >= 40 ? 'warning' : 'critical';
+  details.push({ metric: 'WUE', status: wueStatus, value: `${wue} m³/MWh`, message: wueLabel });
+  details.push({ metric: 'WUEmax (CNDCP)', status: 'compliant', value: `${wueMax.toFixed(2)} m³/MWh`, message: `Your site WUEmax (CNDCP formula): ${wueMax.toFixed(2)} m³/MWh — K1=${k1}, K2=${k2}, K3=${k3}` });
+  if (wueScore < 65) {
+    gaps.push({ metric: 'WUE', gap: wueLabel, severity: wueScore < 40 ? 'high' : 'medium' });
+  }
+  if (notes.length > 0) {
+    details.push({ metric: 'WUE Note', status: 'warning', value: '', message: notes[0] });
+  }
+
   // Cooling Technology Assessment (30 points max)
   const cooling = COOLING_TECHNOLOGIES.find(c => c.id === formData.coolingType);
   if (cooling) {
@@ -237,7 +326,7 @@ function calculateWaterScore(formData) {
       details.push({ metric: 'Cooling Technology', status: 'warning', value: cooling.name, message: 'Consider alternatives' });
     }
   }
-  
+
   // Water Stress Mitigation (20 points max)
   if (formData.waterRecycling) {
     score += 10;
@@ -245,13 +334,13 @@ function calculateWaterScore(formData) {
   } else if (isWaterStressed) {
     gaps.push({ metric: 'Water Recycling', gap: 'No recycling in water-stressed region', severity: 'high' });
   }
-  
+
   if (formData.alternativeWaterSource) {
     score += 10;
     details.push({ metric: 'Alternative Water Source', status: 'compliant', value: 'Yes', message: 'Non-potable water use' });
   }
-  
-  return { score: Math.min(100, score), gaps, details };
+
+  return { score: Math.min(100, score), gaps, details, wueMax };
 }
 
 function calculateCircularScore(formData) {
@@ -315,9 +404,9 @@ function calculateClimateRiskScore(formData) {
   let score = 0;
   const gaps = [];
   const details = [];
-  
+
   const country = MENA_COUNTRIES.find(c => c.code === formData.country);
-  
+
   // Physical Risk Assessment (30 points max)
   if (formData.climateRiskAssessment) {
     score += 30;
@@ -326,7 +415,7 @@ function calculateClimateRiskScore(formData) {
     gaps.push({ metric: 'Climate Risk', gap: 'No formal climate risk assessment', severity: 'high' });
     details.push({ metric: 'Climate Risk Assessment', status: 'critical', value: 'Missing', message: 'Assessment required' });
   }
-  
+
   // Heat Resilience (25 points max)
   if (country?.climate === 'hot') {
     if (formData.heatResilience) {
@@ -340,7 +429,7 @@ function calculateClimateRiskScore(formData) {
     score += 20;
     details.push({ metric: 'Heat Resilience', status: 'compliant', value: 'Moderate risk', message: 'Standard controls' });
   }
-  
+
   // Transition Risk Management (25 points max)
   if (formData.transitionPlan) {
     score += 25;
@@ -349,7 +438,7 @@ function calculateClimateRiskScore(formData) {
     gaps.push({ metric: 'Transition Plan', gap: 'No decarbonization transition plan', severity: 'medium' });
     details.push({ metric: 'Transition Plan', status: 'warning', value: 'No', message: 'Plan recommended' });
   }
-  
+
   // Certifications (20 points max)
   const hasEnvCerts = formData.certifications?.some(c => ['iso14001', 'leed', 'breeam'].includes(c));
   if (hasEnvCerts) {
@@ -359,7 +448,44 @@ function calculateClimateRiskScore(formData) {
     gaps.push({ metric: 'Certifications', gap: 'No environmental management certification', severity: 'low' });
     details.push({ metric: 'Environmental Certifications', status: 'warning', value: 'None', message: 'Certification beneficial' });
   }
-  
+
+  return { score: Math.min(100, score), gaps, details };
+}
+
+function calculateGovernanceScore(formData) {
+  const gaps = [];
+  const details = [];
+
+  // DNSH Checklist — weighted points
+  // (a) Climate vulnerability: 2 points
+  // (b) Protected areas: 2 points
+  // (c) Low-GWP refrigerants: 1 point
+  // (d) WEEE compliance: 1 point
+  // (e) Human rights due diligence: 2 points
+  // (f) Supply chain labour: 1 point
+  // Total max = 9 points → mapped to 0–100
+  const dnshItems = [
+    { key: 'dnshClimateVulnerability', points: 2, label: 'DNSH Obj 2 — Climate vulnerability assessment (IPCC risk taxonomy)', shortLabel: 'Climate Vulnerability' },
+    { key: 'dnshProtectedAreas', points: 2, label: 'DNSH Obj 6 — Site outside protected areas (Natura 2000, UNESCO, KBAs, primary forests)', shortLabel: 'Biodiversity / Protected Areas' },
+    { key: 'dnshLowGwpRefrigerants', points: 1, label: 'DNSH Obj 5 — Low-GWP refrigerants (EU F-Gas Regulation 517/2014)', shortLabel: 'Low-GWP Refrigerants' },
+    { key: 'dnshWeeeCompliance', points: 1, label: 'DNSH Obj 4 — IT equipment end-of-life plan (WEEE Directive 2012/19/EU)', shortLabel: 'WEEE Compliance' },
+    { key: 'dnshHumanRightsDueDiligence', points: 2, label: 'Art 18 Min Social Safeguards — Human rights due diligence (UNGPs / OECD Guidelines)', shortLabel: 'Human Rights Due Diligence' },
+    { key: 'dnshSupplyChainLabour', points: 1, label: 'Art 18 Min Social Safeguards — Supply chain labour standards policy', shortLabel: 'Supply Chain Labour' },
+  ];
+
+  let totalPoints = 0;
+  const maxPoints = 9;
+  dnshItems.forEach(item => {
+    if (formData[item.key]) {
+      totalPoints += item.points;
+      details.push({ metric: item.shortLabel, status: 'compliant', value: 'Yes', message: item.label });
+    } else {
+      gaps.push({ metric: item.shortLabel, gap: item.label, severity: item.points >= 2 ? 'high' : 'medium' });
+      details.push({ metric: item.shortLabel, status: 'critical', value: 'No', message: item.label });
+    }
+  });
+
+  const score = Math.round((totalPoints / maxPoints) * 100);
   return { score: Math.min(100, score), gaps, details };
 }
 
@@ -446,16 +572,17 @@ function determineSdrEligibility(scores, formData) {
 function determineTaxonomyAlignment(scores, formData) {
   const pue = parseFloat(formData.pueTarget) || 1.8;
   const hasEuCoc = formData.certifications?.includes('eu_coc');
-  
+
   const substantialContribution = pue <= 1.5 && hasEuCoc;
-  const dnshClimate = formData.climateRiskAssessment;
+  const dnshClimate = formData.dnshClimateVulnerability;
   const dnshWater = scores.water.score >= 60;
-  const dnshCircular = scores.circularEconomy.score >= 50;
-  const dnshPollution = true; // Assumed compliant
-  const dnshBiodiversity = true; // Assumed compliant
-  
-  const allDnsh = dnshClimate && dnshWater && dnshCircular && dnshPollution && dnshBiodiversity;
-  
+  const dnshCircular = formData.dnshWeeeCompliance && scores.circularEconomy.score >= 50;
+  const dnshPollution = formData.dnshLowGwpRefrigerants;
+  const dnshBiodiversity = formData.dnshProtectedAreas;
+  const minSocialSafeguards = formData.dnshHumanRightsDueDiligence && formData.dnshSupplyChainLabour;
+
+  const allDnsh = dnshClimate && dnshWater && dnshCircular && dnshPollution && dnshBiodiversity && minSocialSafeguards;
+
   return {
     aligned: substantialContribution && allDnsh,
     substantialContribution: {
@@ -467,11 +594,12 @@ function determineTaxonomyAlignment(scores, formData) {
       ]
     },
     dnsh: {
-      climate: { met: dnshClimate, label: 'Climate Change Adaptation' },
-      water: { met: dnshWater, label: 'Water & Marine Resources' },
-      circular: { met: dnshCircular, label: 'Circular Economy' },
-      pollution: { met: dnshPollution, label: 'Pollution Prevention' },
-      biodiversity: { met: dnshBiodiversity, label: 'Biodiversity' }
+      climate: { met: dnshClimate, label: 'Climate Change Adaptation (DNSH Obj 2)' },
+      water: { met: dnshWater, label: 'Water & Marine Resources (DNSH Obj 3)' },
+      circular: { met: dnshCircular, label: 'Circular Economy (DNSH Obj 4)' },
+      pollution: { met: dnshPollution, label: 'Pollution Prevention (DNSH Obj 5)' },
+      biodiversity: { met: dnshBiodiversity, label: 'Biodiversity (DNSH Obj 6)' },
+      socialSafeguards: { met: minSocialSafeguards, label: 'Minimum Social Safeguards (Art 18)' }
     }
   };
 }
@@ -600,268 +728,108 @@ function generateRecommendations(scores, formData) {
 }
 
 // ============================================
-// PDF GENERATION (using basic HTML-to-PDF approach)
+// CONSTANTS
 // ============================================
 
-function generatePDFContent(formData, results) {
-  const date = new Date().toLocaleDateString('en-GB', { 
-    day: 'numeric', month: 'long', year: 'numeric' 
-  });
-  
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Compliance Gap Assessment Report</title>
-  <style>
-    @page { size: A4; margin: 2cm; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; }
-    .header { background: linear-gradient(135deg, #0f766e 0%, #064e3b 100%); color: white; padding: 40px; margin: -2cm -2cm 2cm -2cm; }
-    .header h1 { margin: 0 0 10px 0; font-size: 28px; }
-    .header p { margin: 0; opacity: 0.9; }
-    .section { margin-bottom: 30px; page-break-inside: avoid; }
-    .section h2 { color: #0f766e; border-bottom: 2px solid #0f766e; padding-bottom: 8px; }
-    .score-box { display: inline-block; padding: 20px 40px; background: #f0fdf4; border-radius: 12px; text-align: center; margin: 20px 0; }
-    .score-value { font-size: 48px; font-weight: bold; color: #0f766e; }
-    .score-label { font-size: 14px; color: #64748b; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .card { background: #f8fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #0f766e; }
-    .card h3 { margin: 0 0 10px 0; color: #0f766e; }
-    .status-excellent { color: #059669; }
-    .status-compliant { color: #0284c7; }
-    .status-warning { color: #d97706; }
-    .status-critical { color: #dc2626; }
-    .table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-    .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-    .table th { background: #f1f5f9; font-weight: 600; }
-    .priority-high { background: #fef2f2; color: #dc2626; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-    .priority-medium { background: #fef3c7; color: #d97706; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-    .priority-low { background: #f0fdf4; color: #059669; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-    .classification-box { padding: 15px; border-radius: 8px; margin: 10px 0; }
-    .article-9 { background: #d1fae5; border: 2px solid #059669; }
-    .article-8 { background: #dbeafe; border: 2px solid #2563eb; }
-    .article-6 { background: #f1f5f9; border: 2px solid #64748b; }
-    .check { color: #059669; }
-    .cross { color: #dc2626; }
-    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; }
-    ul { margin: 10px 0; padding-left: 20px; }
-    li { margin: 5px 0; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Green Finance Compliance Gap Assessment</h1>
-    <p>SFDR / UK SDR / EU Taxonomy Alignment Report</p>
-    <p style="margin-top: 15px; font-size: 14px;">
-      Project: ${formData.projectName || 'Data Centre Project'}<br>
-      Location: ${MENA_COUNTRIES.find(c => c.code === formData.country)?.name || formData.country}<br>
-      Generated: ${date}
-    </p>
-  </div>
-  
-  <div class="section">
-    <h2>Executive Summary</h2>
-    <div class="score-box">
-      <div class="score-value">${results.overall}%</div>
-      <div class="score-label">Overall Compliance Readiness</div>
-    </div>
-    <div class="grid">
-      <div class="card">
-        <h3>SFDR Classification</h3>
-        <p><strong>${results.sfdr.classification}</strong> - ${results.sfdr.label}</p>
-        <p style="font-size: 14px; color: #64748b;">${results.sfdr.description}</p>
-      </div>
-      <div class="card">
-        <h3>EU Taxonomy Alignment</h3>
-        <p><strong>${results.taxonomy.aligned ? '✓ Aligned' : '✗ Not Aligned'}</strong></p>
-        <p style="font-size: 14px; color: #64748b;">
-          ${results.taxonomy.aligned 
-            ? 'Meets substantial contribution criteria and DNSH requirements' 
-            : 'Gaps identified in technical screening criteria'}
-        </p>
-      </div>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2>Category Breakdown</h2>
-    <table class="table">
-      <tr>
-        <th>Category</th>
-        <th>Score</th>
-        <th>Status</th>
-        <th>Key Gap</th>
-      </tr>
-      <tr>
-        <td><strong>Energy Efficiency</strong></td>
-        <td>${results.categories.energy.score}%</td>
-        <td class="${results.categories.energy.score >= 70 ? 'status-compliant' : results.categories.energy.score >= 50 ? 'status-warning' : 'status-critical'}">
-          ${results.categories.energy.score >= 70 ? 'Compliant' : results.categories.energy.score >= 50 ? 'Partial' : 'Non-Compliant'}
-        </td>
-        <td>${results.categories.energy.gaps[0]?.gap || 'No critical gaps'}</td>
-      </tr>
-      <tr>
-        <td><strong>Water Management</strong></td>
-        <td>${results.categories.water.score}%</td>
-        <td class="${results.categories.water.score >= 70 ? 'status-compliant' : results.categories.water.score >= 50 ? 'status-warning' : 'status-critical'}">
-          ${results.categories.water.score >= 70 ? 'Compliant' : results.categories.water.score >= 50 ? 'Partial' : 'Non-Compliant'}
-        </td>
-        <td>${results.categories.water.gaps[0]?.gap || 'No critical gaps'}</td>
-      </tr>
-      <tr>
-        <td><strong>Circular Economy</strong></td>
-        <td>${results.categories.circularEconomy.score}%</td>
-        <td class="${results.categories.circularEconomy.score >= 70 ? 'status-compliant' : results.categories.circularEconomy.score >= 50 ? 'status-warning' : 'status-critical'}">
-          ${results.categories.circularEconomy.score >= 70 ? 'Compliant' : results.categories.circularEconomy.score >= 50 ? 'Partial' : 'Non-Compliant'}
-        </td>
-        <td>${results.categories.circularEconomy.gaps[0]?.gap || 'No critical gaps'}</td>
-      </tr>
-      <tr>
-        <td><strong>Climate Risk</strong></td>
-        <td>${results.categories.climateRisk.score}%</td>
-        <td class="${results.categories.climateRisk.score >= 70 ? 'status-compliant' : results.categories.climateRisk.score >= 50 ? 'status-warning' : 'status-critical'}">
-          ${results.categories.climateRisk.score >= 70 ? 'Compliant' : results.categories.climateRisk.score >= 50 ? 'Partial' : 'Non-Compliant'}
-        </td>
-        <td>${results.categories.climateRisk.gaps[0]?.gap || 'No critical gaps'}</td>
-      </tr>
-    </table>
-  </div>
-  
-  <div class="section">
-    <h2>EU Taxonomy Technical Screening Criteria (Activity 8.1)</h2>
-    <h3>Substantial Contribution to Climate Change Mitigation</h3>
-    <table class="table">
-      <tr>
-        <th>Criterion</th>
-        <th>Status</th>
-      </tr>
-      ${results.taxonomy.substantialContribution.criteria.map(c => `
-        <tr>
-          <td>${c.name}</td>
-          <td>${c.met ? '<span class="check">✓ Met</span>' : '<span class="cross">✗ Not Met</span>'}</td>
-        </tr>
-      `).join('')}
-    </table>
-    
-    <h3>Do No Significant Harm (DNSH)</h3>
-    <table class="table">
-      <tr>
-        <th>Environmental Objective</th>
-        <th>Status</th>
-      </tr>
-      ${Object.values(results.taxonomy.dnsh).map(d => `
-        <tr>
-          <td>${d.label}</td>
-          <td>${d.met ? '<span class="check">✓ Compliant</span>' : '<span class="cross">✗ Gap Identified</span>'}</td>
-        </tr>
-      `).join('')}
-    </table>
-  </div>
-  
-  <div class="section">
-    <h2>UK SDR Fund Label Eligibility</h2>
-    <table class="table">
-      <tr>
-        <th>Label Category</th>
-        <th>Eligibility</th>
-        <th>Notes</th>
-      </tr>
-      ${results.sdr.map(s => `
-        <tr>
-          <td><strong>${s.label}</strong></td>
-          <td>${s.eligible ? '<span class="check">✓ Eligible</span>' : '<span class="cross">✗ Not Eligible</span>'}</td>
-          <td>${s.eligible ? s.description : s.gap}</td>
-        </tr>
-      `).join('')}
-    </table>
-  </div>
-  
-  <div class="section" style="page-break-before: always;">
-    <h2>Remediation Roadmap</h2>
-    ${results.recommendations.map(r => `
-      <div class="card" style="margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0;">${r.action}</h3>
-          <span class="priority-${r.priority.toLowerCase()}">${r.priority} Priority</span>
-        </div>
-        <p style="margin: 10px 0; color: #0f766e; font-weight: 500;">${r.impact}</p>
-        <p style="margin: 5px 0; font-size: 14px;"><strong>Timeline:</strong> ${r.timeline}</p>
-        <ul>
-          ${r.details.map(d => `<li>${d}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('')}
-  </div>
-  
-  <div class="section">
-    <h2>Project Specifications Summary</h2>
-    <table class="table">
-      <tr><th>Parameter</th><th>Value</th></tr>
-      <tr><td>Power Capacity</td><td>${formData.powerCapacity || 'N/A'} MW</td></tr>
-      <tr><td>PUE Target</td><td>${formData.pueTarget || 'N/A'}</td></tr>
-      <tr><td>Renewable Energy %</td><td>${formData.renewablePercent || '0'}%</td></tr>
-      <tr><td>Cooling Technology</td><td>${COOLING_TECHNOLOGIES.find(c => c.id === formData.coolingType)?.name || 'N/A'}</td></tr>
-      <tr><td>WUE Metric</td><td>${formData.wueMetric || 'N/A'} L/kWh</td></tr>
-      <tr><td>Certifications</td><td>${(formData.certifications || []).map(c => CERTIFICATIONS.find(cert => cert.id === c)?.name).filter(Boolean).join(', ') || 'None'}</td></tr>
-    </table>
-  </div>
-  
-  <div class="footer">
-    <p><strong>Disclaimer:</strong> This assessment is provided for informational purposes only and does not constitute legal, financial, or regulatory advice. 
-    Actual compliance determinations should be made in consultation with qualified sustainability consultants and legal advisors.</p>
-    <p>Generated by Perennity Compliance Assessment Tool | ${date}</p>
-  </div>
-</body>
-</html>
-  `;
+const INITIAL_FORM_DATA = {
+  projectName: '', country: '', powerCapacity: '', facilityType: '',
+  pueTarget: '', coolingType: '', renewablePercent: '', renewableSourceTier: '',
+  gridPercent: '', onsiteGeneration: '', wueMetric: '', k1Climate: '',
+  k2Stress: '', k3Water: '', waterRecycling: false, alternativeWaterSource: false,
+  ewasteProgram: '', serverLifecycle: '', equipmentReuse: false,
+  sustainableProcurement: false, climateRiskAssessment: false, heatResilience: false,
+  transitionPlan: false, dnshClimateVulnerability: false, dnshProtectedAreas: false,
+  dnshLowGwpRefrigerants: false, dnshWeeeCompliance: false,
+  dnshHumanRightsDueDiligence: false, dnshSupplyChainLabour: false,
+  targetFinancingLabel: '', certifications: []
+};
+
+const WIZARD_STEPS = [
+  { title: 'Project', icon: Building2 },
+  { title: 'Region', icon: Building2 },
+  { title: 'Capacity', icon: Zap },
+  { title: 'Energy', icon: Zap },
+  { title: 'Water', icon: Droplets },
+  { title: 'Renewables', icon: Zap },
+  { title: 'Governance', icon: Shield },
+  { title: 'Circular', icon: Recycle }
+];
+
+const TOOLTIPS = {
+  pue: 'Power Usage Effectiveness \u2014 the ratio of total data centre energy use to IT equipment energy use. A PUE of 1.0 is perfect; 1.3 is best practice for new builds under EU Taxonomy.',
+  wue: 'Water Usage Effectiveness \u2014 annual data centre water consumption (m\u00b3) divided by annual IT equipment energy consumption (MWh). Lower is better. Calculated per ISO/IEC 30134-5.',
+  renewablePercent: 'The proportion of electricity consumed that comes from renewable sources on a market basis. Source quality matters \u2014 a matched Power Purchase Agreement scores higher than a Renewable Energy Certificate.',
+  renewableSourceTier: 'Tier 1 (matched PPA or on-site generation) satisfies EU Taxonomy additionality requirements. Tier 2 (GOs/RECs) is accepted by most Article 8 funds. Tier 3 (green tariff) does not satisfy additionality requirements.',
+  k2Stress: 'Based on the EU Water Exploitation Index (WEI+) for your location. MENA locations are typically high stress (WEI+ > 40). This affects your site-specific WUEmax target under the Climate Neutral Data Centre Pact.',
+  k3Water: 'The type of water used for cooling affects your WUEmax target. Using brackish or sea water allows a higher WUE target than potable water under the CNDCP formula.',
+};
+
+const STORAGE_KEY = 'pb_wizard_state';
+const SIDEBAR_KEY = 'sidebar_collapsed';
+
+// ============================================
+// VALIDATION
+// ============================================
+
+function validateStep(step, formData) {
+  const errors = {};
+  const num = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
+  if (step === 2) {
+    // Capacity step — powerCapacity
+    if (formData.powerCapacity !== '') {
+      const v = num(formData.powerCapacity);
+      if (v === null) errors.powerCapacity = 'Please enter a valid number.';
+      else if (v <= 0 || v >= 10000) errors.powerCapacity = 'IT load must be greater than 0 MW and less than 10,000 MW.';
+    }
+  }
+  if (step === 3) {
+    // Energy step — PUE
+    if (formData.pueTarget !== '') {
+      const v = num(formData.pueTarget);
+      if (v === null) errors.pueTarget = 'Please enter a valid number.';
+      else if (v < 1.0 || v > 5.0) errors.pueTarget = 'PUE must be between 1.0 and 5.0. A value below 1.0 is physically impossible; above 5.0 is outside normal data centre range.';
+    }
+  }
+  if (step === 4) {
+    // Water step — WUE
+    if (formData.wueMetric !== '') {
+      const v = num(formData.wueMetric);
+      if (v === null) errors.wueMetric = 'Please enter a valid number.';
+      else if (v < 0.0 || v > 20.0) errors.wueMetric = 'WUE must be between 0.0 and 20.0 m\u00b3/MWh.';
+    }
+  }
+  if (step === 5) {
+    // Renewables step — renewablePercent
+    if (formData.renewablePercent !== '') {
+      const v = num(formData.renewablePercent);
+      if (v === null) errors.renewablePercent = 'Please enter a valid number.';
+      else if (v < 0 || v > 100) errors.renewablePercent = 'Renewable energy percentage must be between 0 and 100.';
+    }
+    if (formData.onsiteGeneration !== '') {
+      const v = num(formData.onsiteGeneration);
+      if (v === null) errors.onsiteGeneration = 'Please enter a valid number.';
+      else if (v < 0 || v > 100) errors.onsiteGeneration = 'On-site generation must be between 0 and 100%.';
+    }
+    if (formData.gridPercent !== '') {
+      const v = num(formData.gridPercent);
+      if (v === null) errors.gridPercent = 'Please enter a valid number.';
+      else if (v < 0 || v > 100) errors.gridPercent = 'Grid percentage must be between 0 and 100%.';
+    }
+  }
+  return errors;
 }
 
 // ============================================
 // UI COMPONENTS
 // ============================================
 
-const StatusBadge = ({ status }) => {
-  const styles = {
-    excellent: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    compliant: 'bg-sky-100 text-sky-700 border-sky-200',
-    warning: 'bg-amber-100 text-amber-700 border-amber-200',
-    critical: 'bg-red-100 text-red-700 border-red-200'
-  };
-  
-  const icons = {
-    excellent: <CheckCircle className="w-4 h-4" />,
-    compliant: <CheckCircle className="w-4 h-4" />,
-    warning: <AlertTriangle className="w-4 h-4" />,
-    critical: <XCircle className="w-4 h-4" />
-  };
-  
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${styles[status]}`}>
-      {icons[status]}
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-};
-
 const ProgressBar = ({ value, color = 'teal' }) => {
-  const colorClasses = {
-    teal: 'bg-teal-500',
-    emerald: 'bg-emerald-500',
-    blue: 'bg-blue-500',
-    amber: 'bg-amber-500',
-    red: 'bg-red-500',
-    gray: 'bg-gray-500'
-  };
-  
+  const colorClasses = { teal: 'bg-teal-500', emerald: 'bg-emerald-500', blue: 'bg-blue-500', amber: 'bg-amber-500', red: 'bg-red-500', gray: 'bg-gray-500' };
   const bgColor = value >= 70 ? 'teal' : value >= 50 ? 'amber' : 'red';
-  
   return (
     <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-      <div 
-        className={`h-full rounded-full transition-all duration-500 ${colorClasses[color] || colorClasses[bgColor]}`}
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-      />
+      <div className={`h-full rounded-full transition-all duration-500 ${colorClasses[color] || colorClasses[bgColor]}`} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
     </div>
   );
 };
@@ -869,9 +837,7 @@ const ProgressBar = ({ value, color = 'teal' }) => {
 const FormStep = ({ children, title, subtitle, icon: Icon }) => (
   <div className="space-y-6">
     <div className="flex items-center gap-4 pb-4 border-b border-slate-200">
-      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white">
-        <Icon className="w-6 h-6" />
-      </div>
+      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white"><Icon className="w-6 h-6" /></div>
       <div>
         <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
         <p className="text-sm text-slate-500">{subtitle}</p>
@@ -881,13 +847,67 @@ const FormStep = ({ children, title, subtitle, icon: Icon }) => (
   </div>
 );
 
-const InputField = ({ label, helper, error, children }) => (
+const Tooltip = ({ text }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-block ml-1 align-middle">
+      <button type="button" onClick={() => setOpen(o => !o)} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} className="text-slate-400 hover:text-teal-600 focus:outline-none" aria-label="Help">
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {open && (
+        <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 px-3 py-2 text-xs text-white bg-slate-800 rounded-lg shadow-lg leading-relaxed pointer-events-none">
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+        </span>
+      )}
+    </span>
+  );
+};
+
+const InputField = ({ label, helper, error, tooltip, children }) => (
   <div className="space-y-1.5">
-    <label className="block text-sm font-medium text-slate-700">{label}</label>
+    <label className="block text-sm font-medium text-slate-700">
+      {label}
+      {tooltip && <Tooltip text={tooltip} />}
+    </label>
     {children}
-    {helper && <p className="text-xs text-slate-500">{helper}</p>}
-    {error && <p className="text-xs text-red-500">{error}</p>}
+    {helper && !error && <p className="text-xs text-slate-500">{helper}</p>}
+    {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
   </div>
+);
+
+const StepProgress = ({ currentStep, totalSteps, steps }) => (
+  <>
+    {/* Desktop: full bar */}
+    <div className="hidden sm:block">
+      <div className="flex items-center justify-between mb-1">
+        {steps.map((step, idx) => (
+          <div key={idx} className="flex items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+              idx < currentStep ? 'bg-[#0B1F2A] text-white' :
+              idx === currentStep ? 'bg-[#4ECDA4] text-white shadow-md' :
+              'bg-white border-2 border-slate-300 text-slate-400'
+            }`}>
+              {idx < currentStep ? <CheckCircle className="w-4 h-4" /> : idx + 1}
+            </div>
+            {idx < steps.length - 1 && (
+              <div className={`w-6 lg:w-10 xl:w-14 h-0.5 mx-0.5 transition-colors duration-200 ${idx < currentStep ? 'bg-[#0B1F2A]' : 'bg-slate-200'}`} />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between text-[10px] text-slate-500">
+        {steps.map((step, idx) => (
+          <span key={idx} className={`w-8 text-center ${idx === currentStep ? 'text-teal-600 font-semibold' : ''}`}>{step.title}</span>
+        ))}
+      </div>
+    </div>
+    {/* Mobile: compact */}
+    <div className="sm:hidden text-center py-2">
+      <span className="text-sm font-medium text-teal-700">Step {currentStep + 1} of {totalSteps}</span>
+      <span className="text-xs text-slate-500 ml-2">{steps[currentStep]?.title}</span>
+    </div>
+  </>
 );
 
 // ============================================
@@ -897,639 +917,539 @@ const InputField = ({ label, helper, error, children }) => (
 export default function ComplianceAssessmentTool() {
   const [currentStep, setCurrentStep] = useState(0);
   const [showResults, setShowResults] = useState(false);
-  const [formData, setFormData] = useState({
-    projectName: '',
-    country: '',
-    powerCapacity: '',
-    pueTarget: '',
-    coolingType: '',
-    renewablePercent: '',
-    gridPercent: '',
-    onsiteGeneration: '',
-    wueMetric: '',
-    waterRecycling: false,
-    alternativeWaterSource: false,
-    ewasteProgram: '',
-    serverLifecycle: '',
-    equipmentReuse: false,
-    sustainableProcurement: false,
-    climateRiskAssessment: false,
-    heatResilience: false,
-    transitionPlan: false,
-    certifications: []
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [assessmentTime, setAssessmentTime] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch { return false; }
   });
-  
-  const updateField = (field, value) => {
+  const [savedBanner, setSavedBanner] = useState(null);
+
+  // FIX 6: Restore saved state on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || !saved.timestamp) return;
+      const age = Date.now() - saved.timestamp;
+      if (age > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(STORAGE_KEY); return; }
+      setSavedBanner({ formData: saved.formData, step: saved.step });
+    } catch { /* ignore corrupt data */ }
+  }, []);
+
+  // FIX 6: Persist on every change
+  useEffect(() => {
+    if (showResults) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ formData, step: currentStep, timestamp: Date.now() }));
+    } catch { /* quota exceeded */ }
+  }, [formData, currentStep, showResults]);
+
+  // FIX 1: Persist sidebar
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_KEY, String(sidebarCollapsed)); } catch {}
+  }, [sidebarCollapsed]);
+
+  const updateField = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-  
-  const toggleCertification = (certId) => {
+  }, []);
+
+  const toggleCertification = useCallback((certId) => {
     setFormData(prev => ({
       ...prev,
-      certifications: prev.certifications.includes(certId)
-        ? prev.certifications.filter(c => c !== certId)
-        : [...prev.certifications, certId]
+      certifications: prev.certifications.includes(certId) ? prev.certifications.filter(c => c !== certId) : [...prev.certifications, certId]
     }));
-  };
-  
+  }, []);
+
   const results = useMemo(() => {
     if (!showResults) return null;
     return calculateComplianceScore(formData);
   }, [showResults, formData]);
-  
-  const steps = [
-    { title: 'Project Basics', icon: Building2 },
-    { title: 'Energy Profile', icon: Zap },
-    { title: 'Water Management', icon: Droplets },
-    { title: 'Circular Economy', icon: Recycle },
-    { title: 'Climate & Governance', icon: ThermometerSun }
-  ];
-  
+
+  const validationErrors = useMemo(() => validateStep(currentStep, formData), [currentStep, formData]);
+  const hasErrors = Object.keys(validationErrors).length > 0;
+
   const handleSubmit = () => {
+    setAssessmentTime(new Date());
     setShowResults(true);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   };
-  
+
   const handleDownloadPDF = () => {
-    const content = generatePDFContent(formData, results);
-    const blob = new Blob([content], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `compliance-assessment-${formData.projectName || 'report'}-${new Date().toISOString().split('T')[0]}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    generatePDFReport(formData, results);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   };
-  
+
   const handleReset = () => {
     setShowResults(false);
     setCurrentStep(0);
-    setFormData({
-      projectName: '',
-      country: '',
-      powerCapacity: '',
-      pueTarget: '',
-      coolingType: '',
-      renewablePercent: '',
-      gridPercent: '',
-      onsiteGeneration: '',
-      wueMetric: '',
-      waterRecycling: false,
-      alternativeWaterSource: false,
-      ewasteProgram: '',
-      serverLifecycle: '',
-      equipmentReuse: false,
-      sustainableProcurement: false,
-      climateRiskAssessment: false,
-      heatResilience: false,
-      transitionPlan: false,
-      certifications: []
-    });
+    setFormData({ ...INITIAL_FORM_DATA });
+    setAssessmentTime(null);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   };
-  
+
+  const handleRestoreSaved = () => {
+    if (!savedBanner) return;
+    setFormData(savedBanner.formData);
+    setCurrentStep(savedBanner.step);
+    setSavedBanner(null);
+  };
+
+  const handleStartFresh = () => {
+    setSavedBanner(null);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  };
+
+  // ============================================
+  // RESULTS SCREEN (with sidebar — FIX 1 + FIX 5)
+  // ============================================
   if (showResults && results) {
+    const sidebarItems = [
+      { key: 'energy', label: 'Energy', icon: Zap },
+      { key: 'water', label: 'Water', icon: Droplets },
+      { key: 'circularEconomy', label: 'Circular', icon: Recycle },
+      { key: 'climateRisk', label: 'Climate', icon: ThermometerSun },
+      { key: 'governance', label: 'DNSH', icon: Shield }
+    ];
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-emerald-50/20">
-        {/* Results Header */}
-        <div className="bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-700 text-white">
-          <div className="max-w-6xl mx-auto px-6 py-12">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-teal-200 text-sm font-medium mb-1">Assessment Complete</p>
-                <h1 className="text-3xl font-bold">{formData.projectName || 'Data Centre Project'}</h1>
-                <p className="text-teal-100 mt-1">
-                  {MENA_COUNTRIES.find(c => c.code === formData.country)?.name || 'MENA Region'} • {formData.powerCapacity} MW
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleReset}
-                  className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-colors"
-                >
-                  New Assessment
-                </button>
-                <button
-                  onClick={handleDownloadPDF}
-                  className="px-5 py-2.5 bg-white text-teal-700 hover:bg-teal-50 rounded-lg font-medium flex items-center gap-2 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Report
-                </button>
-              </div>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-emerald-50/20 flex">
+        {/* Sidebar — FIX 1 */}
+        <aside className={`hidden md:flex flex-col bg-[#0B1F2A] text-white transition-all duration-200 ease-in-out ${sidebarCollapsed ? 'w-12' : 'w-56'}`}>
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between px-4'} h-14 border-b border-white/10`}>
+            {!sidebarCollapsed && <span className="text-sm font-semibold text-[#4ECDA4] truncate">Perennity Bridge</span>}
+            <button onClick={() => setSidebarCollapsed(c => !c)} className="p-1 rounded hover:bg-white/10 transition-colors" aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+              {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4 text-slate-400" /> : <PanelLeftClose className="w-4 h-4 text-slate-400" />}
+            </button>
           </div>
-        </div>
-        
-        {/* Overall Score */}
-        <div className="max-w-6xl mx-auto px-6 -mt-8">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* Score Circle */}
-              <div className="flex flex-col items-center justify-center">
-                <div className="relative w-40 h-40">
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="80" cy="80" r="70" fill="none" stroke="#e2e8f0" strokeWidth="12" />
-                    <circle
-                      cx="80" cy="80" r="70" fill="none"
-                      stroke={results.overall >= 70 ? '#0d9488' : results.overall >= 50 ? '#f59e0b' : '#ef4444'}
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                      strokeDasharray={`${results.overall * 4.4} 440`}
-                      className="transition-all duration-1000"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-slate-800">{results.overall}%</span>
-                    <span className="text-sm text-slate-500">Overall Score</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* SFDR Classification */}
-              <div className={`rounded-xl p-6 ${
-                results.sfdr.classification === 'Article 9' ? 'bg-emerald-50 border-2 border-emerald-200' :
-                results.sfdr.classification === 'Article 8' ? 'bg-blue-50 border-2 border-blue-200' :
-                'bg-slate-50 border-2 border-slate-200'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className={`w-5 h-5 ${
-                    results.sfdr.classification === 'Article 9' ? 'text-emerald-600' :
-                    results.sfdr.classification === 'Article 8' ? 'text-blue-600' :
-                    'text-slate-600'
-                  }`} />
-                  <span className="text-sm font-medium text-slate-600">SFDR Classification</span>
-                </div>
-                <p className={`text-2xl font-bold ${
-                  results.sfdr.classification === 'Article 9' ? 'text-emerald-700' :
-                  results.sfdr.classification === 'Article 8' ? 'text-blue-700' :
-                  'text-slate-700'
-                }`}>{results.sfdr.classification}</p>
-                <p className="text-sm text-slate-600 mt-1">{results.sfdr.label}</p>
-              </div>
-              
-              {/* EU Taxonomy */}
-              <div className={`rounded-xl p-6 ${results.taxonomy.aligned ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-amber-50 border-2 border-amber-200'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Award className={`w-5 h-5 ${results.taxonomy.aligned ? 'text-emerald-600' : 'text-amber-600'}`} />
-                  <span className="text-sm font-medium text-slate-600">EU Taxonomy</span>
-                </div>
-                <p className={`text-2xl font-bold ${results.taxonomy.aligned ? 'text-emerald-700' : 'text-amber-700'}`}>
-                  {results.taxonomy.aligned ? 'Aligned' : 'Not Aligned'}
-                </p>
-                <p className="text-sm text-slate-600 mt-1">
-                  {results.taxonomy.aligned ? 'Meets all criteria' : 'Gaps identified'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Category Breakdown */}
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <h2 className="text-xl font-semibold text-slate-800 mb-4">Category Performance</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { key: 'energy', label: 'Energy Efficiency', icon: Zap },
-              { key: 'water', label: 'Water Management', icon: Droplets },
-              { key: 'circularEconomy', label: 'Circular Economy', icon: Recycle },
-              { key: 'climateRisk', label: 'Climate Risk', icon: ThermometerSun }
-            ].map(({ key, label, icon: Icon }) => (
-              <div key={key} className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    results.categories[key].score >= 70 ? 'bg-teal-100 text-teal-600' :
-                    results.categories[key].score >= 50 ? 'bg-amber-100 text-amber-600' :
-                    'bg-red-100 text-red-600'
-                  }`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">{label}</p>
-                    <p className="text-xl font-bold text-slate-800">{results.categories[key].score}%</p>
-                  </div>
-                </div>
-                <ProgressBar value={results.categories[key].score} />
-                {results.categories[key].gaps.length > 0 && (
-                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    {results.categories[key].gaps.length} gap{results.categories[key].gaps.length > 1 ? 's' : ''} identified
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* UK SDR Eligibility */}
-        <div className="max-w-6xl mx-auto px-6 pb-8">
-          <h2 className="text-xl font-semibold text-slate-800 mb-4">UK SDR Fund Label Eligibility</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            {results.sdr.map((label, idx) => (
-              <div key={idx} className={`bg-white rounded-xl p-5 shadow-sm border-2 ${
-                label.eligible ? 'border-emerald-200' : 'border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-slate-800">{label.label}</span>
-                  {label.eligible ? (
-                    <CheckCircle className="w-5 h-5 text-emerald-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-slate-400" />
+          <nav className="flex-1 py-3 space-y-1">
+            {sidebarItems.map(({ key, label, icon: Icon }) => {
+              const score = results.categories[key].score;
+              const dotColor = score >= 65 ? 'bg-emerald-400' : score >= 40 ? 'bg-amber-400' : 'bg-red-400';
+              return (
+                <div key={key} className={`flex items-center gap-2 px-3 py-2 mx-1 rounded-lg hover:bg-white/5 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                  <Icon className="w-4 h-4 text-slate-400 shrink-0" />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="text-sm text-slate-300 flex-1 truncate">{label}</span>
+                      <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                      <span className="text-xs text-slate-400">{score}</span>
+                    </>
                   )}
                 </div>
-                <p className="text-sm text-slate-600">
-                  {label.eligible ? label.description : label.gap}
-                </p>
-              </div>
-            ))}
+              );
+            })}
+          </nav>
+          <div className={`p-3 border-t border-white/10 ${sidebarCollapsed ? 'hidden' : ''}`}>
+            <button onClick={handleReset} className="w-full text-xs text-slate-400 hover:text-white py-1.5 rounded transition-colors">New Assessment</button>
           </div>
-        </div>
-        
-        {/* Recommendations */}
-        <div className="max-w-6xl mx-auto px-6 pb-12">
-          <h2 className="text-xl font-semibold text-slate-800 mb-4">Remediation Roadmap</h2>
-          <div className="space-y-4">
-            {results.recommendations.map((rec, idx) => (
-              <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          rec.priority === 'High' ? 'bg-red-100 text-red-700' :
-                          rec.priority === 'Medium' ? 'bg-amber-100 text-amber-700' :
-                          'bg-emerald-100 text-emerald-700'
-                        }`}>{rec.priority} Priority</span>
-                        <span className="text-xs text-slate-500">{rec.category}</span>
-                      </div>
-                      <h3 className="font-semibold text-slate-800">{rec.action}</h3>
-                      <p className="text-sm text-teal-600 mt-1">{rec.impact}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm text-slate-500">Timeline</span>
-                      <p className="font-medium text-slate-800">{rec.timeline}</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <p className="text-sm font-medium text-slate-600 mb-2">Implementation Steps:</p>
-                    <ul className="grid md:grid-cols-2 gap-2">
-                      {rec.details.map((detail, i) => (
-                        <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
-                          <span className="text-teal-500 mt-1">•</span>
-                          {detail}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+        </aside>
+
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+          {/* Results Header */}
+          <div className="bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-700 text-white">
+            <div className="max-w-6xl mx-auto px-6 py-12">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <p className="text-teal-200 text-sm font-medium mb-1">Assessment Complete</p>
+                  <h1 className="text-3xl font-bold">{formData.projectName || 'Data Centre Project'}</h1>
+                  <p className="text-teal-100 mt-1">{MENA_COUNTRIES.find(c => c.code === formData.country)?.name || 'MENA Region'} &bull; {formData.powerCapacity} MW</p>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleReset} className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-colors">New Assessment</button>
+                  <button onClick={handleDownloadPDF} className="px-5 py-2.5 bg-white text-teal-700 hover:bg-teal-50 rounded-lg font-medium flex items-center gap-2 transition-colors">
+                    <Download className="w-4 h-4" />Download Report
+                  </button>
                 </div>
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* Overall Score */}
+          <div className="max-w-6xl mx-auto px-6 -mt-8">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="relative w-40 h-40">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="80" cy="80" r="70" fill="none" stroke="#e2e8f0" strokeWidth="12" />
+                      <circle cx="80" cy="80" r="70" fill="none" stroke={results.overall >= 70 ? '#0d9488' : results.overall >= 50 ? '#f59e0b' : '#ef4444'} strokeWidth="12" strokeLinecap="round" strokeDasharray={`${results.overall * 4.4} 440`} className="transition-all duration-1000" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-4xl font-bold text-slate-800">{results.overall}%</span>
+                      <span className="text-sm text-slate-500">Overall Score</span>
+                    </div>
+                  </div>
+                </div>
+                <div className={`rounded-xl p-6 ${results.sfdr.classification === 'Article 9' ? 'bg-emerald-50 border-2 border-emerald-200' : results.sfdr.classification === 'Article 8' ? 'bg-blue-50 border-2 border-blue-200' : 'bg-slate-50 border-2 border-slate-200'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className={`w-5 h-5 ${results.sfdr.classification === 'Article 9' ? 'text-emerald-600' : results.sfdr.classification === 'Article 8' ? 'text-blue-600' : 'text-slate-600'}`} />
+                    <span className="text-sm font-medium text-slate-600">SFDR Classification</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${results.sfdr.classification === 'Article 9' ? 'text-emerald-700' : results.sfdr.classification === 'Article 8' ? 'text-blue-700' : 'text-slate-700'}`}>{results.sfdr.classification}</p>
+                  <p className="text-sm text-slate-600 mt-1">{results.sfdr.label}</p>
+                </div>
+                <div className={`rounded-xl p-6 ${results.taxonomy.aligned ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-amber-50 border-2 border-amber-200'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Award className={`w-5 h-5 ${results.taxonomy.aligned ? 'text-emerald-600' : 'text-amber-600'}`} />
+                    <span className="text-sm font-medium text-slate-600">EU Taxonomy</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${results.taxonomy.aligned ? 'text-emerald-700' : 'text-amber-700'}`}>{results.taxonomy.aligned ? 'Aligned' : 'Not Aligned'}</p>
+                  <p className="text-sm text-slate-600 mt-1">{results.taxonomy.aligned ? 'Meets all criteria' : 'Gaps identified'}</p>
+                </div>
+              </div>
+              {/* FIX 5: Version stamp */}
+              <p className="text-xs text-slate-400 text-right mt-4">
+                Assessment generated: {assessmentTime ? assessmentTime.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'} &middot; Methodology: Perennity Bridge v3.1 &middot; April 2026
+              </p>
+            </div>
+          </div>
+
+          {/* Category Breakdown */}
+          <div className="max-w-6xl mx-auto px-6 py-8">
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">Category Performance</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {[
+                { key: 'energy', label: 'Energy Efficiency', icon: Zap },
+                { key: 'water', label: 'Water Management', icon: Droplets },
+                { key: 'circularEconomy', label: 'Circular Economy', icon: Recycle },
+                { key: 'climateRisk', label: 'Climate Risk', icon: ThermometerSun },
+                { key: 'governance', label: 'Governance / DNSH', icon: Shield }
+              ].map(({ key, label, icon: Icon }) => (
+                <div key={key} className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${results.categories[key].score >= 70 ? 'bg-teal-100 text-teal-600' : results.categories[key].score >= 50 ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">{label}</p>
+                      <p className="text-xl font-bold text-slate-800">{results.categories[key].score}%</p>
+                    </div>
+                  </div>
+                  <ProgressBar value={results.categories[key].score} />
+                  {results.categories[key].gaps.length > 0 && (
+                    <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {results.categories[key].gaps.length} gap{results.categories[key].gaps.length > 1 ? 's' : ''} identified
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* UK SDR */}
+          <div className="max-w-6xl mx-auto px-6 pb-8">
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">UK SDR Fund Label Eligibility</h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              {results.sdr.map((label, idx) => (
+                <div key={idx} className={`bg-white rounded-xl p-5 shadow-sm border-2 ${label.eligible ? 'border-emerald-200' : 'border-slate-200'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-slate-800">{label.label}</span>
+                    {label.eligible ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <XCircle className="w-5 h-5 text-slate-400" />}
+                  </div>
+                  <p className="text-sm text-slate-600">{label.eligible ? label.description : label.gap}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div className="max-w-6xl mx-auto px-6 pb-12">
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">Remediation Roadmap</h2>
+            <div className="space-y-4">
+              {results.recommendations.map((rec, idx) => (
+                <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${rec.priority === 'High' ? 'bg-red-100 text-red-700' : rec.priority === 'Medium' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{rec.priority} Priority</span>
+                          <span className="text-xs text-slate-500">{rec.category}</span>
+                        </div>
+                        <h3 className="font-semibold text-slate-800">{rec.action}</h3>
+                        <p className="text-sm text-teal-600 mt-1">{rec.impact}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm text-slate-500">Timeline</span>
+                        <p className="font-medium text-slate-800">{rec.timeline}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      <p className="text-sm font-medium text-slate-600 mb-2">Implementation Steps:</p>
+                      <ul className="grid md:grid-cols-2 gap-2">
+                        {rec.details.map((detail, i) => (
+                          <li key={i} className="text-sm text-slate-600 flex items-start gap-2"><span className="text-teal-500 mt-1">&bull;</span>{detail}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
     );
   }
-  
+
+  // ============================================
+  // WIZARD SCREEN
+  // ============================================
+
+  const inputCls = "w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all";
+  const inputErrCls = "w-full px-4 py-2.5 border border-red-400 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition-all bg-red-50/30";
+  const selectCls = inputCls + " bg-white";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-emerald-50/20">
+      {/* FIX 6: Saved state banner */}
+      {savedBanner && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm text-amber-800">You have a saved assessment in progress.</p>
+            <div className="flex gap-2">
+              <button onClick={handleRestoreSaved} className="px-4 py-1.5 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 transition-colors font-medium">Continue</button>
+              <button onClick={handleStartFresh} className="px-4 py-1.5 bg-white border border-slate-300 text-slate-700 text-sm rounded-lg hover:bg-slate-50 transition-colors font-medium">Start fresh</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-700 text-white py-8">
         <div className="max-w-4xl mx-auto px-6">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
-            </div>
+            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center"><TrendingUp className="w-5 h-5" /></div>
             <span className="text-teal-200 text-sm font-medium">Perennity</span>
           </div>
           <h1 className="text-3xl font-bold mb-2">Green Finance Compliance Assessment</h1>
-          <p className="text-teal-100">
-            Assess your data centre project against SFDR, UK SDR, and EU Taxonomy requirements
-          </p>
+          <p className="text-teal-100">Assess your data centre project against SFDR, UK SDR, and EU Taxonomy requirements</p>
         </div>
       </div>
-      
-      {/* Progress Bar */}
+
+      {/* FIX 2: 8-Step Progress Bar */}
       <div className="max-w-4xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between mb-2">
-          {steps.map((step, idx) => (
-            <div key={idx} className="flex items-center">
-              <button
-                onClick={() => setCurrentStep(idx)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                  idx === currentStep
-                    ? 'bg-teal-600 text-white shadow-lg'
-                    : idx < currentStep
-                    ? 'bg-teal-500 text-white'
-                    : 'bg-slate-200 text-slate-500'
-                }`}
-              >
-                {idx < currentStep ? (
-                  <CheckCircle className="w-5 h-5" />
-                ) : (
-                  <step.icon className="w-5 h-5" />
-                )}
-              </button>
-              {idx < steps.length - 1 && (
-                <div className={`w-16 h-1 mx-2 rounded ${
-                  idx < currentStep ? 'bg-teal-500' : 'bg-slate-200'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-between text-xs text-slate-500 px-2">
-          {steps.map((step, idx) => (
-            <span key={idx} className={idx === currentStep ? 'text-teal-600 font-medium' : ''}>
-              {step.title}
-            </span>
-          ))}
-        </div>
+        <StepProgress currentStep={currentStep} totalSteps={WIZARD_STEPS.length} steps={WIZARD_STEPS} />
       </div>
-      
+
       {/* Form Content */}
       <div className="max-w-4xl mx-auto px-6 pb-12">
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
+
+          {/* Step 0: Project */}
           {currentStep === 0 && (
-            <FormStep title="Project Basics" subtitle="Tell us about your data centre project" icon={Building2}>
+            <FormStep title="Project" subtitle="Name and financing target" icon={Building2}>
               <div className="grid md:grid-cols-2 gap-6">
                 <InputField label="Project Name" helper="Internal reference name for this assessment">
-                  <input
-                    type="text"
-                    value={formData.projectName}
-                    onChange={e => updateField('projectName', e.target.value)}
-                    placeholder="e.g., Dubai DC Phase 2"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
+                  <input type="text" value={formData.projectName} onChange={e => updateField('projectName', e.target.value)} placeholder="e.g., Dubai DC Phase 2" className={inputCls} />
                 </InputField>
-                
-                <InputField label="Location" helper="Country where the facility will be located">
-                  <select
-                    value={formData.country}
-                    onChange={e => updateField('country', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all bg-white"
-                  >
-                    <option value="">Select country...</option>
-                    {MENA_COUNTRIES.map(c => (
-                      <option key={c.code} value={c.code}>{c.name}</option>
-                    ))}
-                  </select>
-                </InputField>
-                
-                <InputField label="Power Capacity (MW)" helper="Total IT load capacity">
-                  <input
-                    type="number"
-                    value={formData.powerCapacity}
-                    onChange={e => updateField('powerCapacity', e.target.value)}
-                    placeholder="e.g., 50"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
-                </InputField>
-                
-                <InputField label="Cooling Technology" helper="Primary cooling system type">
-                  <select
-                    value={formData.coolingType}
-                    onChange={e => updateField('coolingType', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all bg-white"
-                  >
-                    <option value="">Select technology...</option>
-                    {COOLING_TECHNOLOGIES.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
+                <InputField label="Target Financing Label" helper="Sustainability framework the project targets">
+                  <select value={formData.targetFinancingLabel} onChange={e => updateField('targetFinancingLabel', e.target.value)} className={selectCls}>
+                    <option value="">Select financing label...</option>
+                    <optgroup label="EU Frameworks — Fund Level">
+                      <option value="sfdr_article_8">SFDR Article 8 — promotes environmental/social characteristics</option>
+                      <option value="sfdr_article_9">SFDR Article 9 — sustainable investment objective</option>
+                    </optgroup>
+                    <optgroup label="EU Taxonomy">
+                      <option value="eu_taxonomy_8_1">EU Taxonomy aligned — Activity 8.1 (climate change mitigation)</option>
+                    </optgroup>
+                    <optgroup label="EU Bond Instruments">
+                      <option value="eugbs">European Green Bond (EuGBS) — Regulation (EU) 2023/2631</option>
+                      <option value="icma_green_bond">ICMA Green Bond Principles</option>
+                      <option value="icma_slb">ICMA Sustainability-Linked Bond Principles</option>
+                      <option value="icma_social_bond">ICMA Social Bond Principles</option>
+                    </optgroup>
+                    <optgroup label="UK Frameworks">
+                      <option value="uk_sdr_focus">UK SDR — Sustainability Focus</option>
+                      <option value="uk_sdr_improvers">UK SDR — Sustainability Improvers</option>
+                      <option value="uk_sdr_impact">UK SDR — Sustainability Impact</option>
+                      <option value="uk_sdr_mixed">UK SDR — Sustainability Mixed Goals</option>
+                    </optgroup>
+                    <optgroup label="Development Finance">
+                      <option value="eib">EIB green finance</option>
+                      <option value="ifc">IFC / World Bank green finance</option>
+                      <option value="ebrd">EBRD green finance</option>
+                      <option value="afdb">AfDB green finance</option>
+                    </optgroup>
                   </select>
                 </InputField>
               </div>
             </FormStep>
           )}
-          
+
+          {/* Step 1: Region */}
           {currentStep === 1 && (
-            <FormStep title="Energy Profile" subtitle="Energy efficiency and renewable sourcing" icon={Zap}>
+            <FormStep title="Region" subtitle="Location and facility type" icon={Building2}>
               <div className="grid md:grid-cols-2 gap-6">
-                <InputField label="Target PUE" helper="Power Usage Effectiveness (EU Taxonomy requires ≤1.5)">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.pueTarget}
-                    onChange={e => updateField('pueTarget', e.target.value)}
-                    placeholder="e.g., 1.4"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
+                <InputField label="Location" helper="Country where the facility will be located">
+                  <select value={formData.country} onChange={e => updateField('country', e.target.value)} className={selectCls}>
+                    <option value="">Select country...</option>
+                    {MENA_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  </select>
                 </InputField>
-                
-                <InputField label="Renewable Energy %" helper="Percentage from renewable sources (SFDR Art 9 requires ≥75%)">
-                  <input
-                    type="number"
-                    value={formData.renewablePercent}
-                    onChange={e => updateField('renewablePercent', e.target.value)}
-                    placeholder="e.g., 80"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
+                <InputField label="Facility Type" helper="New build or existing data centre">
+                  <select value={formData.facilityType} onChange={e => updateField('facilityType', e.target.value)} className={selectCls}>
+                    <option value="">Select type...</option>
+                    <option value="new">New Build</option>
+                    <option value="existing">Existing Facility</option>
+                  </select>
                 </InputField>
-                
-                <InputField label="Grid Electricity %" helper="Percentage from grid electricity">
-                  <input
-                    type="number"
-                    value={formData.gridPercent}
-                    onChange={e => updateField('gridPercent', e.target.value)}
-                    placeholder="e.g., 70"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
-                </InputField>
-                
-                <InputField label="On-site Generation %" helper="Percentage from on-site renewable generation">
-                  <input
-                    type="number"
-                    value={formData.onsiteGeneration}
-                    onChange={e => updateField('onsiteGeneration', e.target.value)}
-                    placeholder="e.g., 30"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
-                </InputField>
-              </div>
-              
-              <div className="mt-6 p-4 bg-teal-50 rounded-lg border border-teal-100">
-                <p className="text-sm text-teal-800">
-                  <strong>Tip:</strong> For SFDR Article 9 classification, aim for ≥75% renewable energy and PUE ≤1.5. 
-                  Consider Power Purchase Agreements (PPAs) with regional solar providers.
-                </p>
               </div>
             </FormStep>
           )}
-          
+
+          {/* Step 2: Capacity */}
           {currentStep === 2 && (
-            <FormStep title="Water Management" subtitle="Water usage and efficiency metrics" icon={Droplets}>
+            <FormStep title="Capacity" subtitle="Power and cooling infrastructure" icon={Zap}>
               <div className="grid md:grid-cols-2 gap-6">
-                <InputField label="WUE (L/kWh)" helper="Water Usage Effectiveness - liters per kWh of IT load">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.wueMetric}
-                    onChange={e => updateField('wueMetric', e.target.value)}
-                    placeholder="e.g., 0.5"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
+                <InputField label="Power Capacity (MW)" helper="Total IT load capacity" error={validationErrors.powerCapacity}>
+                  <input type="number" value={formData.powerCapacity} onChange={e => updateField('powerCapacity', e.target.value)} placeholder="e.g., 50" className={validationErrors.powerCapacity ? inputErrCls : inputCls} />
                 </InputField>
-                
-                <div className="space-y-4">
-                  <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.waterRecycling}
-                      onChange={e => updateField('waterRecycling', e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <div>
-                      <p className="font-medium text-slate-700">Water Recycling Program</p>
-                      <p className="text-xs text-slate-500">Active greywater or condensate recycling</p>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.alternativeWaterSource}
-                      onChange={e => updateField('alternativeWaterSource', e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <div>
-                      <p className="font-medium text-slate-700">Alternative Water Source</p>
-                      <p className="text-xs text-slate-500">Non-potable water (treated wastewater, seawater, etc.)</p>
-                    </div>
-                  </label>
-                </div>
+                <InputField label="Cooling Technology" helper="Primary cooling system type">
+                  <select value={formData.coolingType} onChange={e => updateField('coolingType', e.target.value)} className={selectCls}>
+                    <option value="">Select technology...</option>
+                    {COOLING_TECHNOLOGIES.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </InputField>
               </div>
-              
+            </FormStep>
+          )}
+
+          {/* Step 3: Energy */}
+          {currentStep === 3 && (
+            <FormStep title="Energy" subtitle="PUE target" icon={Zap}>
+              <div className="grid md:grid-cols-2 gap-6">
+                <InputField label="Target PUE" tooltip={TOOLTIPS.pue} error={validationErrors.pueTarget}>
+                  <input type="number" step="0.01" value={formData.pueTarget} onChange={e => updateField('pueTarget', e.target.value)} placeholder="e.g., 1.4" className={validationErrors.pueTarget ? inputErrCls : inputCls} />
+                </InputField>
+              </div>
+              <div className="mt-6 p-4 bg-teal-50 rounded-lg border border-teal-100">
+                <p className="text-sm text-teal-800"><strong>Tip:</strong> EU Taxonomy requires PUE &le;1.5 for substantial contribution. Best practice for new builds is &le;1.3.</p>
+              </div>
+            </FormStep>
+          )}
+
+          {/* Step 4: Water */}
+          {currentStep === 4 && (
+            <FormStep title="Water" subtitle="Water usage and CNDCP WUEmax assessment" icon={Droplets}>
+              <div className="grid md:grid-cols-2 gap-6">
+                <InputField label="Actual WUE (m\u00b3/MWh)" tooltip={TOOLTIPS.wue} error={validationErrors.wueMetric}>
+                  <input type="number" step="0.01" value={formData.wueMetric} onChange={e => updateField('wueMetric', e.target.value)} placeholder="e.g., 0.5" className={validationErrors.wueMetric ? inputErrCls : inputCls} />
+                </InputField>
+                <InputField label="K1 — Climate Zone" helper="Cooling degree days above 21\u00b0C (CNDCP)">
+                  <select value={formData.k1Climate} onChange={e => updateField('k1Climate', e.target.value)} className={selectCls}>
+                    <option value="">Select climate zone...</option>
+                    <option value="cold">Cold (&lt; 50 CDD above 21\u00b0C) — K1 = 1.0</option>
+                    <option value="warm">Warm (&ge; 50 CDD above 21\u00b0C) — K1 = 1.1</option>
+                  </select>
+                </InputField>
+                <InputField label="K2 — Water Stress Level" tooltip={TOOLTIPS.k2Stress}>
+                  <select value={formData.k2Stress} onChange={e => updateField('k2Stress', e.target.value)} className={selectCls}>
+                    <option value="">Select water stress level...</option>
+                    <option value="low">Low stress (WEI+ &le; 10) — K2 = 5.0</option>
+                    <option value="low_medium">Low-medium stress (WEI+ 11–20) — K2 = 4.0</option>
+                    <option value="medium_high">Medium-high stress (WEI+ 21–40) — K2 = 2.5</option>
+                    <option value="high">High stress (WEI+ &gt; 40) — K2 = 1.0</option>
+                  </select>
+                </InputField>
+                <InputField label="K3 — Water Source Type" tooltip={TOOLTIPS.k3Water}>
+                  <select value={formData.k3Water} onChange={e => updateField('k3Water', e.target.value)} className={selectCls}>
+                    <option value="">Select water source...</option>
+                    <option value="potable">Potable / fresh water — K3 = 1.0</option>
+                    <option value="grey">Grey water — K3 = 3.0</option>
+                    <option value="brackish">Brackish / sea water — K3 = 6.0</option>
+                  </select>
+                </InputField>
+              </div>
+              <div className="mt-6 space-y-4">
+                <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                  <input type="checkbox" checked={formData.waterRecycling} onChange={e => updateField('waterRecycling', e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                  <div><p className="font-medium text-slate-700">Water Recycling Program</p><p className="text-xs text-slate-500">Active greywater or condensate recycling</p></div>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                  <input type="checkbox" checked={formData.alternativeWaterSource} onChange={e => updateField('alternativeWaterSource', e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                  <div><p className="font-medium text-slate-700">Alternative Water Source</p><p className="text-xs text-slate-500">Non-potable water (treated wastewater, seawater, etc.)</p></div>
+                </label>
+              </div>
               {formData.country && MENA_COUNTRIES.find(c => c.code === formData.country)?.waterStress === 'high' && (
                 <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                  <p className="text-sm text-amber-800">
-                    <strong>⚠️ Water-Stressed Region:</strong> {MENA_COUNTRIES.find(c => c.code === formData.country)?.name} is classified as 
-                    a high water-stress region. Stricter WUE targets apply (≤0.5 L/kWh recommended).
-                  </p>
+                  <p className="text-sm text-amber-800"><strong>Water-Stressed Region:</strong> {MENA_COUNTRIES.find(c => c.code === formData.country)?.name} is classified as a high water-stress region. Stricter WUE targets apply.</p>
                 </div>
               )}
             </FormStep>
           )}
-          
-          {currentStep === 3 && (
-            <FormStep title="Circular Economy" subtitle="Waste management and resource efficiency" icon={Recycle}>
+
+          {/* Step 5: Renewables */}
+          {currentStep === 5 && (
+            <FormStep title="Renewables" subtitle="Renewable energy sourcing and source quality" icon={Zap}>
               <div className="grid md:grid-cols-2 gap-6">
-                <InputField label="E-Waste Management Program">
-                  <select
-                    value={formData.ewasteProgram}
-                    onChange={e => updateField('ewasteProgram', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all bg-white"
-                  >
-                    <option value="">Select level...</option>
-                    <option value="none">No formal program</option>
-                    <option value="basic">Basic recycling</option>
-                    <option value="certified">Certified recycling partners (R2/e-Stewards)</option>
-                    <option value="comprehensive">Comprehensive lifecycle management</option>
+                <InputField label="Renewable Energy %" tooltip={TOOLTIPS.renewablePercent} error={validationErrors.renewablePercent}>
+                  <input type="number" value={formData.renewablePercent} onChange={e => updateField('renewablePercent', e.target.value)} placeholder="e.g., 80" className={validationErrors.renewablePercent ? inputErrCls : inputCls} />
+                </InputField>
+                <InputField label="Renewable Energy Source Type" tooltip={TOOLTIPS.renewableSourceTier}>
+                  <select value={formData.renewableSourceTier} onChange={e => updateField('renewableSourceTier', e.target.value)} className={selectCls}>
+                    <option value="">Select source type...</option>
+                    <option value="1">Matched PPA with new-build generation / On-site generation (solar / wind)</option>
+                    <option value="2">Guarantees of Origin (GOs) / Renewable Energy Certificates (RECs)</option>
+                    <option value="3">Utility green tariff only</option>
                   </select>
                 </InputField>
-                
-                <InputField label="Server Refresh Cycle (years)" helper="Target server lifecycle before replacement">
-                  <input
-                    type="number"
-                    value={formData.serverLifecycle}
-                    onChange={e => updateField('serverLifecycle', e.target.value)}
-                    placeholder="e.g., 5"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                  />
+                <InputField label="Grid Electricity %" error={validationErrors.gridPercent}>
+                  <input type="number" value={formData.gridPercent} onChange={e => updateField('gridPercent', e.target.value)} placeholder="e.g., 70" className={validationErrors.gridPercent ? inputErrCls : inputCls} />
+                </InputField>
+                <InputField label="On-site Generation %" error={validationErrors.onsiteGeneration}>
+                  <input type="number" value={formData.onsiteGeneration} onChange={e => updateField('onsiteGeneration', e.target.value)} placeholder="e.g., 30" className={validationErrors.onsiteGeneration ? inputErrCls : inputCls} />
                 </InputField>
               </div>
-              
-              <div className="mt-6 space-y-3">
-                <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.equipmentReuse}
-                    onChange={e => updateField('equipmentReuse', e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                  />
-                  <div>
-                    <p className="font-medium text-slate-700">Equipment Reuse Program</p>
-                    <p className="text-xs text-slate-500">Refurbishment and resale of decommissioned equipment</p>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.sustainableProcurement}
-                    onChange={e => updateField('sustainableProcurement', e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                  />
-                  <div>
-                    <p className="font-medium text-slate-700">Sustainable Procurement Policy</p>
-                    <p className="text-xs text-slate-500">ESG criteria in supplier selection and contracts</p>
-                  </div>
-                </label>
+              <div className="mt-6 p-4 bg-teal-50 rounded-lg border border-teal-100">
+                <p className="text-sm text-teal-800"><strong>Tip:</strong> For SFDR Article 9 classification, aim for &ge;75% renewable energy with Tier 1 sourcing (matched PPA or on-site).</p>
               </div>
             </FormStep>
           )}
-          
-          {currentStep === 4 && (
-            <FormStep title="Climate & Governance" subtitle="Risk management and certifications" icon={ThermometerSun}>
+
+          {/* Step 6: Governance */}
+          {currentStep === 6 && (
+            <FormStep title="Governance" subtitle="Climate risk, certifications, DNSH & social safeguards" icon={Shield}>
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors border border-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={formData.climateRiskAssessment}
-                      onChange={e => updateField('climateRiskAssessment', e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <div>
-                      <p className="font-medium text-slate-700">Climate Risk Assessment Completed</p>
-                      <p className="text-xs text-slate-500">TCFD-aligned physical and transition risk analysis</p>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors border border-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={formData.heatResilience}
-                      onChange={e => updateField('heatResilience', e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <div>
-                      <p className="font-medium text-slate-700">Heat Resilience Planning</p>
-                      <p className="text-xs text-slate-500">Design considerations for extreme temperature scenarios</p>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors border border-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={formData.transitionPlan}
-                      onChange={e => updateField('transitionPlan', e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <div>
-                      <p className="font-medium text-slate-700">Net-Zero Transition Plan</p>
-                      <p className="text-xs text-slate-500">Documented decarbonization pathway with targets</p>
-                    </div>
-                  </label>
+                  {[
+                    { key: 'climateRiskAssessment', title: 'Climate Risk Assessment Completed', desc: 'TCFD-aligned physical and transition risk analysis' },
+                    { key: 'heatResilience', title: 'Heat Resilience Planning', desc: 'Design considerations for extreme temperature scenarios' },
+                    { key: 'transitionPlan', title: 'Net-Zero Transition Plan', desc: 'Documented decarbonization pathway with targets' },
+                  ].map(item => (
+                    <label key={item.key} className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors border border-slate-200">
+                      <input type="checkbox" checked={formData[item.key]} onChange={e => updateField(item.key, e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                      <div><p className="font-medium text-slate-700">{item.title}</p><p className="text-xs text-slate-500">{item.desc}</p></div>
+                    </label>
+                  ))}
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-3">Certifications (select all that apply)</label>
                   <div className="grid md:grid-cols-2 gap-2">
                     {CERTIFICATIONS.map(cert => (
-                      <label
-                        key={cert.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors border ${
-                          formData.certifications.includes(cert.id)
-                            ? 'bg-teal-50 border-teal-300'
-                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.certifications.includes(cert.id)}
-                          onChange={() => toggleCertification(cert.id)}
-                          className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                        />
+                      <label key={cert.id} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors border ${formData.certifications.includes(cert.id) ? 'bg-teal-50 border-teal-300' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                        <input type="checkbox" checked={formData.certifications.includes(cert.id)} onChange={() => toggleCertification(cert.id)} className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
                         <span className="text-sm text-slate-700">{cert.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-3">DNSH & Minimum Social Safeguards Checklist</label>
+                  <div className="space-y-3">
+                    {[
+                      { key: 'dnshClimateVulnerability', title: 'Climate Vulnerability & Physical Risk Assessment', desc: 'Has a climate vulnerability and physical risk assessment been conducted for this site, including identification of physical climate risks per the IPCC risk taxonomy? (DNSH Objective 2 — Climate adaptation)' },
+                      { key: 'dnshProtectedAreas', title: 'Site Outside Protected Areas', desc: 'Is the site located outside all of the following protected areas: Natura 2000 sites, UNESCO World Heritage Sites, Key Biodiversity Areas (KBAs), and primary forests? (DNSH Objective 6 — Biodiversity)' },
+                      { key: 'dnshLowGwpRefrigerants', title: 'Low-GWP Refrigerants', desc: 'Does the cooling system use refrigerants with a Global Warming Potential (GWP) compliant with EU F-Gas Regulation (EU) 517/2014 (low-GWP refrigerants)? (DNSH Objective 5 — Pollution prevention)' },
+                      { key: 'dnshWeeeCompliance', title: 'IT Equipment End-of-Life Plan (WEEE)', desc: 'Is there a documented IT equipment end-of-life plan compliant with the WEEE Directive (2012/19/EU)? (DNSH Objective 4 — Circular economy)' },
+                      { key: 'dnshHumanRightsDueDiligence', title: 'Human Rights Due Diligence Policy', desc: 'Does the organisation have a human rights due diligence policy aligned to the UN Guiding Principles on Business and Human Rights (UNGPs) and OECD Guidelines for Multinational Enterprises? (Article 18 Minimum Social Safeguards — EU Taxonomy)' },
+                      { key: 'dnshSupplyChainLabour', title: 'Supply Chain Labour Standards Policy', desc: 'Does the organisation have a supply chain labour standards policy? (Article 18 Minimum Social Safeguards)' },
+                    ].map(item => (
+                      <label key={item.key} className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors border border-slate-200">
+                        <input type="checkbox" checked={formData[item.key]} onChange={e => updateField(item.key, e.target.checked)} className="w-5 h-5 mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                        <div><p className="font-medium text-slate-700">{item.title}</p><p className="text-xs text-slate-500">{item.desc}</p></div>
                       </label>
                     ))}
                   </div>
@@ -1537,33 +1457,49 @@ export default function ComplianceAssessmentTool() {
               </div>
             </FormStep>
           )}
-          
-          {/* Navigation Buttons */}
+
+          {/* Step 7: Circular */}
+          {currentStep === 7 && (
+            <FormStep title="Circular Economy" subtitle="Waste management and resource efficiency" icon={Recycle}>
+              <div className="grid md:grid-cols-2 gap-6">
+                <InputField label="E-Waste Management Program">
+                  <select value={formData.ewasteProgram} onChange={e => updateField('ewasteProgram', e.target.value)} className={selectCls}>
+                    <option value="">Select level...</option>
+                    <option value="none">No formal program</option>
+                    <option value="basic">Basic recycling</option>
+                    <option value="certified">Certified recycling partners (R2/e-Stewards)</option>
+                    <option value="comprehensive">Comprehensive lifecycle management</option>
+                  </select>
+                </InputField>
+                <InputField label="Server Refresh Cycle (years)" helper="Target server lifecycle before replacement">
+                  <input type="number" value={formData.serverLifecycle} onChange={e => updateField('serverLifecycle', e.target.value)} placeholder="e.g., 5" className={inputCls} />
+                </InputField>
+              </div>
+              <div className="mt-6 space-y-3">
+                <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                  <input type="checkbox" checked={formData.equipmentReuse} onChange={e => updateField('equipmentReuse', e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                  <div><p className="font-medium text-slate-700">Equipment Reuse Program</p><p className="text-xs text-slate-500">Refurbishment and resale of decommissioned equipment</p></div>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+                  <input type="checkbox" checked={formData.sustainableProcurement} onChange={e => updateField('sustainableProcurement', e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                  <div><p className="font-medium text-slate-700">Sustainable Procurement Policy</p><p className="text-xs text-slate-500">ESG criteria in supplier selection and contracts</p></div>
+                </label>
+              </div>
+            </FormStep>
+          )}
+
+          {/* Navigation Buttons — FIX 3: block Next if errors */}
           <div className="flex justify-between mt-8 pt-6 border-t border-slate-200">
-            <button
-              onClick={() => setCurrentStep(prev => Math.max(0, prev - 1))}
-              disabled={currentStep === 0}
-              className="flex items-center gap-2 px-5 py-2.5 text-slate-600 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              Previous
+            <button onClick={() => setCurrentStep(prev => Math.max(0, prev - 1))} disabled={currentStep === 0} className="flex items-center gap-2 px-5 py-2.5 text-slate-600 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <ChevronLeft className="w-5 h-5" />Previous
             </button>
-            
-            {currentStep === steps.length - 1 ? (
-              <button
-                onClick={handleSubmit}
-                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-lg font-medium hover:from-teal-700 hover:to-emerald-700 transition-all shadow-lg shadow-teal-500/25"
-              >
-                Generate Assessment
-                <CheckCircle className="w-5 h-5" />
+            {currentStep === WIZARD_STEPS.length - 1 ? (
+              <button onClick={handleSubmit} disabled={hasErrors} className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-lg font-medium hover:from-teal-700 hover:to-emerald-700 transition-all shadow-lg shadow-teal-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+                Generate Assessment<CheckCircle className="w-5 h-5" />
               </button>
             ) : (
-              <button
-                onClick={() => setCurrentStep(prev => Math.min(steps.length - 1, prev + 1))}
-                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors"
-              >
-                Next
-                <ChevronRight className="w-5 h-5" />
+              <button onClick={() => setCurrentStep(prev => Math.min(WIZARD_STEPS.length - 1, prev + 1))} disabled={hasErrors} className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                Next<ChevronRight className="w-5 h-5" />
               </button>
             )}
           </div>
