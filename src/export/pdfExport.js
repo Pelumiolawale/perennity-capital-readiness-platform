@@ -545,7 +545,7 @@ function drawActionPlan(doc, project, assessment) {
     actionItems.forEach((p, idx) => {
       if (y > PH - 48) return;
 
-      doc.setFillColor(idx % 2 === 0 ? GREY : WHITE);
+      doc.setFillColor(...(idx % 2 === 0 ? GREY : WHITE));
       doc.roundedRect(M, y, CW, 30, 2, 2, 'F');
 
       // Number badge
