@@ -42,6 +42,23 @@ const FINANCING_LABELS = {
   article_8_9: 'Article 8/9 Style',
 };
 
+function getApplicableFrameworksPdf(capitalSource) {
+  const frameworks = [];
+  if (['EU Green / Article 8-9 Fund', 'Development Finance Institution (EIB, IFC, EBRD, AfDB)', 'Mixed / Multiple Sources'].includes(capitalSource)) {
+    frameworks.push('EU Taxonomy Activity 8.1');
+    frameworks.push('SFDR PAI Indicators');
+  }
+  if (['UK SDR-aligned Fund', 'Mixed / Multiple Sources'].includes(capitalSource)) {
+    frameworks.push('UK SDR');
+  }
+  frameworks.push('ICMA Green Bond Principles');
+  if (capitalSource === 'Development Finance Institution (EIB, IFC, EBRD, AfDB)') {
+    frameworks.push('EIB Environmental & Social Standards');
+    frameworks.push('IFC Performance Standards');
+  }
+  return frameworks;
+}
+
 function bandInfo(score) {
   if (score >= 75) return { label: 'CAPITAL READY', color: TEAL };
   if (score >= 55) return { label: 'CONDITIONALLY READY', color: AMBER };
@@ -148,7 +165,7 @@ function drawCover(doc, project, assessment, id) {
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...MID_GREY);
-  doc.text(`${assessment.region || 'N/A'}  |  ${stageLabel(project.development_stage)}  |  ${date}`, PW / 2, ny + 8, { align: 'center' });
+  doc.text(`${project.country || project.projectRegionGroup || assessment.region || 'N/A'}  |  ${stageLabel(project.development_stage)}  |  ${date}`, PW / 2, ny + 8, { align: 'center' });
 
   // Bottom-left: readiness badge
   const by = PH - 52;
@@ -265,7 +282,31 @@ function drawExecutiveSummary(doc, project, assessment) {
   doc.text('Target label: ', M + 5, y + 8.5);
   doc.setFont('helvetica', 'normal');
   doc.text(labelVal, M + 5 + doc.getTextWidth('Target label: '), y + 8.5);
-  y += 20;
+  y += 18;
+
+  // Applicable Frameworks
+  if (project.capitalSource) {
+    const frameworks = getApplicableFrameworksPdf(project.capitalSource);
+    if (frameworks.length > 0) {
+      doc.setFillColor(232, 245, 239);
+      doc.roundedRect(M, y, CW, 6 + frameworks.length * 5, 2, 2, 'F');
+      doc.setDrawColor(...TEAL);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(M, y, CW, 6 + frameworks.length * 5, 2, 2, 'S');
+      doc.setTextColor(...NAVY);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Applicable Frameworks:', M + 5, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...DARK_GREY);
+      frameworks.forEach((fw, i) => {
+        doc.text(`• ${fw}`, M + 7, y + 10 + i * 5);
+      });
+      y += 10 + frameworks.length * 5;
+    }
+  }
+  y += 4;
 
   // Disclaimer
   doc.setFillColor(...GREY);

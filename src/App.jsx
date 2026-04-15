@@ -91,6 +91,67 @@ const REGION_THRESHOLDS = {
   MENA: { pue: 1.4, renewableMin: 35, wue: 0.9 },
 };
 
+const DC_MARKETS = {
+  'North America': {
+    countries: ['United States', 'Canada', 'Mexico'],
+    defaults: { waterStress: 'medium', gridCarbon: 'medium' }
+  },
+  'Europe': {
+    countries: ['United Kingdom', 'Germany', 'Netherlands', 'France', 'Ireland', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Spain'],
+    defaults: { waterStress: 'low', gridCarbon: 'low-medium' }
+  },
+  'Asia-Pacific': {
+    countries: ['Singapore', 'Australia', 'Japan', 'South Korea', 'India', 'Hong Kong', 'Malaysia'],
+    defaults: { waterStress: 'high', gridCarbon: 'high' }
+  },
+  'MENA': {
+    countries: ['United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Bahrain', 'Kuwait', 'Oman', 'Egypt', 'Jordan', 'Morocco'],
+    defaults: { waterStress: 'extreme', gridCarbon: 'high' }
+  },
+  'Africa': {
+    countries: ['South Africa', 'Nigeria', 'Kenya', 'Ghana', 'Egypt', 'Ethiopia'],
+    defaults: { waterStress: 'high', gridCarbon: 'medium-high' }
+  },
+  'Latin America': {
+    countries: ['Brazil', 'Chile', 'Colombia', 'Mexico', 'Argentina'],
+    defaults: { waterStress: 'medium', gridCarbon: 'low-medium' }
+  }
+};
+
+const COUNTRY_PROFILES = {
+  'United Arab Emirates':   { pueTarget: 1.5, waterStress: 'extreme', gridCarbon: 550, renewableGrid: 5 },
+  'Saudi Arabia':           { pueTarget: 1.5, waterStress: 'extreme', gridCarbon: 580, renewableGrid: 4 },
+  'Qatar':                  { pueTarget: 1.5, waterStress: 'extreme', gridCarbon: 490, renewableGrid: 2 },
+  'United Kingdom':         { pueTarget: 1.5, waterStress: 'low',     gridCarbon: 230, renewableGrid: 40 },
+  'Germany':                { pueTarget: 1.3, waterStress: 'low',     gridCarbon: 385, renewableGrid: 46 },
+  'Netherlands':            { pueTarget: 1.3, waterStress: 'medium',  gridCarbon: 290, renewableGrid: 25 },
+  'Ireland':                { pueTarget: 1.3, waterStress: 'low',     gridCarbon: 295, renewableGrid: 35 },
+  'Sweden':                 { pueTarget: 1.2, waterStress: 'low',     gridCarbon: 45,  renewableGrid: 98 },
+  'Norway':                 { pueTarget: 1.2, waterStress: 'low',     gridCarbon: 30,  renewableGrid: 99 },
+  'Finland':                { pueTarget: 1.2, waterStress: 'low',     gridCarbon: 80,  renewableGrid: 75 },
+  'Denmark':                { pueTarget: 1.2, waterStress: 'low',     gridCarbon: 175, renewableGrid: 55 },
+  'France':                 { pueTarget: 1.3, waterStress: 'low',     gridCarbon: 85,  renewableGrid: 25 },
+  'Singapore':              { pueTarget: 1.3, waterStress: 'high',    gridCarbon: 408, renewableGrid: 3 },
+  'India':                  { pueTarget: 1.5, waterStress: 'high',    gridCarbon: 708, renewableGrid: 20 },
+  'Australia':              { pueTarget: 1.5, waterStress: 'high',    gridCarbon: 490, renewableGrid: 27 },
+  'Japan':                  { pueTarget: 1.4, waterStress: 'low',     gridCarbon: 462, renewableGrid: 22 },
+  'United States':          { pueTarget: 1.5, waterStress: 'medium',  gridCarbon: 386, renewableGrid: 21 },
+  'Canada':                 { pueTarget: 1.4, waterStress: 'low',     gridCarbon: 150, renewableGrid: 66 },
+  'Brazil':                 { pueTarget: 1.5, waterStress: 'medium',  gridCarbon: 110, renewableGrid: 83 },
+  'South Africa':           { pueTarget: 1.6, waterStress: 'high',    gridCarbon: 780, renewableGrid: 8 },
+  'Nigeria':                { pueTarget: 1.8, waterStress: 'medium',  gridCarbon: 430, renewableGrid: 15 },
+  'Kenya':                  { pueTarget: 1.6, waterStress: 'high',    gridCarbon: 170, renewableGrid: 74 },
+  'Egypt':                  { pueTarget: 1.6, waterStress: 'extreme', gridCarbon: 460, renewableGrid: 12 },
+  'Poland':                 { pueTarget: 1.3, waterStress: 'low',     gridCarbon: 680, renewableGrid: 15 },
+  'Chile':                  { pueTarget: 1.4, waterStress: 'high',    gridCarbon: 290, renewableGrid: 45 },
+};
+
+const DEFAULT_COUNTRY_PROFILE = { pueTarget: 1.5, waterStress: 'medium', gridCarbon: 450, renewableGrid: 20 };
+
+function getCountryProfile(country) {
+  return COUNTRY_PROFILES[country] || DEFAULT_COUNTRY_PROFILE;
+}
+
 const READINESS_BANDS = [
   { min: 80, label: "Green Ready", color: COLORS.green },
   { min: 60, label: "Needs Optimization", color: COLORS.amber },
@@ -355,7 +416,7 @@ function AssessmentLoading({ onComplete }) {
     "Evaluating water and resource efficiency",
     "Running climate resilience checks",
     "Assessing delivery readiness",
-    "Applying regional weighting",
+    "Applying country-specific weighting",
     "Checking hard-stop rules",
     "Generating recommendations",
   ];
@@ -402,7 +463,7 @@ function AssessmentLoading({ onComplete }) {
 
 // ─── MAIN APP ───────────────────────────────────────────────
 const INITIAL_PROJECT = {
-  project_name: "", region: "", country: "", state_or_province: "", city: "",
+  project_name: "", region: "", projectRegionGroup: "", country: "", capitalSource: "", state_or_province: "", city: "",
   development_stage: "", expected_commissioning_date: "",
   planned_capacity_mw: "", it_load_mw: "", pue: "", wue: "",
   cooling_type: "", cooling_redundancy: "", backup_power_type: "",
@@ -710,7 +771,8 @@ export default function App() {
       else flatProject[k] = v;
     });
     const region = currentProject.region || "UK";
-    const result = runScoringEngine(flatProject, region);
+    const countryProfile = getCountryProfile(currentProject.country);
+    const result = runScoringEngine(flatProject, region, countryProfile);
     // Augment with regulatory classifications
     result.sfdr = determineSfdrClassification(flatProject, region);
     result.taxonomy = determineEuTaxonomyAlignment(flatProject);
@@ -723,6 +785,7 @@ export default function App() {
     setNavItem("results");
 
     // Send to Airtable Assessments table
+    const applicableFrameworks = getApplicableFrameworks(currentProject.capitalSource, currentProject.country);
     sendToAirtable("Assessments", {
       "Project Name": currentProject.project_name || "Untitled",
       "Capital Readiness Score": result.capitalReadinessScore,
@@ -730,6 +793,11 @@ export default function App() {
       "Band": result.band?.label,
       "Region": currentProject.region,
       "Country": currentProject.country,
+      "Region Group": currentProject.projectRegionGroup,
+      "Capital Source": currentProject.capitalSource,
+      "Water Stress Band": countryProfile.waterStress,
+      "Grid Carbon Intensity": countryProfile.gridCarbon,
+      "Applicable Frameworks": applicableFrameworks.join(', '),
       "Development Stage": currentProject.development_stage,
       "PUE": flatProject.pue,
       "Planned Capacity MW": flatProject.planned_capacity_mw,
@@ -811,7 +879,7 @@ export default function App() {
             <div style={{ maxWidth: 640, textAlign: "center", animation: "fadeIn 0.6s ease-out" }}>
               <div style={{ display: "inline-block", fontSize: 12, fontWeight: 600, color: "#FFFFFF", background: COLORS.accent, padding: "4px 12px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>Capital Readiness Platform</div>
               <h1 style={{ fontSize: 48, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: 24 }}>
-                Assess your data center's readiness for sustainable capital
+                Assess your data centre project's readiness for sustainable capital globally
               </h1>
               <p style={{ fontSize: 17, color: COLORS.textSecondary, lineHeight: 1.6, marginBottom: 40 }}>
                 Evaluate sustainability alignment, infrastructure viability, and funding readiness against EU Taxonomy, SFDR, and UK SDR frameworks. Get investor-grade assessments in minutes, not months.
@@ -820,7 +888,7 @@ export default function App() {
                 <Button size="lg" onClick={() => setScreen("onboarding")}>Create Account</Button>
                 <Button variant="secondary" size="lg" onClick={() => {
                   const sampleProject = {
-                    id: "sample-demo", project_name: "London Green DC — Sample", region: "UK", country: "United Kingdom", city: "London",
+                    id: "sample-demo", project_name: "Frankfurt Campus Alpha — Sample", region: "EU", projectRegionGroup: "Europe", country: "Germany", capitalSource: "EU Green / Article 8-9 Fund", city: "Frankfurt",
                     development_stage: "pre_permitting", planned_capacity_mw: 30, it_load_mw: 24, pue: 1.28, wue: 0.4,
                     cooling_type: "hybrid", backup_power_type: "battery", battery_storage_mwh: 12,
                     grid_connection_status: "partially_secured", interconnection_timeline_months: 18,
@@ -835,7 +903,8 @@ export default function App() {
                     schedule_confidence_level: "high", target_financing_label: "sfdr_article_8",
                   };
                   const region = sampleProject.region;
-                  const result = runScoringEngine(sampleProject, region);
+                  const sampleCountryProfile = getCountryProfile(sampleProject.country);
+                  const result = runScoringEngine(sampleProject, region, sampleCountryProfile);
                   result.sfdr = determineSfdrClassification(sampleProject, region);
                   result.taxonomy = determineEuTaxonomyAlignment(sampleProject);
                   result.sdr = determineUkSdrEligibility(sampleProject, result.capitalReadinessScore);
@@ -850,7 +919,7 @@ export default function App() {
               <div style={{ display: "flex", gap: 32, justifyContent: "center", marginTop: 48 }}>
                 {[
                   { icon: "shield", label: "Tri-framework coverage" },
-                  { icon: "zap", label: "Region-specific scoring" },
+                  { icon: "zap", label: "Country-specific scoring" },
                   { icon: "target", label: "Actionable gap analysis" },
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1012,21 +1081,51 @@ export default function App() {
       switch (wizardStep) {
         case 0: return (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-            <div style={{ gridColumn: "1 / -1" }}><FormField label="Project Name" required><input value={d.project_name} onChange={e => updateDraft("project_name", e.target.value)} placeholder="e.g. Dubai South Data Campus" /></FormField></div>
-            <FormField label="Region" required help="Determines the scoring ruleset applied">
-              <select value={d.region} onChange={e => updateDraft("region", e.target.value)}>
-                <option value="">Select region</option><option value="EU">EU</option><option value="UK">UK</option><option value="US">US</option><option value="MENA">MENA</option>
+            <div style={{ gridColumn: "1 / -1" }}><FormField label="Project Name" required><input value={d.project_name} onChange={e => updateDraft("project_name", e.target.value)} placeholder="e.g. Frankfurt Campus Alpha" /></FormField></div>
+            <FormField label="Region Group" required help="Determines the scoring ruleset and country-specific thresholds applied">
+              <select value={d.projectRegionGroup} onChange={e => {
+                const rg = e.target.value;
+                updateDraft("projectRegionGroup", rg);
+                updateDraft("country", "");
+                // Map region group to scoring region code
+                const regionMap = { 'Europe': 'EU', 'North America': 'US', 'Asia-Pacific': 'UK', 'MENA': 'MENA', 'Africa': 'UK', 'Latin America': 'US' };
+                updateDraft("region", regionMap[rg] || "UK");
+              }}>
+                <option value="">Select region group</option>
+                {Object.keys(DC_MARKETS).map(rg => <option key={rg} value={rg}>{rg}</option>)}
               </select>
             </FormField>
-            <FormField label="Country" required><input value={d.country} onChange={e => updateDraft("country", e.target.value)} placeholder="e.g. United Arab Emirates" /></FormField>
-            <FormField label="State / Province"><input value={d.state_or_province} onChange={e => updateDraft("state_or_province", e.target.value)} placeholder="e.g. Dubai" /></FormField>
-            <FormField label="City"><input value={d.city} onChange={e => updateDraft("city", e.target.value)} placeholder="e.g. Dubai South" /></FormField>
+            <FormField label="Country" required help="Select your project's country within the chosen region">
+              <select value={d.country} onChange={e => updateDraft("country", e.target.value)}>
+                <option value="">Select country</option>
+                {d.projectRegionGroup && DC_MARKETS[d.projectRegionGroup]
+                  ? DC_MARKETS[d.projectRegionGroup].countries.map(c => <option key={c} value={c}>{c}</option>)
+                  : Object.values(DC_MARKETS).flatMap(m => m.countries).filter((c, i, a) => a.indexOf(c) === i).sort().map(c => <option key={c} value={c}>{c}</option>)
+                }
+              </select>
+            </FormField>
+            <FormField label="State / Province"><input value={d.state_or_province} onChange={e => updateDraft("state_or_province", e.target.value)} placeholder="e.g. Hesse" /></FormField>
+            <FormField label="City"><input value={d.city} onChange={e => updateDraft("city", e.target.value)} placeholder="e.g. Frankfurt" /></FormField>
             <FormField label="Development Stage" required>
               <select value={d.development_stage} onChange={e => updateDraft("development_stage", e.target.value)}>
                 <option value="">Select stage</option><option value="concept">Concept</option><option value="site_shortlisted">Site Shortlisted</option><option value="site_selected">Site Selected</option><option value="pre_permitting">Pre-Permitting</option><option value="permitted">Permitted</option><option value="shovel_ready">Shovel Ready</option>
               </select>
             </FormField>
             <FormField label="Expected Commissioning Date"><input type="date" value={d.expected_commissioning_date} onChange={e => updateDraft("expected_commissioning_date", e.target.value)} /></FormField>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <FormField label="Where is your primary financing sourced from?" required help="Determines which regulatory frameworks apply to your assessment">
+                <select value={d.capitalSource} onChange={e => updateDraft("capitalSource", e.target.value)}>
+                  <option value="">Select capital source</option>
+                  <option value="EU Green / Article 8-9 Fund">EU Green / Article 8-9 Fund</option>
+                  <option value="UK SDR-aligned Fund">UK SDR-aligned Fund</option>
+                  <option value="Development Finance Institution (EIB, IFC, EBRD, AfDB)">Development Finance Institution (EIB, IFC, EBRD, AfDB)</option>
+                  <option value="US Institutional / Private Equity">US Institutional / Private Equity</option>
+                  <option value="Sovereign Wealth Fund">Sovereign Wealth Fund</option>
+                  <option value="Mixed / Multiple Sources">Mixed / Multiple Sources</option>
+                  <option value="Not yet determined">Not yet determined</option>
+                </select>
+              </FormField>
+            </div>
           </div>
         );
         case 1: return (
@@ -1099,14 +1198,14 @@ export default function App() {
                 <option value="">Select source</option><option value="municipal">Municipal</option><option value="recycled">Recycled</option><option value="groundwater">Groundwater</option><option value="mixed">Mixed</option>
               </select>
             </FormField>
-            <FormField label="K1 — Climate Zone" tooltip="Cooling degree days above 21°C. MENA locations default to Warm (K1=1.1). Affects your WUEmax target under the CNDCP formula.">
+            <FormField label="K1 — Climate Zone" tooltip="Cooling degree days above 21°C. Defaults are set based on your project location's climate classification. Affects your WUEmax target under the CNDCP formula.">
               <select value={d.k1_climate} onChange={e => updateDraft("k1_climate", e.target.value)}>
                 <option value="">Select climate zone</option>
                 <option value="cold">Cold (&lt; 50 CDD above 21°C) — K1 = 1.0</option>
                 <option value="warm">Warm (≥ 50 CDD above 21°C) — K1 = 1.1</option>
               </select>
             </FormField>
-            <FormField label="K2 — Water Stress Level" tooltip="Based on the EU Water Exploitation Index (WEI+) for your location. MENA locations are typically high stress (WEI+ > 40). This affects your site-specific WUEmax target under the Climate Neutral Data Centre Pact.">
+            <FormField label="K2 — Water Stress Level" tooltip="Based on the EU Water Exploitation Index (WEI+) for your location. Defaults are set based on your project location's water stress classification. This affects your site-specific WUEmax target under the Climate Neutral Data Centre Pact.">
               <select value={d.k2_stress} onChange={e => updateDraft("k2_stress", e.target.value)}>
                 <option value="">Select water stress</option>
                 <option value="low">Low stress (WEI+ ≤ 10) — K2 = 5.0</option>
@@ -1148,7 +1247,7 @@ export default function App() {
             <FormField label="Flood Risk Score (0-100)" help="Higher = greater risk. Leave blank if unknown."><input type="number" min="0" max="100" value={d.flood_risk_score} onChange={e => updateDraft("flood_risk_score", e.target.value)} placeholder="e.g. 22" /></FormField>
             <FormField label="Extreme Heat Risk Score (0-100)"><input type="number" min="0" max="100" value={d.extreme_heat_risk_score} onChange={e => updateDraft("extreme_heat_risk_score", e.target.value)} placeholder="e.g. 58" /></FormField>
             <FormField label="Storm Risk Score (0-100)"><input type="number" min="0" max="100" value={d.storm_risk_score} onChange={e => updateDraft("storm_risk_score", e.target.value)} placeholder="e.g. 30" /></FormField>
-            <FormField label="Water Stress Index (0-1)" help="Regional water stress. 0 = low, 1 = extreme."><input type="number" step="0.01" min="0" max="1" value={d.water_stress_index} onChange={e => updateDraft("water_stress_index", e.target.value)} placeholder="e.g. 0.65" /></FormField>
+            <FormField label="Water Stress Index (0-1)" help="Based on your project location's water stress classification. 0 = low, 1 = extreme."><input type="number" step="0.01" min="0" max="1" value={d.water_stress_index} onChange={e => updateDraft("water_stress_index", e.target.value)} placeholder="e.g. 0.65" /></FormField>
             <FormField label="Adaptation Measures Present?">
               <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
                 <input type="checkbox" checked={d.adaptation_measures_present} onChange={e => updateDraft("adaptation_measures_present", e.target.checked)} />
@@ -1199,7 +1298,7 @@ export default function App() {
             </FormField>
             <FormField label="Third-Party Certification Target">
               <select value={d.third_party_certification_target} onChange={e => updateDraft("third_party_certification_target", e.target.value)}>
-                <option value="">Select certification</option><option value="leed">LEED</option><option value="breeam">BREEAM</option><option value="estidama">Estidama</option><option value="none">None</option>
+                <option value="">Select certification</option><option value="leed">LEED</option><option value="breeam">BREEAM</option><option value="nabers">NABERS</option><option value="green_star">Green Star</option><option value="estidama">Estidama</option><option value="none">None</option>
               </select>
             </FormField>
             <FormField label="Taxonomy Alignment Claimed?">
@@ -1313,7 +1412,7 @@ export default function App() {
         );
         case 7: {
           const sections = [
-            { name: "Project Basics", fields: ["project_name", "region", "country", "development_stage"], step: 0 },
+            { name: "Project Basics", fields: ["project_name", "projectRegionGroup", "country", "development_stage"], step: 0 },
             { name: "Technical Specs", fields: ["planned_capacity_mw", "pue", "cooling_type", "backup_power_type"], step: 1 },
             { name: "Energy Profile", fields: ["grid_connection_status", "renewable_energy_share_pct", "renewable_energy_source"], step: 2 },
             { name: "Water & Resources", fields: ["water_recycling_included"], step: 3 },
@@ -1392,6 +1491,28 @@ export default function App() {
         </div>
       </>
     );
+  }
+
+  function getApplicableFrameworks(capitalSource, projectCountry) {
+    const frameworks = [];
+
+    if (['EU Green / Article 8-9 Fund', 'Development Finance Institution (EIB, IFC, EBRD, AfDB)', 'Mixed / Multiple Sources'].includes(capitalSource)) {
+      frameworks.push('EU Taxonomy Activity 8.1');
+      frameworks.push('SFDR PAI Indicators');
+    }
+
+    if (['UK SDR-aligned Fund', 'Mixed / Multiple Sources'].includes(capitalSource)) {
+      frameworks.push('UK SDR');
+    }
+
+    frameworks.push('ICMA Green Bond Principles');
+
+    if (capitalSource === 'Development Finance Institution (EIB, IFC, EBRD, AfDB)') {
+      frameworks.push('EIB Environmental & Social Standards');
+      frameworks.push('IFC Performance Standards');
+    }
+
+    return frameworks;
   }
 
   // ─── MAIN APP SHELL ───────────────────────────────────────
@@ -1656,6 +1777,21 @@ export default function App() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Applicable Frameworks */}
+          {currentProject?.capitalSource && (
+            <Card style={{ marginTop: 24 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Applicable Regulatory Frameworks</h3>
+              <p style={{ fontSize: 13, color: COLORS.textSecondary, marginBottom: 16 }}>Based on your capital source: <strong>{currentProject.capitalSource}</strong></p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {getApplicableFrameworks(currentProject.capitalSource, currentProject.country).map((fw, i) => (
+                  <div key={i} style={{ padding: "6px 14px", borderRadius: 6, background: COLORS.accentSubtle, border: `1px solid ${COLORS.accent}33`, fontSize: 13, fontWeight: 500, color: COLORS.accent }}>
+                    {fw}
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           {/* AI Narrative Panel */}

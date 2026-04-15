@@ -126,25 +126,37 @@ export function determineEuTaxonomyAlignment(project) {
 }
 
 // ── PUE scoring — EU Taxonomy Climate Delegated Act (EU) 2021/2139, Annex I, Activity 8.1
-export function calculatePueScore(pue, project, region) {
+export function calculatePueScore(pue, project, region, countryProfile) {
   const isNew = project.development_stage === 'concept' || project.development_stage === 'site_shortlisted' || project.development_stage === 'site_selected' || project.development_stage === 'pre_permitting' || project.is_new_build;
-  const isMena = region === 'MENA';
+  const pueTarget = countryProfile?.pueTarget || 1.5;
   let score, label, taxonomyGate;
   const flags = [];
 
   if (isNew) {
-    if (pue <= 1.2) { score = 95; label = 'Capital ready'; taxonomyGate = 'Pass — meets post-2025 new build threshold'; }
-    else if (pue <= 1.3) { score = 80; label = 'Capital ready'; taxonomyGate = 'Pass — meets 2021–2025 new build threshold / CNDCP target'; }
-    else if (pue <= 1.5) { score = 57; label = 'Conditional'; taxonomyGate = 'Fail for new build — passes existing DC threshold only'; if (isMena) flags.push(`Gap vs EU new-build threshold (≤1.3): ${(pue - 1.3).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.`); }
-    else if (pue <= 1.8) { score = 32; label = 'Development'; taxonomyGate = 'Fail'; }
-    else { score = 10; label = 'Pre-development'; taxonomyGate = 'Fail'; }
+    // Score 100 if at or below country PUE target, scale down proportionally above it
+    if (pue <= pueTarget) {
+      // Further differentiate within the passing range
+      if (pue <= 1.2) { score = 95; label = 'Capital ready'; taxonomyGate = 'Pass — meets post-2025 new build threshold'; }
+      else if (pue <= 1.3) { score = 85; label = 'Capital ready'; taxonomyGate = `Pass — meets country PUE target (${pueTarget})`; }
+      else { score = 80; label = 'Capital ready'; taxonomyGate = `Pass — within country PUE target (${pueTarget})`; }
+    } else if (pue <= pueTarget + 0.2) {
+      score = Math.max(40, Math.round(80 - ((pue - pueTarget) / 0.2) * 30));
+      label = 'Conditional';
+      taxonomyGate = `Above country PUE target (${pueTarget}) — improvement needed`;
+      flags.push(`Gap vs country PUE target (≤${pueTarget}): ${(pue - pueTarget).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.`);
+    } else if (pue <= pueTarget + 0.5) {
+      score = 32; label = 'Development'; taxonomyGate = 'Fail';
+    } else {
+      score = 10; label = 'Pre-development'; taxonomyGate = 'Fail';
+    }
   } else {
-    if (pue <= 1.5) { score = 77; label = 'Capital ready'; taxonomyGate = 'Pass — existing DC threshold'; }
-    else if (pue <= 1.8) { score = 47; label = 'Conditional'; taxonomyGate = 'Conditional — improvement plan required'; }
+    if (pue <= pueTarget + 0.2) { score = 77; label = 'Capital ready'; taxonomyGate = 'Pass — existing DC threshold'; }
+    else if (pue <= pueTarget + 0.5) { score = 47; label = 'Conditional'; taxonomyGate = 'Conditional — improvement plan required'; }
     else { score = 15; label = 'Development'; taxonomyGate = 'Fail'; }
   }
 
-  if (isMena && pue > 1.3 && flags.length === 0) {
+  // Flag if above EU new-build threshold regardless of country
+  if (pue > 1.3 && flags.length === 0) {
     flags.push(`Gap vs EU new-build threshold (≤1.3): ${(pue - 1.3).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.`);
   }
 
@@ -152,23 +164,35 @@ export function calculatePueScore(pue, project, region) {
 }
 
 // ── WUE scoring — CNDCP WUEmax formula (EUDCA White Paper October 2024)
-export function calculateWueMax(project, region) {
-  const isMena = region === 'MENA';
+export function calculateWueMax(project, region, countryProfile) {
+  const waterStress = countryProfile?.waterStress || 'medium';
   const k1Map = { cold: 1.0, warm: 1.1 };
   const k2Map = { low: 5.0, low_medium: 4.0, medium_high: 2.5, high: 1.0 };
   const k3Map = { potable: 1.0, grey: 3.0, brackish: 6.0 };
 
-  const k1 = k1Map[project.k1_climate] || (isMena ? 1.1 : 1.0);
-  const k2 = k2Map[project.k2_stress] || (isMena ? 1.0 : 5.0);
+  // Map country water stress to default K2 if user hasn't selected one
+  const stressToK2 = { 'extreme': 1.0, 'high': 1.0, 'medium': 2.5, 'low': 5.0 };
+  // Map country water stress to default K1 (climate zone)
+  const stressToK1 = { 'extreme': 1.1, 'high': 1.1, 'medium': 1.0, 'low': 1.0 };
+
+  const k1 = k1Map[project.k1_climate] || stressToK1[waterStress] || 1.0;
+  const k2 = k2Map[project.k2_stress] || stressToK2[waterStress] || 2.5;
   const k3 = k3Map[project.k3_water] || 1.0;
   const wueMax = 0.4 * k1 * k2 * k3;
 
   const notes = [];
-  if (isMena && !project.k2_stress) {
-    notes.push('Conservative assumption applied: high water stress (WEI+ > 40). Override if local water authority data is available.');
+  if (['extreme', 'high'].includes(waterStress) && !project.k2_stress) {
+    notes.push(`Conservative assumption applied based on ${waterStress} water stress classification. Override if local water authority data is available.`);
   }
 
   return { wueMax, k1, k2, k3, notes };
+}
+
+// ── WUE max stringency by country water stress ──────────────
+export function getWueMaxStringency(waterStress) {
+  // Returns WUEmax threshold for full score based on water stress
+  const map = { 'extreme': 0.5, 'high': 1.0, 'medium': 1.5, 'low': 2.0 };
+  return map[waterStress] || 1.5;
 }
 
 export function scoreWueVsMax(wue, wueMax) {
@@ -244,14 +268,14 @@ export function calculateDnshGovernance(project) {
 }
 
 // ── Pillar scoring functions ──────────────────────────────────
-export function calculateSustainabilityAlignment(project, region) {
+export function calculateSustainabilityAlignment(project, region, countryProfile) {
   let score = 100;
   const explanations = { positive: [], negative: [] };
 
-  // CHANGE 1: PUE scoring with EU Taxonomy thresholds
+  // PUE scoring with country-specific thresholds
   const pue = parseFloat(project.pue);
   if (pue) {
-    const pueResult = calculatePueScore(pue, project, region);
+    const pueResult = calculatePueScore(pue, project, region, countryProfile);
     // Map PUE score (0-100) to a penalty/bonus on the SA pillar
     if (pueResult.score >= 70) {
       explanations.positive.push(`PUE ${pue}: ${pueResult.label} — ${pueResult.taxonomyGate}`);
@@ -261,6 +285,18 @@ export function calculateSustainabilityAlignment(project, region) {
       explanations.negative.push(`PUE ${pue}: ${pueResult.label} — ${pueResult.taxonomyGate} (−${penalty})`);
     }
     pueResult.flags.forEach(f => explanations.negative.push(f));
+  }
+
+  // Grid carbon scoring using country profile
+  if (countryProfile) {
+    const gridCarbon = countryProfile.gridCarbon;
+    if (gridCarbon > 600 && project.backup_power_type !== 'battery' && project.backup_power_type !== 'hydrogen' && !project.ppa_secured) {
+      score -= 8;
+      explanations.negative.push(`DNSH risk: grid carbon intensity ${gridCarbon} gCO₂/kWh exceeds 600g threshold without PPA/REC mitigation (−8)`);
+    } else if (gridCarbon <= 100) {
+      score += 3;
+      explanations.positive.push(`Low-carbon grid (${gridCarbon} gCO₂/kWh) — strong decarbonisation baseline (+3)`);
+    }
   }
 
   // CHANGE 3: Renewable energy with three-tier source quality scoring
@@ -352,13 +388,24 @@ export function calculateEnergyPowerViability(project, region) {
   return { score: Math.max(0, Math.min(100, Math.round(score))), explanations };
 }
 
-export function calculateWaterResourceEfficiency(project, region) {
+export function calculateWaterResourceEfficiency(project, region, countryProfile) {
   const explanations = { positive: [], negative: [] };
 
-  // CHANGE 2: CNDCP WUEmax formula scoring
+  // CNDCP WUEmax formula scoring with country profile
   const wue = parseFloat(project.wue);
-  const { wueMax, k1, k2, k3, notes } = calculateWueMax(project, region);
+  const { wueMax, k1, k2, k3, notes } = calculateWueMax(project, region, countryProfile);
   let wueScore = 50;
+
+  // Apply WUE max stringency based on country water stress
+  if (countryProfile) {
+    const wueStringency = getWueMaxStringency(countryProfile.waterStress);
+    if (wue && wue <= wueStringency) {
+      wueScore = Math.min(100, wueScore + 15);
+      explanations.positive.push(`WUE ${wue} meets ${countryProfile.waterStress} water stress stringency threshold (≤${wueStringency})`);
+    } else if (wue && wue > wueStringency) {
+      explanations.negative.push(`WUE ${wue} exceeds ${countryProfile.waterStress} water stress stringency threshold (≤${wueStringency})`);
+    }
+  }
 
   if (wue) {
     const wueResult = scoreWueVsMax(wue, wueMax);
@@ -578,10 +625,10 @@ export function generateRecommendations(project, subscores, region) {
   return recs.sort((a, b) => b.uplift - a.uplift).slice(0, 5);
 }
 
-export function runAssessment(project, region) {
-  const sa = calculateSustainabilityAlignment(project, region);
+export function runAssessment(project, region, countryProfile) {
+  const sa = calculateSustainabilityAlignment(project, region, countryProfile);
   const epv = calculateEnergyPowerViability(project, region);
-  const wre = calculateWaterResourceEfficiency(project, region);
+  const wre = calculateWaterResourceEfficiency(project, region, countryProfile);
   const csr = calculateClimateSiteResilience(project);
   const dfr = calculateDeliveryFundingReadiness(project);
   const dnsh = calculateDnshGovernance(project);
