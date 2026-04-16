@@ -188,7 +188,7 @@ function drawCover(doc, project, assessment, id) {
   // Footer
   doc.setTextColor(...MID_GREY);
   doc.setFontSize(7);
-  doc.text('Perennity Bridge v3.1 · Methodology vintage April 2026 · sustainabledatacenter.ai', M, PH - 10);
+  doc.text('Perennity Bridge v3.1 · Methodology vintage April 2026 · perennitybridge.com', M, PH - 10);
 }
 
 // ============================================================
@@ -249,7 +249,7 @@ function drawExecutiveSummary(doc, project, assessment) {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   const strengths = pillars.filter(p => p.score >= 65);
-  if (strengths.length === 0) { doc.text('No pillars scoring ≥65', M + 2, sy); sy += 5; }
+  if (strengths.length === 0) { doc.text('No pillars scoring ≥ 65.', M + 2, sy); sy += 5; }
   else strengths.forEach(p => { doc.text(`• ${p.name} (${p.score}/100)`, M + 2, sy); sy += 5; });
 
   doc.setTextColor(...RED);
@@ -261,7 +261,7 @@ function drawExecutiveSummary(doc, project, assessment) {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   const gaps = pillars.filter(p => p.score < 55);
-  if (gaps.length === 0) { doc.text('No critical gaps', M + colW + 10, gy); gy += 5; }
+  if (gaps.length === 0) { doc.text('No critical gaps identified.', M + colW + 10, gy); gy += 5; }
   else gaps.forEach(p => {
     const lines = doc.splitTextToSize(`• ${p.name} (${p.score}/100) — ${p.gapNote}`, colW - 4);
     lines.forEach(l => { doc.text(l, M + colW + 10, gy); gy += 4.5; });
@@ -314,7 +314,7 @@ function drawExecutiveSummary(doc, project, assessment) {
   doc.setTextColor(...DARK_GREY);
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'italic');
-  const disc = 'This assessment is indicative only. It does not constitute legal, financial or regulatory advice. Outputs should be verified by qualified legal and sustainability professionals before use in formal regulatory filings. Methodology v3.1 — April 2026.';
+  const disc = 'This assessment is indicative only. It does not constitute legal, financial, or regulatory advice. Outputs should be verified by qualified legal and sustainability professionals before use in formal regulatory filings. Methodology v3.1 — April 2026.';
   doc.text(doc.splitTextToSize(disc, CW - 10), M + 5, y + 6);
 
   footer(doc, 'Executive Summary', 2);
@@ -328,35 +328,35 @@ function getPillarList(assessment) {
   return [
     {
       key: 'sa', name: 'Energy Efficiency (PUE)', score: a.subscores.sa,
-      gapNote: 'Reduce PUE to meet EU Taxonomy threshold',
+      gapNote: 'Reduce PUE to meet the EU Taxonomy threshold.',
       regulatoryBasis: { objective: 'Climate change mitigation (Objective 1)', sfdrPai: 'PAI 5 — Non-renewable energy consumption share', source: 'EU Climate Delegated Regulation (EU) 2021/2139, Annex I, Activity 8.1' },
       thresholds: [['New build PUE (post-2025)', '≤ 1.2', 'EU 2021/2139 Annex I Activity 8.1'], ['New build PUE (2021–2025)', '≤ 1.3', 'EU 2021/2139 / CNDCP target'], ['Existing DC threshold', '≤ 1.5', 'EU 2021/2139 Annex I Activity 8.1']],
       inputs: a.pillarDetails?.sa?.explanations ? [...a.pillarDetails.sa.explanations.positive.slice(0, 3).map(e => [e, '', '']), ...a.pillarDetails.sa.explanations.negative.slice(0, 3).map(e => [e, '', ''])] : [],
     },
     {
       key: 'wre', name: 'Water Efficiency (WUE)', score: a.subscores.wre,
-      gapNote: 'Reduce WUE to meet CNDCP WUEmax target',
+      gapNote: 'Reduce WUE to meet the CNDCP WUEmax target.',
       regulatoryBasis: { objective: 'Sustainable use of water and marine resources (Objective 3)', sfdrPai: 'PAI 8 — Emissions to water', source: 'EUDCA White Paper (October 2024) — CNDCP WUEmax formula' },
       thresholds: [['WUEmax formula', '0.4 × K1 × K2 × K3', 'EUDCA / CNDCP'], ['Excellent', '≤ WUEmax × 0.8', 'Exceeds CNDCP target'], ['Compliant', '≤ WUEmax', 'Meets CNDCP target']],
       inputs: a.pillarDetails?.wre?.explanations ? [...a.pillarDetails.wre.explanations.positive.slice(0, 3).map(e => [e, '', '']), ...a.pillarDetails.wre.explanations.negative.slice(0, 2).map(e => [e, '', ''])] : [],
     },
     {
       key: 'epv', name: 'Renewable Energy', score: a.subscores.epv,
-      gapNote: 'Increase renewable % and upgrade source quality tier',
+      gapNote: 'Increase the renewable share and upgrade the source-quality tier.',
       regulatoryBasis: { objective: 'Climate change mitigation (Objective 1)', sfdrPai: 'PAI 1, 2, 5 — GHG emissions and non-renewable energy', source: 'GHG Protocol Scope 2 Guidance (2015); EU Taxonomy Climate Delegated Act Activity 8.1' },
       thresholds: [['Tier 1 — 100%', '90–100', 'Matched PPA / on-site'], ['Tier 2 — 100% (GOs/RECs)', '65–79', 'Guarantees of Origin'], ['Tier 3 — any %', 'Capped at 40', 'Utility green tariff — no additionality']],
       inputs: a.pillarDetails?.epv?.explanations ? [...a.pillarDetails.epv.explanations.positive.slice(0, 3).map(e => [e, '', '']), ...a.pillarDetails.epv.explanations.negative.slice(0, 2).map(e => [e, '', ''])] : [],
     },
     {
       key: 'csr', name: 'Governance & Minimum Safeguards', score: a.subscores.csr,
-      gapNote: 'Complete DNSH checklist and social safeguards',
+      gapNote: 'Complete the DNSH checklist and social safeguards.',
       regulatoryBasis: { objective: 'DNSH Objectives 2, 4, 5, 6 + Article 18', sfdrPai: 'PAI 7, 10, 11 — Biodiversity, UNGC/OECD', source: 'EU Taxonomy Regulation (EU) 2020/852, Article 18' },
       thresholds: [['Climate vulnerability', '2 pts', 'DNSH Obj 2'], ['Protected areas exclusion', '2 pts', 'DNSH Obj 6'], ['Human rights DD', '2 pts', 'Art 18 / UNGPs']],
       inputs: a.pillarDetails?.csr?.explanations ? [...a.pillarDetails.csr.explanations.positive.slice(0, 3).map(e => [e, '', '']), ...a.pillarDetails.csr.explanations.negative.slice(0, 2).map(e => [e, '', ''])] : [],
     },
     {
       key: 'dfr', name: 'Circular Economy & Waste', score: a.subscores.dfr,
-      gapNote: 'Establish certified e-waste program and extend server lifecycle',
+      gapNote: 'Establish a certified e-waste programme and extend server lifecycles.',
       regulatoryBasis: { objective: 'Transition to a circular economy (Objective 4)', sfdrPai: 'PAI 9 — Hazardous waste ratio', source: 'EU Taxonomy Climate Delegated Act; WEEE Directive 2012/19/EU' },
       thresholds: [['E-waste management', 'Required', 'WEEE Directive'], ['Equipment lifecycle', '≥ 5 years', 'Best practice'], ['Sustainable procurement', 'Required', 'ESG criteria']],
       inputs: a.pillarDetails?.dfr?.explanations ? [...a.pillarDetails.dfr.explanations.positive.slice(0, 3).map(e => [e, '', '']), ...a.pillarDetails.dfr.explanations.negative.slice(0, 2).map(e => [e, '', ''])] : [],
@@ -451,8 +451,8 @@ function drawPillarPage(doc, pillar, assessment, pageNum) {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   const assessText = pillar.score >= 65
-    ? `This pillar scores ${pillar.score}/100, meeting the threshold for capital readiness. Performance aligns with EU Taxonomy and SFDR requirements for this category.`
-    : `This pillar scores ${pillar.score}/100, below the capital readiness threshold. Remediation is required to meet regulatory expectations and improve financing eligibility.`;
+    ? `This pillar scores ${pillar.score}/100 and meets the threshold for capital readiness. Performance aligns with EU Taxonomy and SFDR requirements for this category.`
+    : `This pillar scores ${pillar.score}/100, which is below the capital readiness threshold. Remediation is required to meet regulatory expectations and improve financing eligibility.`;
   y = wrap(doc, assessText, M, y, CW, 4.5);
   y += 4;
 
@@ -586,13 +586,13 @@ function drawActionPlan(doc, project, assessment) {
   doc.setTextColor(...WHITE);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('Next step: contact Perennity for advisory support — hello@sustainabledatacenter.ai', M + 5, y + 7.5);
+  doc.text('Next step: contact Perennity for advisory support — hello@perennitybridge.com', M + 5, y + 7.5);
 
   // Confidential footer
   doc.setTextColor(...MID_GREY);
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'italic');
-  doc.text(`CONFIDENTIAL — prepared by Perennity Bridge for ${name} — ${date} — Not for distribution without Perennity written consent`, M, PH - 8);
+  doc.text(`CONFIDENTIAL — Prepared by Perennity Bridge for ${name} — ${date} — Not for distribution without the written consent of Perennity.`, M, PH - 8);
 
   footer(doc, 'Action Plan', 9);
 }
