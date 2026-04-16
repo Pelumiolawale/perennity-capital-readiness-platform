@@ -229,7 +229,7 @@ function drawCover(doc, formData, results) {
   setColor(doc, COLORS.mediumGrey);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.text('Perennity Bridge v3.1 · Methodology vintage April 2026 · sustainabledatacenter.ai', MARGIN, PAGE_H - 12);
+  doc.text('Perennity Bridge v3.1 · Methodology vintage April 2026 · perennitybridge.com', MARGIN, PAGE_H - 12);
 }
 
 // ============================================
@@ -310,7 +310,7 @@ function drawExecutiveSummary(doc, formData, results) {
     sy += 5;
   });
   if (pillars.filter(p => p.score >= 65).length === 0) {
-    doc.text('• No pillars scoring ≥65', leftX + 2, sy);
+    doc.text('• No pillars scoring ≥ 65.', leftX + 2, sy);
     sy += 5;
   }
 
@@ -331,7 +331,7 @@ function drawExecutiveSummary(doc, formData, results) {
     });
   });
   if (pillars.filter(p => p.score < 55).length === 0) {
-    doc.text('• No critical gaps identified', rightX + 2, gy);
+    doc.text('• No critical gaps identified.', rightX + 2, gy);
     gy += 5;
   }
 
@@ -358,7 +358,7 @@ function drawExecutiveSummary(doc, formData, results) {
   setColor(doc, COLORS.darkGrey);
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'italic');
-  const disclaimer = 'This assessment is indicative only. It does not constitute legal, financial or regulatory advice. Outputs should be verified by qualified legal and sustainability professionals before use in formal regulatory filings. Methodology v3.1 — April 2026.';
+  const disclaimer = 'This assessment is indicative only. It does not constitute legal, financial, or regulatory advice. Outputs should be verified by qualified legal and sustainability professionals before use in formal regulatory filings. Methodology v3.1 — April 2026.';
   const dLines = doc.splitTextToSize(disclaimer, CONTENT_W - 10);
   doc.text(dLines, MARGIN + 5, y + 6);
 
@@ -379,7 +379,7 @@ function getPillarData(formData, results) {
       key: 'energy',
       name: 'Energy Efficiency (PUE)',
       score: results.categories.energy.score,
-      gapNote: pue > 1.5 ? 'Reduce PUE to ≤1.3 (new build) or ≤1.5 (existing)' : 'On track',
+      gapNote: pue > 1.5 ? 'Reduce PUE to ≤ 1.3 (new build) or ≤ 1.5 (existing).' : 'On track.',
       regulatoryBasis: {
         objective: 'Climate change mitigation (Objective 1)',
         sfdrPai: 'PAI 5 — Non-renewable energy consumption share',
@@ -408,7 +408,7 @@ function getPillarData(formData, results) {
       key: 'water',
       name: 'Water Efficiency (WUE)',
       score: results.categories.water.score,
-      gapNote: results.categories.water.score < 55 ? 'Reduce WUE to meet CNDCP WUEmax target' : 'On track',
+      gapNote: results.categories.water.score < 55 ? 'Reduce WUE to meet the CNDCP WUEmax target.' : 'On track.',
       regulatoryBasis: {
         objective: 'Sustainable use of water and marine resources (Objective 3)',
         sfdrPai: 'PAI 8 — Emissions to water',
@@ -434,7 +434,7 @@ function getPillarData(formData, results) {
       key: 'renewable',
       name: 'Renewable Energy',
       score: getRenewableScore(results),
-      gapNote: renewable < 75 ? 'Increase renewable % and upgrade source quality tier' : 'On track',
+      gapNote: renewable < 75 ? 'Increase the renewable share and upgrade the source-quality tier.' : 'On track.',
       regulatoryBasis: {
         objective: 'Climate change mitigation (Objective 1)',
         sfdrPai: 'PAI 1, 2, 5 — GHG emissions and non-renewable energy',
@@ -458,7 +458,7 @@ function getPillarData(formData, results) {
       key: 'governance',
       name: 'Governance & Minimum Safeguards',
       score: results.categories.governance.score,
-      gapNote: results.categories.governance.score < 55 ? 'Complete DNSH checklist items and social safeguards' : 'On track',
+      gapNote: results.categories.governance.score < 55 ? 'Complete the DNSH checklist items and social safeguards.' : 'On track.',
       regulatoryBasis: {
         objective: 'DNSH Objectives 2, 4, 5, 6 + Article 18 Minimum Social Safeguards',
         sfdrPai: 'PAI 7, 10, 11 — Biodiversity, UNGC/OECD compliance',
@@ -487,7 +487,7 @@ function getPillarData(formData, results) {
       key: 'circular',
       name: 'Circular Economy & Waste',
       score: results.categories.circularEconomy.score,
-      gapNote: results.categories.circularEconomy.score < 55 ? 'Establish certified e-waste program and extend server lifecycle' : 'On track',
+      gapNote: results.categories.circularEconomy.score < 55 ? 'Establish a certified e-waste programme and extend server lifecycles.' : 'On track.',
       regulatoryBasis: {
         objective: 'Transition to a circular economy (Objective 4)',
         sfdrPai: 'PAI 9 — Hazardous waste ratio',
@@ -527,20 +527,20 @@ function getAssessmentText(pillar, category, value, formData) {
 
   const texts = {
     energy: score >= 65
-      ? `This facility meets the EU Taxonomy energy efficiency requirements for data centres. The PUE target of ${value} is within acceptable thresholds for ${formData.facilityType === 'new' ? 'new build' : 'existing'} facilities.`
+      ? `This facility meets the EU Taxonomy energy-efficiency requirements for data centres. The PUE target of ${value} is within acceptable thresholds for ${formData.facilityType === 'new' ? 'new-build' : 'existing'} facilities.`
       : `The current PUE target of ${value} does not meet the EU Taxonomy threshold. Improvements to cooling infrastructure, containment, and operational efficiency are required to achieve compliance.`,
     water: score >= 65
-      ? 'Water usage effectiveness meets or exceeds the CNDCP WUEmax formula target for this climate zone and water stress level. The facility demonstrates responsible water stewardship.'
-      : 'Water usage exceeds the calculated CNDCP WUEmax target. Transition to lower water-intensity cooling technologies or alternative water sources is recommended.',
+      ? 'Water usage effectiveness meets or exceeds the CNDCP WUEmax formula target for this climate zone and water-stress level. The facility demonstrates responsible water stewardship.'
+      : 'Water usage exceeds the calculated CNDCP WUEmax target. A transition to lower water-intensity cooling technologies or alternative water sources is recommended.',
     renewable: score >= 65
       ? 'Renewable energy sourcing meets the requirements for EU Taxonomy alignment and SFDR disclosure. Source quality is adequate for regulatory purposes.'
-      : 'Renewable energy percentage or source quality is insufficient. Upgrade to matched PPAs or on-site generation to meet additionality requirements under EU Taxonomy.',
+      : 'The renewable energy share or source quality is insufficient. Upgrade to matched PPAs or on-site generation to meet the additionality requirements under the EU Taxonomy.',
     governance: score >= 65
       ? 'The organisation demonstrates compliance with DNSH requirements and minimum social safeguards under EU Taxonomy Article 18. All checklist items are substantially addressed.'
       : 'Gaps exist in DNSH compliance or minimum social safeguards. Complete the outstanding checklist items to achieve EU Taxonomy alignment.',
     circular: score >= 65
       ? 'Circular economy practices meet the DNSH requirements for the transition to a circular economy objective. E-waste management and equipment lifecycle practices are adequate.'
-      : 'Circular economy practices require improvement. Establish certified e-waste management, extend server lifecycles, and implement equipment reuse programs.',
+      : 'Circular economy practices require improvement. Establish certified e-waste management, extend server lifecycles, and implement equipment reuse programmes.',
   };
 
   return { badge, text: texts[pillar] || '' };
@@ -550,29 +550,29 @@ function getActions(pillar, score, value, formData) {
   if (score >= 75) return [];
   const actions = {
     energy: [
-      'Implement hot/cold aisle containment and variable speed drives to reduce PUE',
-      'Deploy AI-based cooling optimisation to dynamically adjust cooling parameters',
-      'Increase temperature setpoints in line with ASHRAE A1/A2 expanded ranges',
+      'Implement hot/cold aisle containment and variable-speed drives to reduce PUE.',
+      'Deploy AI-based cooling optimisation to dynamically adjust cooling parameters.',
+      'Increase temperature setpoints in line with ASHRAE A1/A2 expanded ranges.',
     ],
     water: [
-      'Transition to air-cooled or liquid cooling systems to reduce water dependency',
-      'Implement greywater recycling for cooling tower makeup water',
-      'Evaluate treated seawater or wastewater as alternative water sources',
+      'Transition to air-cooled or liquid-cooling systems to reduce water dependency.',
+      'Implement greywater recycling for cooling-tower make-up water.',
+      'Evaluate treated seawater or wastewater as alternative water sources.',
     ],
     renewable: [
-      'Negotiate matched Power Purchase Agreements (PPAs) with new-build renewable generation',
-      'Install on-site solar PV arrays to increase Tier 1 sourcing',
-      'Replace utility green tariff with Guarantees of Origin (GOs) to meet additionality requirements',
+      'Negotiate matched Power Purchase Agreements (PPAs) with new-build renewable generation.',
+      'Install on-site solar PV arrays to increase Tier 1 sourcing.',
+      'Replace utility green tariffs with Guarantees of Origin (GOs) to meet additionality requirements.',
     ],
     governance: [
-      'Complete climate vulnerability assessment per IPCC risk taxonomy for DNSH Obj 2',
-      'Implement human rights due diligence policy aligned to UNGPs and OECD Guidelines',
-      'Adopt EU F-Gas Regulation compliant refrigerants (low-GWP) for cooling systems',
+      'Complete a climate vulnerability assessment per IPCC risk taxonomy for DNSH Objective 2.',
+      'Implement a human rights due diligence policy aligned to the UNGPs and OECD Guidelines.',
+      'Adopt EU F-Gas Regulation compliant refrigerants (low-GWP) for cooling systems.',
     ],
     circular: [
-      'Partner with R2/e-Stewards certified recyclers for e-waste management',
-      'Extend server refresh cycle to ≥5 years with refurbishment program',
-      'Implement sustainable procurement policy with ESG supplier criteria',
+      'Partner with R2 or e-Stewards certified recyclers for e-waste management.',
+      'Extend the server refresh cycle to ≥ 5 years with a refurbishment programme.',
+      'Implement a sustainable procurement policy with ESG supplier criteria.',
     ],
   };
   return actions[pillar] || [];
@@ -782,7 +782,7 @@ function drawActionPlan(doc, formData, results) {
       doc.setFont('helvetica', 'normal');
       doc.text(`Current score: ${p.score}/100  |  Target score: 75/100`, MARGIN + 18, y + 14);
 
-      const actionText = p.actions[0] || 'Improve practices to meet regulatory thresholds';
+      const actionText = p.actions[0] || 'Improve practices to meet regulatory thresholds.';
       const actionLines = doc.splitTextToSize(actionText, CONTENT_W - 22);
       doc.text(actionLines[0] || '', MARGIN + 18, y + 20);
 
@@ -802,14 +802,14 @@ function drawActionPlan(doc, formData, results) {
   setColor(doc, COLORS.white);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('Next step: contact Perennity for advisory support — hello@sustainabledatacenter.ai', MARGIN + 5, y + 8);
+  doc.text('Next step: contact Perennity for advisory support — hello@perennitybridge.com', MARGIN + 5, y + 8);
   y += 18;
 
   // Confidential footer
   setColor(doc, COLORS.mediumGrey);
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'italic');
-  doc.text(`CONFIDENTIAL — prepared by Perennity Bridge for ${projectName} — ${date} — Not for distribution without Perennity written consent`, MARGIN, PAGE_H - 10);
+  doc.text(`CONFIDENTIAL — Prepared by Perennity Bridge for ${projectName} — ${date} — Not for distribution without the written consent of Perennity.`, MARGIN, PAGE_H - 10);
 
   drawPageFooter(doc, 'Action Plan', 9);
 }
