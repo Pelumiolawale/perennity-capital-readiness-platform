@@ -426,10 +426,11 @@ export function calculateWaterResourceEfficiency(project, region, countryProfile
   else if (project.cooling_type === 'air') { coolingScore = 45; }
 
   let contextScore = 60;
-  const waterStress = parseFloat(project.water_stress_index) || 0.5;
-  if (waterStress > 0.7 && project.cooling_type === 'evaporative' && !project.water_recycling_included) {
+  const countryStressBand = countryProfile?.waterStress || 'medium';
+  const highStress = countryStressBand === 'extreme' || countryStressBand === 'high';
+  if (highStress && project.cooling_type === 'evaporative' && !project.water_recycling_included) {
     contextScore = 15;
-    explanations.negative.push('High water use in water-stressed region without recycling');
+    explanations.negative.push(`High water use in ${countryStressBand}-stress region without recycling`);
   } else if (project.water_recycling_included) {
     contextScore = 85;
     explanations.positive.push('Water recycling systems planned');
@@ -526,7 +527,7 @@ export function calculateDeliveryFundingReadiness(project) {
   return { score: Math.max(0, Math.min(100, Math.round(score))), explanations, dataCompleteness: completeness };
 }
 
-export function evaluateHardStops(project, region) {
+export function evaluateHardStops(project, region, countryProfile) {
   const stops = [];
   const regionData = RT[region] || RT.UK;
 
@@ -538,8 +539,8 @@ export function evaluateHardStops(project, region) {
     stops.push({ reason: 'Extreme unmitigated flood risk', cap: 50 });
   }
 
-  if ((parseFloat(project.water_stress_index) || 0) > 0.85 && project.cooling_type === 'evaporative' && !project.water_recycling_included) {
-    stops.push({ reason: 'Very high water stress with water-intensive cooling and no recycling', cap: 50 });
+  if (countryProfile?.waterStress === 'extreme' && project.cooling_type === 'evaporative' && !project.water_recycling_included) {
+    stops.push({ reason: 'Extreme-water-stress region with water-intensive cooling and no recycling', cap: 50 });
   }
 
   const criticalFields = ['pue', 'planned_capacity_mw', 'cooling_type', 'grid_connection_status'];
@@ -639,7 +640,7 @@ export function runAssessment(project, region, countryProfile) {
   const weights = REGION_WEIGHTS[region] || REGION_WEIGHTS.UK;
   const rawScore = saAdjusted.score * weights.sa + epv.score * weights.epv + wre.score * weights.wre + csr.score * weights.csr + dfr.score * weights.dfr;
 
-  const hardStops = evaluateHardStops(project, region);
+  const hardStops = evaluateHardStops(project, region, countryProfile);
   let finalScore = Math.round(rawScore);
   let hardStopTriggered = false;
   let hardStopReason = null;

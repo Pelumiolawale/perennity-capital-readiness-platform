@@ -464,21 +464,19 @@ function AssessmentLoading({ onComplete }) {
 
 // ─── MAIN APP ───────────────────────────────────────────────
 const INITIAL_PROJECT = {
-  project_name: "", region: "", projectRegionGroup: "", country: "", state_or_province: "", city: "",
+  project_name: "", region: "", projectRegionGroup: "", country: "", city: "",
   development_stage: "", expected_commissioning_date: "",
   planned_capacity_mw: "", it_load_mw: "", pue: "", wue: "",
-  cooling_type: "", cooling_redundancy: "", backup_power_type: "",
-  backup_duration_hours: "", battery_storage_mwh: "", onsite_generation_type: "",
-  grid_connection_status: "", grid_capacity_secured_mw: "",
+  cooling_type: "", backup_power_type: "",
+  battery_storage_mwh: "", onsite_generation_type: "",
+  grid_connection_status: "",
   interconnection_timeline_months: "", renewable_energy_share_pct: "",
-  renewable_energy_source: "", ppa_secured: false, ppa_term_years: "",
-  utility_engagement_started: false,
-  annual_water_demand_m3: "", water_source_type: "", water_recycling_included: false,
-  water_stress_index: "", land_area_hectares: "", brownfield_or_greenfield: "",
+  renewable_energy_source: "", ppa_secured: false,
+  water_recycling_included: false,
   waste_heat_recovery: false,
   flood_risk_score: "", extreme_heat_risk_score: "", storm_risk_score: "",
-  adaptation_measures_present: false, flood_mitigation_details: "",
-  thermal_resilience_strategy: "", business_continuity_plan_ready: false,
+  adaptation_measures_present: false,
+  business_continuity_plan_ready: false,
   // CNDCP WUEmax inputs
   k1_climate: "", k2_stress: "", k3_water: "",
   // Renewable source tier
@@ -487,11 +485,12 @@ const INITIAL_PROJECT = {
   dnsh_climate_vulnerability: false, dnsh_protected_areas: false,
   dnsh_low_gwp_refrigerants: false, dnsh_weee_compliance: false,
   dnsh_human_rights_dd: false, dnsh_supply_chain_labour: false,
-  // Existing fields
+  // Sustainability & certification
   target_financing_label: "", taxonomy_alignment_claimed: false,
   net_zero_commitment_present: false, sustainability_disclosures_ready: false,
   third_party_certification_target: "", carbon_reduction_strategy_present: false,
-  financing_strategy_defined: false, target_investor_type: "",
+  // Delivery readiness
+  financing_strategy_defined: false,
   investment_memo_ready: false, site_control_secured: false,
   permitting_status: "", contractor_or_epc_identified: false,
   schedule_confidence_level: "",
@@ -893,8 +892,9 @@ export default function App() {
                     development_stage: "pre_permitting", planned_capacity_mw: 30, it_load_mw: 24, pue: 1.28, wue: 0.4,
                     cooling_type: "hybrid", backup_power_type: "battery", battery_storage_mwh: 12,
                     grid_connection_status: "partially_secured", interconnection_timeline_months: 18,
-                    renewable_energy_share_pct: 65, renewable_energy_source: "solar_wind", ppa_secured: true, ppa_term_years: 15,
-                    annual_water_demand_m3: 50000, water_recycling_included: true, water_stress_index: 0.3, waste_heat_recovery: true,
+                    renewable_energy_share_pct: 65, renewable_energy_source: "ppa", ppa_secured: true,
+                    k1_climate: "cold", k2_stress: "low", k3_water: "potable",
+                    water_recycling_included: true, waste_heat_recovery: true,
                     flood_risk_score: 25, extreme_heat_risk_score: 20, storm_risk_score: 15,
                     adaptation_measures_present: true, business_continuity_plan_ready: true,
                     taxonomy_alignment_claimed: true, net_zero_commitment_present: true,
@@ -1105,7 +1105,6 @@ export default function App() {
                 }
               </select>
             </FormField>
-            <FormField label="State / Province"><input value={d.state_or_province} onChange={e => updateDraft("state_or_province", e.target.value)} placeholder="e.g. Hesse" /></FormField>
             <FormField label="City"><input value={d.city} onChange={e => updateDraft("city", e.target.value)} placeholder="e.g. Frankfurt" /></FormField>
             <FormField label="Development Stage" required>
               <select value={d.development_stage} onChange={e => updateDraft("development_stage", e.target.value)}>
@@ -1146,7 +1145,6 @@ export default function App() {
                 <option value="">Select status</option><option value="not_started">Not Started</option><option value="in_discussion">In Discussion</option><option value="application_submitted">Application Submitted</option><option value="partially_secured">Partially Secured</option><option value="secured">Secured</option>
               </select>
             </FormField>
-            <FormField label="Grid Capacity Secured (MW)"><input type="number" step="0.1" value={d.grid_capacity_secured_mw} onChange={e => updateDraft("grid_capacity_secured_mw", e.target.value)} placeholder="e.g. 40" /></FormField>
             <FormField label="Interconnection Timeline (months)" help="Estimated time to grid connection"><input type="number" value={d.interconnection_timeline_months} onChange={e => updateDraft("interconnection_timeline_months", e.target.value)} placeholder="e.g. 18" /></FormField>
             <FormField label="Renewable Energy Share (%)" required tooltip="The proportion of electricity consumed that comes from renewable sources on a market basis. Source quality matters — a matched Power Purchase Agreement scores higher than a Renewable Energy Certificate." error={wizardErrors.renewable_energy_share_pct}><input type="number" step="1" value={d.renewable_energy_share_pct} onChange={e => updateDraft("renewable_energy_share_pct", e.target.value)} placeholder="e.g. 65" style={wizardErrors.renewable_energy_share_pct ? { borderColor: COLORS.red, background: "rgba(166,61,47,0.04)" } : {}} /></FormField>
             <FormField label="Renewable Energy Source" required tooltip="Tier 1 (matched PPA or on-site generation) satisfies EU Taxonomy additionality requirements. Tier 2 (GOs/RECs) is accepted by most Article 8 funds. Tier 3 (green tariff) does not satisfy additionality requirements.">
@@ -1168,23 +1166,10 @@ export default function App() {
                 <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.ppa_secured ? "Yes" : "No"}</span>
               </div>
             </FormField>
-            <FormField label="PPA Term (years)"><input type="number" value={d.ppa_term_years} onChange={e => updateDraft("ppa_term_years", e.target.value)} placeholder="e.g. 10" /></FormField>
-            <FormField label="Utility Engagement Started?">
-              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
-                <input type="checkbox" checked={d.utility_engagement_started} onChange={e => updateDraft("utility_engagement_started", e.target.checked)} />
-                <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.utility_engagement_started ? "Yes" : "No"}</span>
-              </div>
-            </FormField>
           </div>
         );
         case 3: return (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-            <FormField label="Annual Water Demand (m³)"><input type="number" value={d.annual_water_demand_m3} onChange={e => updateDraft("annual_water_demand_m3", e.target.value)} placeholder="e.g. 50000" /></FormField>
-            <FormField label="Water Source Type">
-              <select value={d.water_source_type} onChange={e => updateDraft("water_source_type", e.target.value)}>
-                <option value="">Select source</option><option value="municipal">Municipal</option><option value="recycled">Recycled</option><option value="groundwater">Groundwater</option><option value="mixed">Mixed</option>
-              </select>
-            </FormField>
             <FormField label="K1 — Climate Zone" tooltip="Cooling degree days above 21°C. Defaults are set based on your project location's climate classification. Affects your WUEmax target under the CNDCP formula.">
               <select value={d.k1_climate} onChange={e => updateDraft("k1_climate", e.target.value)}>
                 <option value="">Select climate zone</option>
@@ -1221,12 +1206,6 @@ export default function App() {
                 <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.waste_heat_recovery ? "Yes" : "No"}</span>
               </div>
             </FormField>
-            <FormField label="Land Area (hectares)"><input type="number" step="0.1" value={d.land_area_hectares} onChange={e => updateDraft("land_area_hectares", e.target.value)} placeholder="e.g. 12" /></FormField>
-            <FormField label="Site Type">
-              <select value={d.brownfield_or_greenfield} onChange={e => updateDraft("brownfield_or_greenfield", e.target.value)}>
-                <option value="">Select type</option><option value="brownfield">Brownfield</option><option value="greenfield">Greenfield</option>
-              </select>
-            </FormField>
           </div>
         );
         case 4: return (
@@ -1234,7 +1213,6 @@ export default function App() {
             <FormField label="Flood Risk Score (0-100)" help="Higher = greater risk. Leave blank if unknown."><input type="number" min="0" max="100" value={d.flood_risk_score} onChange={e => updateDraft("flood_risk_score", e.target.value)} placeholder="e.g. 22" /></FormField>
             <FormField label="Extreme Heat Risk Score (0-100)"><input type="number" min="0" max="100" value={d.extreme_heat_risk_score} onChange={e => updateDraft("extreme_heat_risk_score", e.target.value)} placeholder="e.g. 58" /></FormField>
             <FormField label="Storm Risk Score (0-100)"><input type="number" min="0" max="100" value={d.storm_risk_score} onChange={e => updateDraft("storm_risk_score", e.target.value)} placeholder="e.g. 30" /></FormField>
-            <FormField label="Water Stress Index (0-1)" help="Based on your project location's water stress classification. 0 = low, 1 = extreme."><input type="number" step="0.01" min="0" max="1" value={d.water_stress_index} onChange={e => updateDraft("water_stress_index", e.target.value)} placeholder="e.g. 0.65" /></FormField>
             <FormField label="Adaptation Measures Present?">
               <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
                 <input type="checkbox" checked={d.adaptation_measures_present} onChange={e => updateDraft("adaptation_measures_present", e.target.checked)} />
@@ -1247,8 +1225,6 @@ export default function App() {
                 <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.business_continuity_plan_ready ? "Yes" : "No"}</span>
               </div>
             </FormField>
-            <div style={{ gridColumn: "1 / -1" }}><FormField label="Flood Mitigation Details"><textarea value={d.flood_mitigation_details} onChange={e => updateDraft("flood_mitigation_details", e.target.value)} placeholder="Describe drainage, barriers, elevation measures..." /></FormField></div>
-            <div style={{ gridColumn: "1 / -1" }}><FormField label="Thermal Resilience Strategy"><textarea value={d.thermal_resilience_strategy} onChange={e => updateDraft("thermal_resilience_strategy", e.target.value)} placeholder="Describe cooling adaptations for extreme heat..." /></FormField></div>
           </div>
         );
         case 5: return (
@@ -1361,11 +1337,6 @@ export default function App() {
                 <input type="checkbox" checked={d.financing_strategy_defined} onChange={e => updateDraft("financing_strategy_defined", e.target.checked)} />
                 <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.financing_strategy_defined ? "Yes" : "No"}</span>
               </div>
-            </FormField>
-            <FormField label="Target Investor Type">
-              <select value={d.target_investor_type} onChange={e => updateDraft("target_investor_type", e.target.value)}>
-                <option value="">Select type</option><option value="infra_fund">Infrastructure Fund</option><option value="pension">Pension Fund</option><option value="pe">Private Equity</option><option value="sovereign_wealth">Sovereign Wealth Fund</option><option value="dfi">Development Finance Institution</option>
-              </select>
             </FormField>
             <FormField label="Investment Memo Ready?">
               <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>

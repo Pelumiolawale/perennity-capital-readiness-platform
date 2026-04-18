@@ -133,6 +133,18 @@ function drawCover(doc, project, assessment, id) {
   doc.setTextColor(...MID_GREY);
   doc.text(`${project.country || project.projectRegionGroup || assessment.region || 'N/A'}  |  ${stageLabel(project.development_stage)}  |  ${date}`, PW / 2, ny + 8, { align: 'center' });
 
+  const parts = [];
+  if (project.planned_capacity_mw) parts.push(`${project.planned_capacity_mw} MW planned`);
+  if (project.it_load_mw) parts.push(`${project.it_load_mw} MW IT load`);
+  if (project.expected_commissioning_date) {
+    const ecd = new Date(project.expected_commissioning_date);
+    if (!isNaN(ecd)) parts.push(`commissioning ${ecd.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`);
+  }
+  if (parts.length > 0) {
+    doc.setFontSize(9);
+    doc.text(parts.join('  ·  '), PW / 2, ny + 15, { align: 'center' });
+  }
+
   // Bottom-left: readiness badge
   const by = PH - 52;
   doc.setFillColor(...band.color);
