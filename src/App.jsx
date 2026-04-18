@@ -463,7 +463,7 @@ function AssessmentLoading({ onComplete }) {
 
 // ─── MAIN APP ───────────────────────────────────────────────
 const INITIAL_PROJECT = {
-  project_name: "", region: "", projectRegionGroup: "", country: "", capitalSource: "", state_or_province: "", city: "",
+  project_name: "", region: "", projectRegionGroup: "", country: "", state_or_province: "", city: "",
   development_stage: "", expected_commissioning_date: "",
   planned_capacity_mw: "", it_load_mw: "", pue: "", wue: "",
   cooling_type: "", cooling_redundancy: "", backup_power_type: "",
@@ -784,8 +784,9 @@ export default function App() {
     setScreen("app");
     setNavItem("results");
 
-    // Send to Airtable Assessments table
-    const applicableFrameworks = getApplicableFrameworks(currentProject.capitalSource, currentProject.country);
+    // Send to Airtable Assessments table.
+    // Applicable Frameworks field is now driven by target_financing_label
+    // (see Fix 3.2) — wired below once the helper is introduced.
     sendToAirtable("Assessments", {
       "Project Name": currentProject.project_name || "Untitled",
       "Capital Readiness Score": result.capitalReadinessScore,
@@ -794,10 +795,9 @@ export default function App() {
       "Region": currentProject.region,
       "Country": currentProject.country,
       "Region Group": currentProject.projectRegionGroup,
-      "Capital Source": currentProject.capitalSource,
       "Water Stress Band": countryProfile.waterStress,
       "Grid Carbon Intensity": countryProfile.gridCarbon,
-      "Applicable Frameworks": applicableFrameworks.join(', '),
+      "Target Financing Label": currentProject.target_financing_label || "",
       "Development Stage": currentProject.development_stage,
       "PUE": flatProject.pue,
       "Planned Capacity MW": flatProject.planned_capacity_mw,
@@ -888,7 +888,7 @@ export default function App() {
                 <Button size="lg" onClick={() => setScreen("onboarding")}>Create Account</Button>
                 <Button variant="secondary" size="lg" onClick={() => {
                   const sampleProject = {
-                    id: "sample-demo", project_name: "Frankfurt Campus Alpha — Sample", region: "EU", projectRegionGroup: "Europe", country: "Germany", capitalSource: "EU Green / Article 8-9 Fund", city: "Frankfurt",
+                    id: "sample-demo", project_name: "Frankfurt Campus Alpha — Sample", region: "EU", projectRegionGroup: "Europe", country: "Germany", city: "Frankfurt",
                     development_stage: "pre_permitting", planned_capacity_mw: 30, it_load_mw: 24, pue: 1.28, wue: 0.4,
                     cooling_type: "hybrid", backup_power_type: "battery", battery_storage_mwh: 12,
                     grid_connection_status: "partially_secured", interconnection_timeline_months: 18,
@@ -1112,20 +1112,6 @@ export default function App() {
               </select>
             </FormField>
             <FormField label="Expected Commissioning Date"><input type="date" value={d.expected_commissioning_date} onChange={e => updateDraft("expected_commissioning_date", e.target.value)} /></FormField>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <FormField label="Where is your primary financing sourced from?" required help="Determines which regulatory frameworks apply to your assessment">
-                <select value={d.capitalSource} onChange={e => updateDraft("capitalSource", e.target.value)}>
-                  <option value="">Select capital source</option>
-                  <option value="EU Green / Article 8-9 Fund">EU Green / Article 8-9 Fund</option>
-                  <option value="UK SDR-aligned Fund">UK SDR-aligned Fund</option>
-                  <option value="Development Finance Institution (EIB, IFC, EBRD, AfDB)">Development Finance Institution (EIB, IFC, EBRD, AfDB)</option>
-                  <option value="US Institutional / Private Equity">US Institutional / Private Equity</option>
-                  <option value="Sovereign Wealth Fund">Sovereign Wealth Fund</option>
-                  <option value="Mixed / Multiple Sources">Mixed / Multiple Sources</option>
-                  <option value="Not yet determined">Not yet determined</option>
-                </select>
-              </FormField>
-            </div>
           </div>
         );
         case 1: return (
@@ -1493,27 +1479,9 @@ export default function App() {
     );
   }
 
-  function getApplicableFrameworks(capitalSource, projectCountry) {
-    const frameworks = [];
+  // Applicable Regulatory Frameworks are now driven by the user's
+  // selected Target Financing Label (Tab 5) — see Fix 3.2.
 
-    if (['EU Green / Article 8-9 Fund', 'Development Finance Institution (EIB, IFC, EBRD, AfDB)', 'Mixed / Multiple Sources'].includes(capitalSource)) {
-      frameworks.push('EU Taxonomy Activity 8.1');
-      frameworks.push('SFDR PAI Indicators');
-    }
-
-    if (['UK SDR-aligned Fund', 'Mixed / Multiple Sources'].includes(capitalSource)) {
-      frameworks.push('UK SDR');
-    }
-
-    frameworks.push('ICMA Green Bond Principles');
-
-    if (capitalSource === 'Development Finance Institution (EIB, IFC, EBRD, AfDB)') {
-      frameworks.push('EIB Environmental & Social Standards');
-      frameworks.push('IFC Performance Standards');
-    }
-
-    return frameworks;
-  }
 
   // ─── MAIN APP SHELL ───────────────────────────────────────
   const PILLAR_NAMES = {
@@ -1779,20 +1747,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Applicable Frameworks */}
-          {currentProject?.capitalSource && (
-            <Card style={{ marginTop: 24 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Applicable Regulatory Frameworks</h3>
-              <p style={{ fontSize: 13, color: COLORS.textSecondary, marginBottom: 16 }}>Based on your capital source: <strong>{currentProject.capitalSource}</strong></p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {getApplicableFrameworks(currentProject.capitalSource, currentProject.country).map((fw, i) => (
-                  <div key={i} style={{ padding: "6px 14px", borderRadius: 6, background: COLORS.accentSubtle, border: `1px solid ${COLORS.accent}33`, fontSize: 13, fontWeight: 500, color: COLORS.accent }}>
-                    {fw}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+          {/* Applicable Regulatory Frameworks — wired to target_financing_label in Fix 3.2 */}
 
           {/* AI Narrative Panel */}
           {(aiLoading || aiNarrative) && (
