@@ -9,7 +9,7 @@
       "name": "Governance",
       "description": "Board oversight and management's role in assessing climate risks",
       "scoringWeight": 0.20,
-      "projectField": "tcfd_governance",
+      "projectProxy": "Not collected at project level — assessed via parent fund / portfolio disclosure",
       "keyQuestions": [
         "Does the board oversee climate-related risks?",
         "Is there a dedicated ESG committee or officer?"
@@ -19,7 +19,7 @@
       "name": "Strategy",
       "description": "Actual and potential impacts of climate risks on business, strategy, and financial planning",
       "scoringWeight": 0.25,
-      "projectField": "tcfd_strategy",
+      "projectProxy": "Partial — net_zero_commitment_present used as scenario-alignment signal",
       "keyQuestions": [
         "Has a scenario analysis been conducted (1.5°C, 2°C, 4°C)?",
         "Are climate risks integrated into financial planning?"

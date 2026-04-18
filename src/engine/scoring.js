@@ -57,43 +57,66 @@ export function determineSfdrClassification(project, region) {
 }
 
 // ── UK SDR eligibility ───────────────────────────────────────
+// Four labels per FCA PS23/16 ESG Sourcebook 5.3: Focus, Improvers,
+// Impact, and Mixed Goals. Mixed Goals is eligible when the project
+// would qualify for at least two of the other three labels — its
+// intended semantics per PS23/16 9.50.
 export function determineUkSdrEligibility(project, score) {
   const renewPct = parseFloat(project.renewable_energy_share_pct) || 0;
   const pue = parseFloat(project.pue) || 999;
   const labels = ukSdrFramework.labels;
-  const results = [];
 
-  results.push({
-    label: labels.sustainabilityImpact.label,
-    eligible: score >= labels.sustainabilityImpact.scoringThreshold &&
-      renewPct >= labels.sustainabilityImpact.requirements.minRenewable &&
-      pue <= labels.sustainabilityImpact.requirements.maxPue &&
-      project.net_zero_commitment_present &&
-      project.taxonomy_alignment_claimed,
-    description: labels.sustainabilityImpact.description,
-    gap: `Score ${score} < ${labels.sustainabilityImpact.scoringThreshold} or renewable ${renewPct}% < ${labels.sustainabilityImpact.requirements.minRenewable}% or PUE ${pue} > ${labels.sustainabilityImpact.requirements.maxPue}`,
-  });
+  const impactEligible = score >= labels.sustainabilityImpact.scoringThreshold &&
+    renewPct >= labels.sustainabilityImpact.requirements.minRenewable &&
+    pue <= labels.sustainabilityImpact.requirements.maxPue &&
+    project.net_zero_commitment_present &&
+    project.taxonomy_alignment_claimed;
 
-  results.push({
-    label: labels.sustainabilityFocus.label,
-    eligible: score >= labels.sustainabilityFocus.scoringThreshold &&
-      renewPct >= labels.sustainabilityFocus.requirements.minRenewable &&
-      pue <= labels.sustainabilityFocus.requirements.maxPue &&
-      project.sustainability_disclosures_ready,
-    description: labels.sustainabilityFocus.description,
-    gap: `Score ${score} < ${labels.sustainabilityFocus.scoringThreshold} or renewable ${renewPct}% < ${labels.sustainabilityFocus.requirements.minRenewable}%`,
-  });
+  const focusEligible = score >= labels.sustainabilityFocus.scoringThreshold &&
+    renewPct >= labels.sustainabilityFocus.requirements.minRenewable &&
+    pue <= labels.sustainabilityFocus.requirements.maxPue &&
+    project.sustainability_disclosures_ready;
 
-  results.push({
-    label: labels.sustainabilityImprovers.label,
-    eligible: score >= labels.sustainabilityImprovers.scoringThreshold &&
-      renewPct >= labels.sustainabilityImprovers.requirements.minRenewable &&
-      project.carbon_reduction_strategy_present,
-    description: labels.sustainabilityImprovers.description,
-    gap: `Score ${score} < ${labels.sustainabilityImprovers.scoringThreshold} or no carbon reduction strategy`,
-  });
+  const improversEligible = score >= labels.sustainabilityImprovers.scoringThreshold &&
+    renewPct >= labels.sustainabilityImprovers.requirements.minRenewable &&
+    project.carbon_reduction_strategy_present;
 
-  return results;
+  const qualifyingLabels = [impactEligible, focusEligible, improversEligible].filter(Boolean).length;
+  const mixedGoalsEligible = score >= labels.sustainabilityMixedGoals.scoringThreshold &&
+    renewPct >= labels.sustainabilityMixedGoals.requirements.minRenewable &&
+    project.sustainability_disclosures_ready &&
+    qualifyingLabels >= 2;
+
+  return [
+    {
+      label: labels.sustainabilityImpact.label,
+      eligible: impactEligible,
+      description: labels.sustainabilityImpact.description,
+      gap: impactEligible ? '' : `Score ${score} < ${labels.sustainabilityImpact.scoringThreshold} or renewable ${renewPct}% < ${labels.sustainabilityImpact.requirements.minRenewable}% or PUE ${pue} > ${labels.sustainabilityImpact.requirements.maxPue} or missing net-zero / Taxonomy claim`,
+      citation: labels.sustainabilityImpact.citation,
+    },
+    {
+      label: labels.sustainabilityFocus.label,
+      eligible: focusEligible,
+      description: labels.sustainabilityFocus.description,
+      gap: focusEligible ? '' : `Score ${score} < ${labels.sustainabilityFocus.scoringThreshold} or renewable ${renewPct}% < ${labels.sustainabilityFocus.requirements.minRenewable}% or disclosures not ready`,
+      citation: labels.sustainabilityFocus.citation,
+    },
+    {
+      label: labels.sustainabilityImprovers.label,
+      eligible: improversEligible,
+      description: labels.sustainabilityImprovers.description,
+      gap: improversEligible ? '' : `Score ${score} < ${labels.sustainabilityImprovers.scoringThreshold} or renewable ${renewPct}% < ${labels.sustainabilityImprovers.requirements.minRenewable}% or no carbon reduction strategy`,
+      citation: labels.sustainabilityImprovers.citation,
+    },
+    {
+      label: labels.sustainabilityMixedGoals.label,
+      eligible: mixedGoalsEligible,
+      description: labels.sustainabilityMixedGoals.description,
+      gap: mixedGoalsEligible ? '' : `Qualifies for ${qualifyingLabels} of 3 other labels (need ≥ 2) or score/renewable/disclosures gap`,
+      citation: labels.sustainabilityMixedGoals.citation,
+    },
+  ];
 }
 
 // ── EU Taxonomy alignment ─────────────────────────────────────
@@ -489,12 +512,10 @@ export function calculateClimateSiteResilience(project) {
   const flood = parseFloat(project.flood_risk_score) || 50;
   const heat = parseFloat(project.extreme_heat_risk_score) || 50;
   const storm = parseFloat(project.storm_risk_score) || 30;
-  const wildfire = parseFloat(project.wildfire_risk_score) || 20;
 
   let floodScore = Math.max(0, 100 - flood);
   let heatScore = Math.max(0, 100 - heat);
   let stormScore = Math.max(0, 100 - storm * 0.8);
-  let weatherScore = Math.max(0, 100 - (storm + wildfire) / 2);
 
   if (flood > 60 && !project.adaptation_measures_present) {
     explanations.negative.push('High flood risk with no adaptation measures');
@@ -527,7 +548,10 @@ export function calculateClimateSiteResilience(project) {
     explanations.positive.push('Strong TCFD alignment (+5)');
   }
 
-  const score = floodScore * 0.25 + heatScore * 0.20 + stormScore * 0.20 + weatherScore * 0.20 + adaptScore * 0.15;
+  // Rebalanced weights after removing the phantom weatherScore (which was
+  // driven by wildfire_risk_score — never collected from the user).
+  //   flood 35%, heat 25%, storm 20%, adaptation 20%.
+  const score = floodScore * 0.35 + heatScore * 0.25 + stormScore * 0.20 + adaptScore * 0.20;
   return { score: Math.max(0, Math.min(100, Math.round(score))), explanations };
 }
 

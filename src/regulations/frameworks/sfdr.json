@@ -40,11 +40,19 @@
       "greenFinanceImpact": "Conventional financing only"
     }
   },
-  "paiIndicators": [
-    { "id": "ghg_emissions", "name": "GHG Emissions (Scope 1+2)", "mandatory": true },
-    { "id": "carbon_footprint", "name": "Carbon Footprint", "mandatory": true },
-    { "id": "energy_consumption", "name": "Energy Consumption Intensity", "mandatory": true },
-    { "id": "renewable_energy", "name": "Share of Non-Renewable Energy", "mandatory": true },
-    { "id": "water_emissions", "name": "Emissions to Water", "mandatory": false }
-  ]
+  "paiIndicators": {
+    "source": "Commission Delegated Regulation (EU) 2022/1288, Annex I, Table 1",
+    "note": "Indicators materially relevant for data centre project-level assessments. PAIs 3, 4, 6, 12, 14 are not addressed by this tool — they apply at portfolio/investee-company level.",
+    "addressed": [
+      { "paiNumber": 1,  "name": "GHG emissions (Scope 1, 2, 3)",                       "pillar": "Energy Efficiency + Renewable Energy", "mandatory": true },
+      { "paiNumber": 2,  "name": "Carbon footprint",                                    "pillar": "Energy Efficiency + Renewable Energy", "mandatory": true },
+      { "paiNumber": 5,  "name": "Share of non-renewable energy consumption/production", "pillar": "Energy Efficiency + Renewable Energy", "mandatory": true },
+      { "paiNumber": 7,  "name": "Activities negatively affecting biodiversity-sensitive areas", "pillar": "Governance & Social", "mandatory": true },
+      { "paiNumber": 8,  "name": "Emissions to water",                                  "pillar": "Water Efficiency",                      "mandatory": true },
+      { "paiNumber": 9,  "name": "Hazardous waste and radioactive waste ratio",         "pillar": "Circular Economy",                      "mandatory": true },
+      { "paiNumber": 10, "name": "Violations of UN Global Compact / OECD Guidelines for MNEs", "pillar": "Governance & Social", "mandatory": true },
+      { "paiNumber": 11, "name": "Lack of processes to monitor UNGC / OECD compliance", "pillar": "Governance & Social", "mandatory": true },
+      { "paiNumber": 13, "name": "Board gender diversity",                              "pillar": "Governance & Social (supplementary)", "mandatory": true }
+    ]
+  }
 }
