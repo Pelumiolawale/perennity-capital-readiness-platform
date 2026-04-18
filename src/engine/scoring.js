@@ -19,10 +19,13 @@ export const REGION_THRESHOLDS = Object.fromEntries(
   Object.entries(RT).map(([r, v]) => [r, { pue: v.pue.target, renewableMin: v.renewableMin, wue: v.wue.target }])
 );
 
+// Unified 4-band readiness model (v3.1). Matches the PDF band labels
+// so that Results page, Excel, PDF, and Airtable all use the same bands.
 export const READINESS_BANDS = [
-  { min: 80, label: "Green Ready", color: "#1B6B4A" },
-  { min: 60, label: "Needs Optimisation", color: "#B8860B" },
-  { min: 0,  label: "High Risk", color: "#A63D2F" },
+  { min: 75, label: "Capital Ready",        color: "#4ECDA4" },
+  { min: 55, label: "Conditionally Ready",  color: "#B8860B" },
+  { min: 35, label: "Development Stage",    color: "#2E4057" },
+  { min: 0,  label: "Pre-Development",      color: "#A63D2F" },
 ];
 
 // ── SFDR classification ──────────────────────────────────────
@@ -110,19 +113,37 @@ export function determineEuTaxonomyAlignment(project) {
     { name: 'Climate risk assessment conducted', met: !!project.adaptation_measures_present || !!project.business_continuity_plan_ready },
   ];
 
+  // DNSH per EU 2020/852 Art 17 + Annexes I–VI
+  //   Obj 1 Climate Mitigation — self-referential: satisfied by the substantial
+  //     contribution itself (Activity 8.1 IS a climate-mitigation activity).
+  //   Obj 2 Climate Adaptation — requires physical risk assessment AND
+  //     adaptation measures (was: adaptation only).
+  //   Obj 3 Water — WUE computed via CNDCP in Fix 3.4b; for now, keep flat
+  //     threshold but reference project.wue correctly.
+  //   Obj 4 Circular Economy — wired to dnsh_weee_compliance (was: hard-coded true).
+  //   Obj 5 Pollution — low-GWP refrigerants; backup/onsite AND-check (was ||).
+  //   Obj 6 Biodiversity — site outside protected areas (was: adaptation).
   const dnsh = {
+    mitigation: { label: 'Climate Change Mitigation (self-referential)', met: true },
+    climate: { label: euTaxonomy.dnsh.climateAdaptation.label, met: !!project.dnsh_climate_vulnerability && !!project.adaptation_measures_present },
     water: { label: euTaxonomy.dnsh.water.label, met: !project.wue || parseFloat(project.wue) <= euTaxonomy.dnsh.water.wueThreshold || !!project.water_recycling_included },
-    pollution: { label: euTaxonomy.dnsh.pollution.label, met: project.backup_power_type !== 'diesel' || project.onsite_generation_type !== 'gas' },
-    biodiversity: { label: euTaxonomy.dnsh.biodiversity.label, met: !!project.adaptation_measures_present },
-    circular: { label: euTaxonomy.dnsh.circularEconomy.label, met: true },
-    climate: { label: euTaxonomy.dnsh.climateAdaptation.label, met: !!project.adaptation_measures_present },
+    circular: { label: euTaxonomy.dnsh.circularEconomy.label, met: !!project.dnsh_weee_compliance },
+    pollution: { label: euTaxonomy.dnsh.pollution.label, met: !!project.dnsh_low_gwp_refrigerants && project.backup_power_type !== 'diesel' && project.onsite_generation_type !== 'gas' },
+    biodiversity: { label: euTaxonomy.dnsh.biodiversity.label, met: !!project.dnsh_protected_areas },
+  };
+
+  // Minimum Social Safeguards per EU 2020/852 Article 18 — separate gate.
+  const minimumSafeguards = {
+    humanRights: { label: 'Human rights due diligence (UNGPs, OECD MNEs)', met: !!project.dnsh_human_rights_dd },
+    labour: { label: 'Supply chain labour standards (ILO)', met: !!project.dnsh_supply_chain_labour },
   };
 
   const substantialMet = criteria.every(c => c.met);
   const dnshMet = Object.values(dnsh).every(d => d.met);
-  const aligned = substantialMet && dnshMet;
+  const safeguardsMet = Object.values(minimumSafeguards).every(s => s.met);
+  const aligned = substantialMet && dnshMet && safeguardsMet;
 
-  return { aligned, criteria, dnsh };
+  return { aligned, criteria, dnsh, minimumSafeguards };
 }
 
 // ── PUE scoring — EU Taxonomy Climate Delegated Act (EU) 2021/2139, Annex I, Activity 8.1
@@ -550,9 +571,17 @@ export function evaluateHardStops(project, region, countryProfile) {
     stops.push({ reason: 'Missing critical technical data', cap: 55 });
   }
 
+  // Hard stop: pursuing a green-claim financing label without EU Taxonomy
+  // alignment AND with very low renewable share. Enum list reflects current
+  // Tab 5 dropdown values (not the stale legacy keys).
+  const greenClaimLabels = [
+    'sfdr_article_9', 'eu_taxonomy_8_1', 'eugbs', 'icma_green_bond',
+    'uk_sdr_focus', 'uk_sdr_improvers', 'uk_sdr_impact', 'uk_sdr_mixed',
+    'eib', 'ifc', 'ebrd', 'afdb',
+  ];
   if (regionData.hardStops?.greenRaiseWithoutTaxonomy) {
     const hs = regionData.hardStops.greenRaiseWithoutTaxonomy;
-    if (project.target_financing_label && ['green', 'article_8_9', 'sustainable'].includes(project.target_financing_label) &&
+    if (project.target_financing_label && greenClaimLabels.includes(project.target_financing_label) &&
         !project.taxonomy_alignment_claimed &&
         (parseFloat(project.renewable_energy_share_pct) || 0) < hs.minRenewable) {
       stops.push({ reason: hs.reason, cap: hs.cap });

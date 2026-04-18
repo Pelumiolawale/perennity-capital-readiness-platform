@@ -153,10 +153,12 @@ function getCountryProfile(country) {
   return COUNTRY_PROFILES[country] || DEFAULT_COUNTRY_PROFILE;
 }
 
+// Unified 4-band readiness model (v3.1). Must match engine READINESS_BANDS.
 const READINESS_BANDS = [
-  { min: 80, label: "Green Ready", color: COLORS.green },
-  { min: 60, label: "Needs Optimization", color: COLORS.amber },
-  { min: 0, label: "High Risk", color: COLORS.red },
+  { min: 75, label: "Capital Ready",        color: COLORS.green },
+  { min: 55, label: "Conditionally Ready",  color: COLORS.amber },
+  { min: 35, label: "Development Stage",    color: COLORS.purple },
+  { min: 0,  label: "Pre-Development",      color: COLORS.red },
 ];
 
 // ─── STYLE HELPERS ──────────────────────────────────────────
