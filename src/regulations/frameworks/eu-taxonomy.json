@@ -10,16 +10,23 @@
     "objective": "Climate Change Mitigation",
     "criteria": [
       {
+        "id": "pue_new_post_2025",
+        "name": "PUE ≤ 1.2 (new facilities placed in service from 2026)",
+        "threshold": 1.2,
+        "appliesTo": "new_build_post_2025",
+        "citation": "Annex I, Section 8.1, paragraph 1(a) — Perennity v3.1 best-in-class"
+      },
+      {
         "id": "pue_new",
-        "name": "PUE ≤ 1.5 (new facilities from 2026)",
-        "threshold": 1.5,
+        "name": "PUE ≤ 1.3 (new facilities, Perennity v3.1)",
+        "threshold": 1.3,
         "appliesTo": "new_build",
-        "citation": "Annex I, Section 8.1, paragraph 1(a)"
+        "citation": "Annex I, Section 8.1, paragraph 1(a) — v3.1 tightened"
       },
       {
         "id": "pue_existing",
-        "name": "PUE ≤ 1.8 (existing facilities by 2027)",
-        "threshold": 1.8,
+        "name": "PUE ≤ 1.5 (existing facilities)",
+        "threshold": 1.5,
         "appliesTo": "existing",
         "citation": "Annex I, Section 8.1, paragraph 1(b)"
       },

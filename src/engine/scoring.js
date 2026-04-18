@@ -97,12 +97,19 @@ export function determineUkSdrEligibility(project, score) {
 }
 
 // ── EU Taxonomy alignment ─────────────────────────────────────
-export function determineEuTaxonomyAlignment(project) {
+// Stage-based new-build heuristic per Activity 8.1 (applies to any DC
+// placed in service from 2026). Shared with calculatePueScore.
+function isNewBuildStage(project) {
+  const s = project.development_stage;
+  return s === 'concept' || s === 'site_shortlisted' || s === 'site_selected' || s === 'pre_permitting';
+}
+
+export function determineEuTaxonomyAlignment(project, countryProfile) {
   const pue = parseFloat(project.pue) || 999;
   const renewPct = parseFloat(project.renewable_energy_share_pct) || 0;
   const sc = euTaxonomy.substantialContribution;
 
-  const pueThreshold = project.is_new_build
+  const pueThreshold = isNewBuildStage(project)
     ? sc.criteria.find(c => c.id === 'pue_new').threshold
     : sc.criteria.find(c => c.id === 'pue_existing').threshold;
 
@@ -123,10 +130,16 @@ export function determineEuTaxonomyAlignment(project) {
   //   Obj 4 Circular Economy — wired to dnsh_weee_compliance (was: hard-coded true).
   //   Obj 5 Pollution — low-GWP refrigerants; backup/onsite AND-check (was ||).
   //   Obj 6 Biodiversity — site outside protected areas (was: adaptation).
+  // DNSH Obj 3 Water uses the site-specific CNDCP WUEmax = 0.4 × K1 × K2 × K3
+  // rather than a flat WUE ≤ 1.0 m³/MWh, per EUDCA WUE White Paper Oct 2024.
+  const wueVal = parseFloat(project.wue);
+  const { wueMax } = calculateWueMax(project, null, countryProfile || null);
+  const waterMet = !project.wue || (isFinite(wueVal) && wueVal <= wueMax) || !!project.water_recycling_included;
+
   const dnsh = {
     mitigation: { label: 'Climate Change Mitigation (self-referential)', met: true },
     climate: { label: euTaxonomy.dnsh.climateAdaptation.label, met: !!project.dnsh_climate_vulnerability && !!project.adaptation_measures_present },
-    water: { label: euTaxonomy.dnsh.water.label, met: !project.wue || parseFloat(project.wue) <= euTaxonomy.dnsh.water.wueThreshold || !!project.water_recycling_included },
+    water: { label: `${euTaxonomy.dnsh.water.label} (CNDCP WUEmax ${wueMax.toFixed(2)} m³/MWh)`, met: waterMet },
     circular: { label: euTaxonomy.dnsh.circularEconomy.label, met: !!project.dnsh_weee_compliance },
     pollution: { label: euTaxonomy.dnsh.pollution.label, met: !!project.dnsh_low_gwp_refrigerants && project.backup_power_type !== 'diesel' && project.onsite_generation_type !== 'gas' },
     biodiversity: { label: euTaxonomy.dnsh.biodiversity.label, met: !!project.dnsh_protected_areas },
@@ -147,38 +160,41 @@ export function determineEuTaxonomyAlignment(project) {
 }
 
 // ── PUE scoring — EU Taxonomy Climate Delegated Act (EU) 2021/2139, Annex I, Activity 8.1
+// Bands per Perennity methodology v3.1:
+//   New-build:  ≤1.2  → 95 (post-2025 best-in-class)
+//               ≤1.3  → 85 (v3.1 new-build gate — Activity 8.1 ¶1(a))
+//               ≤1.5  → 55 (fail-for-new-build; allowed only for existing)
+//               >1.5  → 10 (fail)
+//   Existing:   ≤1.5  → 85 (Activity 8.1 ¶1(b))
+//               ≤1.8  → 50 (transitional — improvement plan required)
+//               >1.8  → 15 (fail)
+// Bands are anchored to absolute PUE per Activity 8.1. The country PUE
+// target (COUNTRY_PROFILES[country].pueTarget) informs an advisory flag
+// but does not define the scoring bands.
 export function calculatePueScore(pue, project, region, countryProfile) {
-  const isNew = project.development_stage === 'concept' || project.development_stage === 'site_shortlisted' || project.development_stage === 'site_selected' || project.development_stage === 'pre_permitting' || project.is_new_build;
+  const isNew = isNewBuildStage(project);
   const pueTarget = countryProfile?.pueTarget || 1.5;
   let score, label, taxonomyGate;
   const flags = [];
 
   if (isNew) {
-    // Score 100 if at or below country PUE target, scale down proportionally above it
-    if (pue <= pueTarget) {
-      // Further differentiate within the passing range
-      if (pue <= 1.2) { score = 95; label = 'Capital ready'; taxonomyGate = 'Pass — meets post-2025 new build threshold'; }
-      else if (pue <= 1.3) { score = 85; label = 'Capital ready'; taxonomyGate = `Pass — meets country PUE target (${pueTarget})`; }
-      else { score = 80; label = 'Capital ready'; taxonomyGate = `Pass — within country PUE target (${pueTarget})`; }
-    } else if (pue <= pueTarget + 0.2) {
-      score = Math.max(40, Math.round(80 - ((pue - pueTarget) / 0.2) * 30));
-      label = 'Conditional';
-      taxonomyGate = `Above country PUE target (${pueTarget}) — improvement needed`;
-      flags.push(`Gap vs country PUE target (≤${pueTarget}): ${(pue - pueTarget).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.`);
-    } else if (pue <= pueTarget + 0.5) {
-      score = 32; label = 'Development'; taxonomyGate = 'Fail';
-    } else {
-      score = 10; label = 'Pre-development'; taxonomyGate = 'Fail';
-    }
+    if (pue <= 1.2)      { score = 95; label = 'Capital ready';   taxonomyGate = 'Pass — post-2025 new-build best-in-class (≤1.2)'; }
+    else if (pue <= 1.3) { score = 85; label = 'Capital ready';   taxonomyGate = 'Pass — meets Activity 8.1 new-build threshold (≤1.3)'; }
+    else if (pue <= 1.5) { score = 55; label = 'Conditional';     taxonomyGate = 'Fail for new-build — PUE 1.3 < x ≤ 1.5 only permitted for existing facilities'; }
+    else                 { score = 10; label = 'Pre-development'; taxonomyGate = 'Fail — exceeds Activity 8.1 new-build threshold'; }
   } else {
-    if (pue <= pueTarget + 0.2) { score = 77; label = 'Capital ready'; taxonomyGate = 'Pass — existing DC threshold'; }
-    else if (pue <= pueTarget + 0.5) { score = 47; label = 'Conditional'; taxonomyGate = 'Conditional — improvement plan required'; }
-    else { score = 15; label = 'Development'; taxonomyGate = 'Fail'; }
+    if (pue <= 1.5)      { score = 85; label = 'Capital ready';   taxonomyGate = 'Pass — meets Activity 8.1 existing-DC threshold (≤1.5)'; }
+    else if (pue <= 1.8) { score = 50; label = 'Conditional';     taxonomyGate = 'Transitional — improvement plan required (≤1.8)'; }
+    else                 { score = 15; label = 'Pre-development'; taxonomyGate = 'Fail — exceeds Activity 8.1 existing-DC threshold'; }
   }
 
-  // Flag if above EU new-build threshold regardless of country
-  if (pue > 1.3 && flags.length === 0) {
-    flags.push(`Gap vs EU new-build threshold (≤1.3): ${(pue - 1.3).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of project location.`);
+  // Advisory flag: country PUE target delta (informational only)
+  if (pue > pueTarget) {
+    flags.push(`Your country's recommended PUE target is ≤${pueTarget}. Current PUE ${pue} exceeds this by ${(pue - pueTarget).toFixed(2)}.`);
+  }
+  // Advisory flag: EU Activity 8.1 new-build absolute threshold
+  if (isNew && pue > 1.3) {
+    flags.push(`Gap vs EU Activity 8.1 new-build threshold (≤1.3): ${(pue - 1.3).toFixed(2)}. Projects seeking EU-classified capital must meet EU thresholds regardless of location.`);
   }
 
   return { score, label, taxonomyGate, flags };
@@ -691,7 +707,7 @@ export function runAssessment(project, region, countryProfile) {
 
   const sfdr = determineSfdrClassification(project, region);
   const sdr = region === 'UK' ? determineUkSdrEligibility(project, finalScore) : [];
-  const taxonomy = determineEuTaxonomyAlignment(project);
+  const taxonomy = determineEuTaxonomyAlignment(project, countryProfile);
 
   const allExplanations = {
     positive: [...saAdjusted.explanations.positive, ...epv.explanations.positive, ...wre.explanations.positive, ...csr.explanations.positive, ...dfr.explanations.positive],

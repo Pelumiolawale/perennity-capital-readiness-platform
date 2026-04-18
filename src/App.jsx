@@ -777,7 +777,7 @@ export default function App() {
     const result = runScoringEngine(flatProject, region, countryProfile);
     // Augment with regulatory classifications
     result.sfdr = determineSfdrClassification(flatProject, region);
-    result.taxonomy = determineEuTaxonomyAlignment(flatProject);
+    result.taxonomy = determineEuTaxonomyAlignment(flatProject, countryProfile);
     result.sdr = determineUkSdrEligibility(flatProject, result.capitalReadinessScore);
     setAssessments(prev => ({ ...prev, [currentProject.id]: result }));
     // Save to IndexedDB history
@@ -909,7 +909,7 @@ export default function App() {
                   const sampleCountryProfile = getCountryProfile(sampleProject.country);
                   const result = runScoringEngine(sampleProject, region, sampleCountryProfile);
                   result.sfdr = determineSfdrClassification(sampleProject, region);
-                  result.taxonomy = determineEuTaxonomyAlignment(sampleProject);
+                  result.taxonomy = determineEuTaxonomyAlignment(sampleProject, sampleCountryProfile);
                   result.sdr = determineUkSdrEligibility(sampleProject, result.capitalReadinessScore);
                   setProjects(prev => prev.some(p => p.id === "sample-demo") ? prev : [...prev, { ...sampleProject, status: "assessed", created_at: new Date().toISOString() }]);
                   setAssessments(prev => ({ ...prev, [sampleProject.id]: result }));
