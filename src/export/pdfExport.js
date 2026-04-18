@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { FINANCING_LABELS, getApplicableFrameworks } from '../regulations/frameworks/financing-labels.js';
 
 // ============================================================
 // PERENNITY BRIDGE — 9-PAGE PDF REPORT GENERATOR
@@ -23,26 +24,6 @@ const PH = 297;
 const M = 14;   // margin
 const CW = PW - 2 * M; // content width
 const TOTAL_PAGES = 9;
-
-const FINANCING_LABELS = {
-  sfdr_article_8: 'SFDR Article 8 — promotes environmental/social characteristics',
-  sfdr_article_9: 'SFDR Article 9 — sustainable investment objective',
-  eu_taxonomy_8_1: 'EU Taxonomy aligned — Activity 8.1 (climate change mitigation)',
-  eugbs: 'European Green Bond (EuGBS) — Regulation (EU) 2023/2631',
-  icma_green_bond: 'ICMA Green Bond Principles',
-  icma_slb: 'ICMA Sustainability-Linked Bond Principles',
-  icma_social_bond: 'ICMA Social Bond Principles',
-  uk_sdr_focus: 'UK SDR — Sustainability Focus',
-  uk_sdr_improvers: 'UK SDR — Sustainability Improvers',
-  uk_sdr_impact: 'UK SDR — Sustainability Impact',
-  uk_sdr_mixed: 'UK SDR — Sustainability Mixed Goals',
-  eib: 'EIB green finance', ifc: 'IFC / World Bank green finance',
-  ebrd: 'EBRD green finance', afdb: 'AfDB green finance',
-  green: 'Green', sustainable: 'Sustainable', conventional: 'Conventional',
-  article_8_9: 'Article 8/9 Style',
-};
-
-// Applicable Regulatory Frameworks are driven by target_financing_label — see Fix 3.2
 
 function bandInfo(score) {
   if (score >= 75) return { label: 'CAPITAL READY', color: TEAL };
@@ -269,7 +250,47 @@ function drawExecutiveSummary(doc, project, assessment) {
   doc.text(labelVal, M + 5 + doc.getTextWidth('Target label: '), y + 8.5);
   y += 18;
 
-  // Applicable Frameworks — wired to target_financing_label in Fix 3.2
+  // Applicable Regulatory Frameworks — driven by target_financing_label
+  const fw = getApplicableFrameworks(project.target_financing_label);
+  const allFw = [...fw.primary, ...fw.secondary];
+  if (allFw.length > 0) {
+    const blockH = 10 + (fw.primary.length * 5) + (fw.primary.length && fw.secondary.length ? 5 : 0) + (fw.secondary.length * 5) + 2;
+    doc.setFillColor(232, 245, 239);
+    doc.roundedRect(M, y, CW, blockH, 2, 2, 'F');
+    doc.setDrawColor(...TEAL);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(M, y, CW, blockH, 2, 2, 'S');
+    doc.setTextColor(...NAVY);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Applicable regulatory frameworks', M + 5, y + 5);
+    let ry = y + 10;
+    doc.setFontSize(7.5);
+    if (fw.primary.length > 0) {
+      doc.setTextColor(...NAVY);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Primary:', M + 7, ry);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...DARK_GREY);
+      fw.primary.forEach((f, i) => {
+        doc.text(`• ${f}`, M + 22, ry);
+        ry += 5;
+      });
+    }
+    if (fw.secondary.length > 0) {
+      if (fw.primary.length > 0) ry += 0;
+      doc.setTextColor(...NAVY);
+      doc.setFont('helvetica', 'bold');
+      doc.text(fw.labelSelected ? 'Cross-check:' : 'Consider:', M + 7, ry);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...DARK_GREY);
+      fw.secondary.forEach((f, i) => {
+        doc.text(`• ${f}`, M + 28, ry);
+        ry += 5;
+      });
+    }
+    y += blockH + 2;
+  }
   y += 4;
 
   // Disclaimer

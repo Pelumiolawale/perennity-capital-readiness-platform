@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { FINANCING_LABELS, getApplicableFrameworks } from '../regulations/frameworks/financing-labels.js';
 
 function ws(rows) { return XLSX.utils.aoa_to_sheet(rows); }
 function widths(arr) { return arr.map(w => ({ wch: w })); }
@@ -6,6 +7,7 @@ function widths(arr) { return arr.map(w => ({ wch: w })); }
 export function downloadExcel(project, assessment, assessmentId) {
   const wb = XLSX.utils.book_new();
   const date = new Date().toLocaleDateString('en-GB');
+  const fw = getApplicableFrameworks(project.target_financing_label);
 
   // ── Summary ───────────────────────────────────────────────
   const wsSummary = ws([
@@ -14,6 +16,7 @@ export function downloadExcel(project, assessment, assessmentId) {
     ['Project', project.project_name || '—'],
     ['Region', project.region || '—'],
     ['Country', project.country || '—'],
+    ['Target Financing Label', FINANCING_LABELS[project.target_financing_label] || '—'],
     ['Assessed', date],
     ['Assessment ID', assessmentId],
     [],
@@ -46,6 +49,13 @@ export function downloadExcel(project, assessment, assessmentId) {
 
   // ── Regulatory Analysis ───────────────────────────────────
   const regRows = [
+    ['APPLICABLE REGULATORY FRAMEWORKS'],
+    ['Target Financing Label', fw.labelSelected ? fw.labelName : '(not selected)'],
+    [],
+    ['Tier', 'Framework'],
+    ...fw.primary.map(f => ['Primary', f]),
+    ...fw.secondary.map(f => [fw.labelSelected ? 'Cross-check' : 'Consider', f]),
+    [],
     ['SFDR CLASSIFICATION'],
     ['Classification', assessment.sfdr?.classification || '—'],
     ['Label', assessment.sfdr?.label || '—'],

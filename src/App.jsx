@@ -8,6 +8,7 @@ import { downloadPdf } from "./export/pdfExport.js";
 import { downloadExcel } from "./export/excelExport.js";
 import { generateNarrative, answerRegulatoryQuestion } from "./engine/aiAnalysis.js";
 import { saveAssessment, listAssessments, loadAssessmentById, deleteAssessment, saveDraft, loadDraft, clearDraft } from "./hooks/useAssessmentStore.js";
+import { getApplicableFrameworks, flattenFrameworks, FINANCING_LABELS } from "./regulations/frameworks/financing-labels.js";
 
 // ============================================================
 // PERENNITY CAPITAL READINESS PLATFORM — FULL MVP APPLICATION
@@ -784,9 +785,8 @@ export default function App() {
     setScreen("app");
     setNavItem("results");
 
-    // Send to Airtable Assessments table.
-    // Applicable Frameworks field is now driven by target_financing_label
-    // (see Fix 3.2) — wired below once the helper is introduced.
+    // Send to Airtable Assessments table. Applicable Frameworks is derived
+    // from target_financing_label via the shared financing-labels helper.
     sendToAirtable("Assessments", {
       "Project Name": currentProject.project_name || "Untitled",
       "Capital Readiness Score": result.capitalReadinessScore,
@@ -797,7 +797,8 @@ export default function App() {
       "Region Group": currentProject.projectRegionGroup,
       "Water Stress Band": countryProfile.waterStress,
       "Grid Carbon Intensity": countryProfile.gridCarbon,
-      "Target Financing Label": currentProject.target_financing_label || "",
+      "Target Financing Label": FINANCING_LABELS[currentProject.target_financing_label] || "",
+      "Applicable Frameworks": flattenFrameworks(currentProject.target_financing_label),
       "Development Stage": currentProject.development_stage,
       "PUE": flatProject.pue,
       "Planned Capacity MW": flatProject.planned_capacity_mw,
@@ -1479,10 +1480,6 @@ export default function App() {
     );
   }
 
-  // Applicable Regulatory Frameworks are now driven by the user's
-  // selected Target Financing Label (Tab 5) — see Fix 3.2.
-
-
   // ─── MAIN APP SHELL ───────────────────────────────────────
   const PILLAR_NAMES = {
     sa: { name: "Sustainability Alignment", icon: "shield" },
@@ -1747,7 +1744,44 @@ export default function App() {
             </div>
           )}
 
-          {/* Applicable Regulatory Frameworks — wired to target_financing_label in Fix 3.2 */}
+          {/* Applicable Regulatory Frameworks — driven by Tab 5 Target Financing Label */}
+          {(() => {
+            const fw = getApplicableFrameworks(currentProject?.target_financing_label);
+            return (
+              <Card style={{ marginTop: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Applicable Regulatory Frameworks</h3>
+                {fw.labelSelected ? (
+                  <p style={{ fontSize: 13, color: COLORS.textSecondary, marginBottom: 16 }}>
+                    Based on your selected target financing label: <strong>{fw.labelName}</strong>
+                  </p>
+                ) : (
+                  <p style={{ fontSize: 13, color: COLORS.textSecondary, marginBottom: 16 }}>
+                    No target financing label selected. The following frameworks are commonly considered for data centre projects and may apply depending on your final capital sourcing strategy.
+                  </p>
+                )}
+                {fw.primary.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.accent, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>Primary framework{fw.primary.length > 1 ? "s" : ""}</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {fw.primary.map((f, i) => (
+                        <div key={i} style={{ padding: "6px 14px", borderRadius: 6, background: COLORS.accent, fontSize: 13, fontWeight: 500, color: "#FFFFFF" }}>{f}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {fw.secondary.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textSecondary, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>{fw.labelSelected ? "Cross-check against" : "Consider"}</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {fw.secondary.map((f, i) => (
+                        <div key={i} style={{ padding: "6px 14px", borderRadius: 6, background: COLORS.accentSubtle, border: `1px solid ${COLORS.accent}33`, fontSize: 13, fontWeight: 500, color: COLORS.accent }}>{f}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })()}
 
           {/* AI Narrative Panel */}
           {(aiLoading || aiNarrative) && (
