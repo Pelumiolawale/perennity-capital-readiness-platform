@@ -1754,6 +1754,25 @@ export default function App() {
             );
           })()}
 
+          {/* DNSH & Minimum Social Safeguards checklist */}
+          {currentAssessment.dnsh?.details && (
+            <Card style={{ marginTop: 24 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>DNSH & Minimum Social Safeguards</h3>
+              <p style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>EU Taxonomy Article 18 + DNSH requirements per 2020/852. Score: <strong>{currentAssessment.dnsh.score}/100</strong></p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {currentAssessment.dnsh.details.map((d, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 10, borderRadius: 8, background: d.met ? COLORS.greenBg : COLORS.redBg, border: `1px solid ${d.met ? COLORS.green : COLORS.red}22` }}>
+                    <Icon name={d.met ? "check" : "alert"} size={14} color={d.met ? COLORS.green : COLORS.red} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.text }}>{d.label}</div>
+                      <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{d.citation}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* AI Narrative Panel */}
           {(aiLoading || aiNarrative) && (
             <Card style={{ marginTop: 24, background: COLORS.accentSubtle, borderColor: `${COLORS.accent}33` }}>

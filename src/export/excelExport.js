@@ -69,6 +69,10 @@ export function downloadExcel(project, assessment, assessmentId) {
     [],
     ['DNSH Objective', 'Status'],
     ...Object.values(assessment.taxonomy?.dnsh || {}).map(d => [d.label, d.met ? '✓ Compliant' : '✗ Gap']),
+    [],
+    ['DNSH & MINIMUM SAFEGUARDS CHECKLIST'],
+    ['Checklist item', 'Confirmed?', 'Reference'],
+    ...(assessment.dnsh?.details || []).map(d => [d.label, d.met ? '✓ Yes' : '✗ No', d.citation]),
   ];
 
   if (assessment.sdr && assessment.sdr.length > 0) {

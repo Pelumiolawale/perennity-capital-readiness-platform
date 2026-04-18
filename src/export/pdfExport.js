@@ -349,7 +349,11 @@ function getPillarList(assessment) {
       gapNote: 'Complete the DNSH checklist and social safeguards.',
       regulatoryBasis: { objective: 'DNSH Objectives 2, 4, 5, 6 + Article 18', sfdrPai: 'PAI 7, 10, 11 — Biodiversity, UNGC/OECD', source: 'EU Taxonomy Regulation (EU) 2020/852, Article 18' },
       thresholds: [['Climate vulnerability', '2 pts', 'DNSH Obj 2'], ['Protected areas exclusion', '2 pts', 'DNSH Obj 6'], ['Human rights DD', '2 pts', 'Art 18 / UNGPs']],
-      inputs: a.pillarDetails?.csr?.explanations ? [...a.pillarDetails.csr.explanations.positive.slice(0, 3).map(e => [e, '', '']), ...a.pillarDetails.csr.explanations.negative.slice(0, 2).map(e => [e, '', ''])] : [],
+      inputs: a.dnsh?.details
+        ? a.dnsh.details.map(d => [d.label, d.met ? '✓ Confirmed' : '✗ Not confirmed', d.citation])
+        : (a.pillarDetails?.csr?.explanations
+            ? [...a.pillarDetails.csr.explanations.positive.slice(0, 3).map(e => [e, '', '']), ...a.pillarDetails.csr.explanations.negative.slice(0, 2).map(e => [e, '', ''])]
+            : []),
     },
     {
       key: 'dfr', name: 'Circular Economy & Waste', score: a.subscores.dfr,

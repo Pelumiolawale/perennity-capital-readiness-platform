@@ -243,28 +243,29 @@ export function calculateRenewableTierScore(renewPct, project) {
 // ── DNSH governance scoring
 export function calculateDnshGovernance(project) {
   const items = [
-    { key: 'dnsh_climate_vulnerability', points: 2, label: 'Climate vulnerability assessment (DNSH Obj 2)' },
-    { key: 'dnsh_protected_areas', points: 2, label: 'Site outside protected areas (DNSH Obj 6)' },
-    { key: 'dnsh_low_gwp_refrigerants', points: 1, label: 'Low-GWP refrigerants (DNSH Obj 5)' },
-    { key: 'dnsh_weee_compliance', points: 1, label: 'WEEE end-of-life plan (DNSH Obj 4)' },
-    { key: 'dnsh_human_rights_dd', points: 2, label: 'Human rights due diligence (Art 18)' },
-    { key: 'dnsh_supply_chain_labour', points: 1, label: 'Supply chain labour policy (Art 18)' },
+    { key: 'dnsh_climate_vulnerability', points: 2, label: 'Climate vulnerability assessment', citation: 'DNSH Obj 2 — Climate adaptation' },
+    { key: 'dnsh_protected_areas',       points: 2, label: 'Site outside protected areas',     citation: 'DNSH Obj 6 — Biodiversity' },
+    { key: 'dnsh_low_gwp_refrigerants',  points: 1, label: 'Low-GWP refrigerants',             citation: 'DNSH Obj 5 — Pollution (F-Gas 517/2014)' },
+    { key: 'dnsh_weee_compliance',       points: 1, label: 'WEEE end-of-life plan',            citation: 'DNSH Obj 4 — Circular (Dir 2012/19/EU)' },
+    { key: 'dnsh_human_rights_dd',       points: 2, label: 'Human rights due diligence',       citation: 'Art 18 — UNGPs / OECD MNEs' },
+    { key: 'dnsh_supply_chain_labour',   points: 1, label: 'Supply chain labour policy',       citation: 'Art 18 — ILO Declaration' },
   ];
 
   let totalPoints = 0;
   const maxPoints = 9;
   const explanations = { positive: [], negative: [] };
-
-  items.forEach(item => {
-    if (project[item.key]) {
+  const details = items.map(item => {
+    const met = !!project[item.key];
+    if (met) {
       totalPoints += item.points;
       explanations.positive.push(`${item.label} — confirmed (+${item.points})`);
     } else {
       explanations.negative.push(`${item.label} — not confirmed`);
     }
+    return { key: item.key, label: item.label, citation: item.citation, points: item.points, met };
   });
 
-  return { score: Math.round((totalPoints / maxPoints) * 100), explanations };
+  return { score: Math.round((totalPoints / maxPoints) * 100), explanations, details };
 }
 
 // ── Pillar scoring functions ──────────────────────────────────
@@ -689,6 +690,7 @@ export function runAssessment(project, region, countryProfile) {
       csr: { ...csr, weight: weights.csr },
       dfr: { ...dfr, weight: weights.dfr, dataCompleteness: dfr.dataCompleteness },
     },
+    dnsh: { score: dnsh.score, details: dnsh.details },
     region,
     weights,
     assessedAt: new Date().toISOString(),
