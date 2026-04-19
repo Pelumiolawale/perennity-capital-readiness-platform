@@ -5,3 +5,7 @@ dist
 *.local
 .DS_Store
 src/regulations/proprietary/
+
+# Claude Code per-developer agent state (session transcripts,
+# preview launch config, tool permissions). Never commit.
+.claude/
