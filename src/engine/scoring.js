@@ -8,6 +8,7 @@ import regionThresholds from '../regulations/frameworks/region-thresholds.json';
 import sfdrFramework from '../regulations/frameworks/sfdr.json';
 import ukSdrFramework from '../regulations/frameworks/uk-sdr.json';
 import euTaxonomy from '../regulations/frameworks/eu-taxonomy.json';
+import { evaluateLabel } from './labelEvaluation.js';
 
 const RT = regionThresholds.regions;
 const SUPPORTED_REGIONS = Object.keys(RT);
@@ -754,6 +755,12 @@ export function runAssessment(project, region, countryProfile) {
     negative: [...saAdjusted.explanations.negative, ...epv.explanations.negative, ...wre.explanations.negative, ...csr.explanations.negative, ...dfr.explanations.negative],
   };
 
+  // Pre-assemble the partial assessment object so label evaluation can
+  // read `taxonomy` and `dnsh` alongside the intake (`project`). Pure,
+  // doesn't touch scoring thresholds — interprets existing outputs.
+  const preLabelAssessment = { taxonomy, dnsh: { score: dnsh.score, details: dnsh.details } };
+  const labelEvaluation = evaluateLabel(preLabelAssessment, project);
+
   return {
     capitalReadinessScore: finalScore,
     confidenceScore: confidence,
@@ -768,6 +775,7 @@ export function runAssessment(project, region, countryProfile) {
     sfdr,
     sdr,
     taxonomy,
+    labelEvaluation,
     pillarDetails: {
       sa: { ...saAdjusted, weight: weights.sa, dnshScore: dnsh.score },
       epv: { ...epv, weight: weights.epv },

@@ -491,6 +491,15 @@ const INITIAL_PROJECT = {
   target_financing_label: "", taxonomy_alignment_claimed: false,
   net_zero_commitment_present: false, sustainability_disclosures_ready: false,
   third_party_certification_target: "", carbon_reduction_strategy_present: false,
+  // EU Taxonomy substantial contribution objective (Activity 8.1 → CCM).
+  // Exposed only when target_financing_label = eu_taxonomy_8_1.
+  substantial_contribution_objective: "ccm",
+  // UK SDR label-specific evidence (optional — drives Results pass/fail).
+  sdr_focus_alignment_pct: "",
+  sdr_improvers_evidence_provided: false,
+  sdr_impact_theory_of_change: false,
+  sdr_impact_measurement_method: false,
+  sdr_impact_investor_additionality: false,
   // Delivery readiness
   financing_strategy_defined: false,
   investment_memo_ready: false, site_control_secured: false,
@@ -1269,6 +1278,53 @@ export default function App() {
                 </optgroup>
               </select>
             </FormField>
+            {d.target_financing_label === "eu_taxonomy_8_1" && (
+              <FormField label="Substantial Contribution Objective" help="Activity 8.1 (Data Processing, Hosting and Related Activities) per EU 2021/2139 Annex I prescribes Climate Change Mitigation. Alternative objectives are reserved for future DC activities.">
+                <select value={d.substantial_contribution_objective} onChange={e => updateDraft("substantial_contribution_objective", e.target.value)}>
+                  <option value="ccm">Climate Change Mitigation (CCM)</option>
+                  <option value="cca" disabled>Climate Change Adaptation — reserved</option>
+                  <option value="water" disabled>Sustainable Use of Water and Marine Resources — reserved</option>
+                  <option value="circular" disabled>Transition to a Circular Economy — reserved</option>
+                  <option value="pollution" disabled>Pollution Prevention and Control — reserved</option>
+                  <option value="biodiversity" disabled>Protection and Restoration of Biodiversity — reserved</option>
+                </select>
+              </FormField>
+            )}
+            {d.target_financing_label === "uk_sdr_focus" && (
+              <FormField label="% of assets meeting sustainability standard" help="FCA PS23/16 ESG 5.3.2R requires ≥70% of assets to meet a robust, evidence-based, absolute standard of sustainability.">
+                <input type="number" min="0" max="100" value={d.sdr_focus_alignment_pct} onChange={e => updateDraft("sdr_focus_alignment_pct", e.target.value)} placeholder="e.g. 75" />
+              </FormField>
+            )}
+            {d.target_financing_label === "uk_sdr_improvers" && (
+              <FormField label="Improvement pathway evidence provided?" help="FCA PS23/16 ESG 5.3.3R(2) — documented evidence assets have potential to meet an absolute sustainability standard over time.">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                  <input type="checkbox" checked={d.sdr_improvers_evidence_provided} onChange={e => updateDraft("sdr_improvers_evidence_provided", e.target.checked)} />
+                  <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.sdr_improvers_evidence_provided ? "Yes" : "No"}</span>
+                </div>
+              </FormField>
+            )}
+            {d.target_financing_label === "uk_sdr_impact" && (
+              <>
+                <FormField label="Theory of change documented?" help="FCA PS23/16 ESG 5.3.4R(2)">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                    <input type="checkbox" checked={d.sdr_impact_theory_of_change} onChange={e => updateDraft("sdr_impact_theory_of_change", e.target.checked)} />
+                    <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.sdr_impact_theory_of_change ? "Yes" : "No"}</span>
+                  </div>
+                </FormField>
+                <FormField label="Impact measurement method defined?" help="FCA PS23/16 ESG 5.3.4R(3)">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                    <input type="checkbox" checked={d.sdr_impact_measurement_method} onChange={e => updateDraft("sdr_impact_measurement_method", e.target.checked)} />
+                    <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.sdr_impact_measurement_method ? "Yes" : "No"}</span>
+                  </div>
+                </FormField>
+                <FormField label="Investor additionality identified?" help="FCA PS23/16 ESG 5.3.4R(4)">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
+                    <input type="checkbox" checked={d.sdr_impact_investor_additionality} onChange={e => updateDraft("sdr_impact_investor_additionality", e.target.checked)} />
+                    <span style={{ fontSize: 14, color: COLORS.textSecondary }}>{d.sdr_impact_investor_additionality ? "Yes" : "No"}</span>
+                  </div>
+                </FormField>
+              </>
+            )}
             <FormField label="Third-Party Certification Target">
               <select value={d.third_party_certification_target} onChange={e => updateDraft("third_party_certification_target", e.target.value)}>
                 <option value="">Select certification</option><option value="leed">LEED</option><option value="breeam">BREEAM</option><option value="nabers">NABERS</option><option value="green_star">Green Star</option><option value="estidama">Estidama</option><option value="none">None</option>
@@ -1742,6 +1798,24 @@ export default function App() {
             </div>
           )}
 
+          {/* Label Verdict Banner — driven by Tab 5 target_financing_label. Only renders for the 6 labels with encoded evaluators; other labels fall back to the generic score rings + DNSH below. */}
+          {a.labelEvaluation && (() => {
+            const le = a.labelEvaluation;
+            const verdictColor = le.verdict === "PASS" ? COLORS.green : le.verdict === "CONDITIONAL" ? COLORS.amber : COLORS.red;
+            const verdictBg = le.verdict === "PASS" ? COLORS.greenBg : le.verdict === "CONDITIONAL" ? COLORS.amberBg : COLORS.redBg;
+            return (
+              <div style={{ padding: 20, borderRadius: 12, background: verdictBg, border: `1px solid ${verdictColor}33`, marginBottom: 24, display: "flex", gap: 16, alignItems: "flex-start" }}>
+                <div style={{ padding: "6px 14px", borderRadius: 999, background: verdictColor, color: "#FFFFFF", fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", flexShrink: 0 }}>{le.verdict}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>Label Verdict</div>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.text, marginTop: 2 }}>{le.labelName}</div>
+                  <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 6 }}>{le.summary}</div>
+                  <a href="#label-criteria" style={{ display: "inline-block", marginTop: 10, fontSize: 12, fontWeight: 600, color: verdictColor, textDecoration: "none" }}>View criteria breakdown ↓</a>
+                </div>
+              </div>
+            );
+          })()}
+
           <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 24, marginBottom: 32 }}>
             <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
               <ScoreRing score={a.capitalReadinessScore} size={180} />
@@ -1780,8 +1854,8 @@ export default function App() {
             </Card>
           </div>
 
-          {/* SFDR + Taxonomy badges */}
-          {currentAssessment.sfdr && (
+          {/* SFDR + Taxonomy summary badges — always render as informational context */}
+          {currentAssessment.sfdr && !currentAssessment.labelEvaluation && (
             <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
               <div style={{ padding: "8px 16px", borderRadius: 8, background: currentAssessment.sfdr.classification === "Article 9" ? "#05966922" : currentAssessment.sfdr.classification === "Article 8" ? "#2563eb22" : COLORS.surfaceRaised, border: `1px solid ${currentAssessment.sfdr.classification === "Article 9" ? "#059669" : currentAssessment.sfdr.classification === "Article 8" ? "#2563eb" : COLORS.border}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: currentAssessment.sfdr.classification === "Article 9" ? "#059669" : currentAssessment.sfdr.classification === "Article 8" ? "#2563eb" : COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>SFDR</div>
@@ -1797,6 +1871,55 @@ export default function App() {
               )}
             </div>
           )}
+
+          {/* Label Criteria Breakdown — per-label pass/fail grid driven by evaluateLabel(). Renders for the 6 covered labels; otherwise falls through to the generic DNSH card below. */}
+          {currentAssessment.labelEvaluation && (() => {
+            const le = currentAssessment.labelEvaluation;
+            const statusStyle = {
+              PASS: { icon: "check", color: COLORS.green, bg: COLORS.greenBg },
+              FAIL: { icon: "alert", color: COLORS.red, bg: COLORS.redBg },
+              PARTIAL: { icon: "alert", color: COLORS.amber, bg: COLORS.amberBg },
+              EVIDENCE_INCOMPLETE: { icon: "alert", color: COLORS.textMuted, bg: COLORS.surfaceRaised },
+            };
+            // For EU Taxonomy, split criteria into substantial contribution / DNSH / minimum safeguards groupings.
+            const isEuTax = le.label === "eu_taxonomy_8_1";
+            const groups = isEuTax
+              ? [
+                  { title: `Substantial Contribution — ${le.substantialContributionObjectiveName}`, items: le.criteria.filter(c => c.id === "substantial_contribution") },
+                  { title: "Do No Significant Harm (other 5 objectives)", items: le.criteria.filter(c => c.id.startsWith("dnsh_")) },
+                  { title: "Minimum Social Safeguards (Art 18)", items: le.criteria.filter(c => c.id === "minimum_safeguards") },
+                ]
+              : [{ title: null, items: le.criteria }];
+            return (
+              <Card id="label-criteria" style={{ marginTop: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Label Criteria Breakdown</h3>
+                <p style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>{le.labelName}</p>
+                {groups.map((grp, gi) => (
+                  <div key={gi} style={{ marginBottom: gi < groups.length - 1 ? 20 : 0 }}>
+                    {grp.title && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.accent, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10 }}>{grp.title}</div>
+                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {grp.items.map((c, i) => {
+                        const s = statusStyle[c.status] || statusStyle.EVIDENCE_INCOMPLETE;
+                        const isCritical = c.weight === "critical";
+                        return (
+                          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 10, borderRadius: 8, background: s.bg, border: `1px solid ${s.color}22`, borderLeft: isCritical ? `3px solid ${s.color}` : `1px solid ${s.color}22` }}>
+                            <Icon name={s.icon} size={14} color={s.color} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.text }}>{c.title}{isCritical && <span style={{ fontSize: 10, fontWeight: 700, color: s.color, marginLeft: 6, letterSpacing: "0.04em" }}>CRITICAL</span>}</div>
+                              <div style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>{c.detail}</div>
+                              <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{c.citation}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </Card>
+            );
+          })()}
 
           {/* Applicable Regulatory Frameworks — driven by Tab 5 Target Financing Label */}
           {(() => {
@@ -1837,24 +1960,41 @@ export default function App() {
             );
           })()}
 
-          {/* DNSH & Minimum Social Safeguards checklist */}
-          {currentAssessment.dnsh?.details && (
-            <Card style={{ marginTop: 24 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>DNSH & Minimum Social Safeguards</h3>
-              <p style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>EU Taxonomy Article 18 + DNSH requirements per 2020/852. Score: <strong>{currentAssessment.dnsh.score}/100</strong></p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {currentAssessment.dnsh.details.map((d, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 10, borderRadius: 8, background: d.met ? COLORS.greenBg : COLORS.redBg, border: `1px solid ${d.met ? COLORS.green : COLORS.red}22` }}>
-                    <Icon name={d.met ? "check" : "alert"} size={14} color={d.met ? COLORS.green : COLORS.red} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.text }}>{d.label}</div>
-                      <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{d.citation}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+          {/* DNSH & Minimum Social Safeguards checklist. Conditional per label:
+              - UK SDR labels: hidden (DNSH is not a UK SDR concept)
+              - SFDR Art 8: informational (DNSH applies per-investment, not product-level)
+              - EU Tax / SFDR Art 9 / no label selected: pass/fail (as before) */}
+          {currentAssessment.dnsh?.details && (() => {
+            const le = currentAssessment.labelEvaluation;
+            if (le && le.showsDnsh === false) return null;
+            const informational = le && le.dnshTreatment === "informational";
+            return (
+              <Card style={{ marginTop: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>DNSH & Minimum Social Safeguards</h3>
+                <p style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: informational ? 8 : 16 }}>EU Taxonomy Article 18 + DNSH requirements per 2020/852. Score: <strong>{currentAssessment.dnsh.score}/100</strong></p>
+                {informational && (
+                  <p style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 16, padding: 10, borderRadius: 6, background: COLORS.accentSubtle, border: `1px solid ${COLORS.accent}22` }}>{le.dnshInfoNote}</p>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {currentAssessment.dnsh.details.map((d, i) => {
+                    const bg = informational ? COLORS.surfaceRaised : (d.met ? COLORS.greenBg : COLORS.redBg);
+                    const borderCol = informational ? COLORS.border : (d.met ? COLORS.green : COLORS.red);
+                    const iconName = informational ? "info" : (d.met ? "check" : "alert");
+                    const iconColor = informational ? COLORS.textMuted : (d.met ? COLORS.green : COLORS.red);
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 10, borderRadius: 8, background: bg, border: `1px solid ${borderCol}22` }}>
+                        <Icon name={iconName} size={14} color={iconColor} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.text }}>{d.label}</div>
+                          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{d.citation}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })()}
 
           {/* AI Narrative Panel */}
           {(aiLoading || aiNarrative) && (
