@@ -9,7 +9,7 @@ import { downloadExcel } from "./export/excelExport.js";
 import { generateNarrative, answerRegulatoryQuestion } from "./engine/aiAnalysis.js";
 import { saveAssessment, listAssessments, loadAssessmentById, deleteAssessment, saveDraft, loadDraft, clearDraft } from "./hooks/useAssessmentStore.js";
 import { getApplicableFrameworks, flattenFrameworks, FINANCING_LABELS } from "./regulations/frameworks/financing-labels.js";
-import { REQUIRED_FIELDS_BY_TAB, getTabCompletionPct } from "./schema/fieldRegistry.js";
+import { REQUIRED_FIELDS_BY_TAB, getTabCompletionPct, getTabFieldStatus, getAllMissingRequiredFields } from "./schema/fieldRegistry.js";
 
 // ============================================================
 // PERENNITY CAPITAL READINESS PLATFORM — FULL MVP APPLICATION
@@ -259,7 +259,7 @@ function Button({ children, variant = "primary", size = "md", icon, onClick, dis
     danger: { background: COLORS.redBg, color: COLORS.red },
   };
   return (
-    <button onClick={disabled ? undefined : onClick} style={{ ...base, ...sizes[size], ...variants[variant], ...style }}>
+    <button disabled={disabled} aria-disabled={disabled || undefined} onClick={disabled ? undefined : onClick} style={{ ...base, ...sizes[size], ...variants[variant], ...style }}>
       {icon && <Icon name={icon} size={size === "sm" ? 14 : 16} />} {children}
     </button>
   );
@@ -1043,10 +1043,20 @@ export default function App() {
 
   // ─── WIZARD ───────────────────────────────────────────────
 
-  // FIX 3: Validation
+  // Wizard validation. Returns { errors, missingRequired }:
+  //   errors            — inline range/format errors keyed by field, shown
+  //                       on the field itself (existing behaviour).
+  //   missingRequired   — array of required field labels (per fieldRegistry)
+  //                       not yet filled on this step. Blocks the Continue
+  //                       button; the label * markers are the UX signal.
   function validateWizardStep(step, d) {
     const errors = {};
     const num = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
+    const missingRequired = getTabFieldStatus(step, d)
+      .filter(f => !f.filled)
+      .map(f => f.label);
+
     if (step === 1) {
       if (d.planned_capacity_mw !== "" && d.planned_capacity_mw !== undefined) {
         const v = num(d.planned_capacity_mw);
@@ -1071,14 +1081,19 @@ export default function App() {
         else if (v < 0 || v > 100) errors.renewable_energy_share_pct = "Renewable energy percentage must be between 0 and 100.";
       }
     }
-    return errors;
+    return { errors, missingRequired };
   }
 
   if (screen === "wizard") {
     const steps = ["Project Basics", "Technical Specs", "Energy Profile", "Water & Resources", "Site & Climate", "Sustainability", "Delivery Readiness", "Review & Submit"];
     const d = projectDraft;
-    const wizardErrors = validateWizardStep(wizardStep, d);
+    const { errors: wizardErrors, missingRequired } = validateWizardStep(wizardStep, d);
     const hasWizardErrors = Object.keys(wizardErrors).length > 0;
+    const canContinue = !hasWizardErrors && missingRequired.length === 0;
+    // Submit requires every prior tab's required fields to be filled, not
+    // just the Review tab (which has none of its own).
+    const missingAcrossAllTabs = getAllMissingRequiredFields(d);
+    const canSubmit = !hasWizardErrors && missingAcrossAllTabs.length === 0;
 
     function renderWizardContent() {
       switch (wizardStep) {
@@ -1470,14 +1485,37 @@ export default function App() {
                   {wizardStep === 7 ? "Review your project data before running the assessment." : "Complete the fields below. Required fields are marked with *."}
                 </p>
                 {renderWizardContent()}
+
+                {/* Required-field hint — shown whenever Continue/Submit is blocked */}
+                {wizardStep < 7 && missingRequired.length > 0 && (
+                  <div style={{ marginTop: 20, padding: "10px 14px", borderRadius: 8, background: COLORS.amberBg, border: `1px solid ${COLORS.amber}33`, fontSize: 12, color: COLORS.textSecondary }}>
+                    <strong style={{ color: COLORS.amber }}>Complete before continuing:</strong> {missingRequired.join(", ")}.
+                  </div>
+                )}
+                {wizardStep === 7 && missingAcrossAllTabs.length > 0 && (
+                  <div style={{ marginTop: 20, padding: "12px 14px", borderRadius: 8, background: COLORS.amberBg, border: `1px solid ${COLORS.amber}33`, fontSize: 12, color: COLORS.textSecondary }}>
+                    <strong style={{ color: COLORS.amber }}>Required fields missing before you can submit:</strong>
+                    <ul style={{ margin: "6px 0 0 18px", padding: 0, lineHeight: 1.6 }}>
+                      {Object.entries(
+                        missingAcrossAllTabs.reduce((acc, m) => {
+                          (acc[m.tabName] ||= []).push(m.label);
+                          return acc;
+                        }, {})
+                      ).map(([tabName, labels]) => (
+                        <li key={tabName}><strong>{tabName}:</strong> {labels.join(", ")}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 32, paddingTop: 20, borderTop: `1px solid ${COLORS.border}` }}>
                   <Button variant="secondary" icon="arrowLeft" onClick={() => wizardStep > 0 ? setWizardStep(wizardStep - 1) : null} disabled={wizardStep === 0}>Back</Button>
                   <div style={{ display: "flex", gap: 12 }}>
                     <Button variant="secondary" onClick={d.id ? handleUpdateProject : handleSaveProject}>Save Draft</Button>
                     {wizardStep < 7 ? (
-                      <Button icon="arrow" onClick={() => setWizardStep(wizardStep + 1)} disabled={hasWizardErrors}>Continue</Button>
+                      <Button icon="arrow" onClick={() => setWizardStep(wizardStep + 1)} disabled={!canContinue}>Continue</Button>
                     ) : (
-                      <Button onClick={() => {
+                      <Button disabled={!canSubmit} onClick={() => {
                         if (!d.id) handleSaveProject();
                         else handleUpdateProject();
                         setTimeout(() => {

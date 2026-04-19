@@ -5,6 +5,7 @@ import {
   isFieldFilled,
   getTabCompletionPct,
   getTabFieldStatus,
+  getAllMissingRequiredFields,
 } from './fieldRegistry.js';
 
 describe('isFieldFilled — type-aware predicate', () => {
@@ -100,6 +101,53 @@ describe('getTabFieldStatus', () => {
     expect(status.find(f => f.key === 'pue').filled).toBe(true);
     expect(status.find(f => f.key === 'cooling_type').filled).toBe(false);
     expect(status.every(f => typeof f.label === 'string' && f.label.length > 0)).toBe(true);
+  });
+});
+
+describe('getAllMissingRequiredFields — Submit gate helper', () => {
+  it('returns empty when every required field is filled', () => {
+    const complete = {
+      project_name: 'Acme',
+      projectRegionGroup: 'EU',
+      country: 'Germany',
+      development_stage: 'pre_permitting',
+      planned_capacity_mw: 30,
+      pue: 1.3,
+      cooling_type: 'hybrid',
+      backup_power_type: 'battery',
+      grid_connection_status: 'secured',
+      renewable_energy_share_pct: 65,
+      renewable_energy_source: 'ppa',
+      financing_strategy_defined: true,
+    };
+    expect(getAllMissingRequiredFields(complete)).toEqual([]);
+  });
+
+  it('returns 12 entries when project is empty', () => {
+    expect(getAllMissingRequiredFields({})).toHaveLength(12);
+  });
+
+  it('each entry carries step + tabName + key + label', () => {
+    const missing = getAllMissingRequiredFields({});
+    for (const m of missing) {
+      expect(typeof m.step).toBe('number');
+      expect(typeof m.tabName).toBe('string');
+      expect(typeof m.key).toBe('string');
+      expect(typeof m.label).toBe('string');
+    }
+  });
+
+  it('boolean false counts as filled (does not appear as missing)', () => {
+    const draft = { financing_strategy_defined: false };
+    const missing = getAllMissingRequiredFields(draft);
+    expect(missing.find(m => m.key === 'financing_strategy_defined')).toBeUndefined();
+  });
+
+  it('numeric zero counts as filled', () => {
+    const draft = { planned_capacity_mw: 0, pue: 0 };
+    const missing = getAllMissingRequiredFields(draft);
+    expect(missing.find(m => m.key === 'planned_capacity_mw')).toBeUndefined();
+    expect(missing.find(m => m.key === 'pue')).toBeUndefined();
   });
 });
 

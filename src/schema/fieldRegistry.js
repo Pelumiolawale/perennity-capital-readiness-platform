@@ -119,3 +119,17 @@ export function getTabFieldStatus(tabIndex, projectDraft) {
     filled: isFieldFilled(projectDraft[f.key], f.type),
   }));
 }
+
+/**
+ * Returns the list of required fields still unfilled across the entire
+ * registry. Each entry carries { step, name, key, label } so the caller
+ * can point the user at the owning tab. Used by the Review tab's Submit
+ * gate so a user cannot submit with required fields blank.
+ */
+export function getAllMissingRequiredFields(projectDraft) {
+  return Object.values(REQUIRED_FIELDS_BY_TAB).flatMap(tab =>
+    tab.fields
+      .filter(f => !isFieldFilled(projectDraft[f.key], f.type))
+      .map(f => ({ step: tab.step, tabName: tab.name, key: f.key, label: f.label }))
+  );
+}
