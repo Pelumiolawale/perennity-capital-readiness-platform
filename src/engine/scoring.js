@@ -10,6 +10,21 @@ import ukSdrFramework from '../regulations/frameworks/uk-sdr.json';
 import euTaxonomy from '../regulations/frameworks/eu-taxonomy.json';
 
 const RT = regionThresholds.regions;
+const SUPPORTED_REGIONS = Object.keys(RT);
+
+// Region-dependent logic (WUE K-factor fallbacks, grid carbon lookups,
+// DNSH water CNDCP formula, region weights) all key off this set. An
+// unmapped region indicates a bug upstream — throw rather than silently
+// defaulting, so it's caught in the engine instead of producing
+// misleading scores.
+function assertSupportedRegion(region) {
+  if (!SUPPORTED_REGIONS.includes(region)) {
+    throw new Error(
+      `Unsupported region "${region}". Supported regions: ${SUPPORTED_REGIONS.join(', ')}. ` +
+      `Add an entry to src/regulations/frameworks/region-thresholds.json to support additional regions.`
+    );
+  }
+}
 
 export const REGION_WEIGHTS = Object.fromEntries(
   Object.entries(RT).map(([r, v]) => [r, v.weights])
@@ -615,9 +630,8 @@ export function evaluateHardStops(project, region, countryProfile) {
   // alignment AND with very low renewable share. Enum list reflects current
   // Tab 5 dropdown values (not the stale legacy keys).
   const greenClaimLabels = [
-    'sfdr_article_9', 'eu_taxonomy_8_1', 'eugbs', 'icma_green_bond',
+    'sfdr_article_9', 'eu_taxonomy_8_1', 'eugbs',
     'uk_sdr_focus', 'uk_sdr_improvers', 'uk_sdr_impact', 'uk_sdr_mixed',
-    'eib', 'ifc', 'ebrd', 'afdb',
   ];
   if (regionData.hardStops?.greenRaiseWithoutTaxonomy) {
     const hs = regionData.hardStops.greenRaiseWithoutTaxonomy;
@@ -697,6 +711,8 @@ export function generateRecommendations(project, subscores, region) {
 }
 
 export function runAssessment(project, region, countryProfile) {
+  assertSupportedRegion(region);
+
   const sa = calculateSustainabilityAlignment(project, region, countryProfile);
   const epv = calculateEnergyPowerViability(project, region);
   const wre = calculateWaterResourceEfficiency(project, region, countryProfile);

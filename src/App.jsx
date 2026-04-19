@@ -9,6 +9,7 @@ import { downloadExcel } from "./export/excelExport.js";
 import { generateNarrative, answerRegulatoryQuestion } from "./engine/aiAnalysis.js";
 import { saveAssessment, listAssessments, loadAssessmentById, deleteAssessment, saveDraft, loadDraft, clearDraft } from "./hooks/useAssessmentStore.js";
 import { getApplicableFrameworks, flattenFrameworks, FINANCING_LABELS } from "./regulations/frameworks/financing-labels.js";
+import { REQUIRED_FIELDS_BY_TAB, getTabCompletionPct } from "./schema/fieldRegistry.js";
 
 // ============================================================
 // PERENNITY CAPITAL READINESS PLATFORM — FULL MVP APPLICATION
@@ -92,32 +93,31 @@ const REGION_THRESHOLDS = {
   MENA: { pue: 1.4, renewableMin: 35, wue: 0.9 },
 };
 
+// Supported regions — must match region-thresholds.json exactly. Any new
+// region added here requires a matching entry in the scoring engine
+// thresholds file; the engine will throw if an unmapped region is used.
 const DC_MARKETS = {
-  'North America': {
-    countries: ['United States', 'Canada', 'Mexico'],
-    defaults: { waterStress: 'medium', gridCarbon: 'medium' }
-  },
-  'Europe': {
-    countries: ['United Kingdom', 'Germany', 'Netherlands', 'France', 'Ireland', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Spain'],
+  'EU': {
+    countries: ['Germany', 'Netherlands', 'France', 'Ireland', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Spain'],
     defaults: { waterStress: 'low', gridCarbon: 'low-medium' }
   },
-  'Asia-Pacific': {
-    countries: ['Singapore', 'Australia', 'Japan', 'South Korea', 'India', 'Hong Kong', 'Malaysia'],
-    defaults: { waterStress: 'high', gridCarbon: 'high' }
+  'UK': {
+    countries: ['United Kingdom'],
+    defaults: { waterStress: 'low', gridCarbon: 'low-medium' }
+  },
+  'US': {
+    countries: ['United States'],
+    defaults: { waterStress: 'medium', gridCarbon: 'medium' }
   },
   'MENA': {
     countries: ['United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Bahrain', 'Kuwait', 'Oman', 'Egypt', 'Jordan', 'Morocco'],
     defaults: { waterStress: 'extreme', gridCarbon: 'high' }
   },
-  'Africa': {
-    countries: ['South Africa', 'Nigeria', 'Kenya', 'Ghana', 'Egypt', 'Ethiopia'],
-    defaults: { waterStress: 'high', gridCarbon: 'medium-high' }
-  },
-  'Latin America': {
-    countries: ['Brazil', 'Chile', 'Colombia', 'Mexico', 'Argentina'],
-    defaults: { waterStress: 'medium', gridCarbon: 'low-medium' }
-  }
 };
+
+// Region codes recognised by the scoring engine (region-thresholds.json).
+// Keep in sync with DC_MARKETS keys above.
+const SUPPORTED_REGIONS = ['EU', 'UK', 'US', 'MENA'];
 
 const COUNTRY_PROFILES = {
   'United Arab Emirates':   { pueTarget: 1.5, waterStress: 'extreme', gridCarbon: 550, renewableGrid: 5 },
@@ -890,7 +890,7 @@ export default function App() {
                 <Button size="lg" onClick={() => setScreen("onboarding")}>Create Account</Button>
                 <Button variant="secondary" size="lg" onClick={() => {
                   const sampleProject = {
-                    id: "sample-demo", project_name: "Frankfurt Campus Alpha — Sample", region: "EU", projectRegionGroup: "Europe", country: "Germany", city: "Frankfurt",
+                    id: "sample-demo", project_name: "Frankfurt Campus Alpha — Sample", region: "EU", projectRegionGroup: "EU", country: "Germany", city: "Frankfurt",
                     development_stage: "pre_permitting", planned_capacity_mw: 30, it_load_mw: 24, pue: 1.28, wue: 0.4,
                     cooling_type: "hybrid", backup_power_type: "battery", battery_storage_mwh: 12,
                     grid_connection_status: "partially_secured", interconnection_timeline_months: 18,
@@ -1085,17 +1085,19 @@ export default function App() {
         case 0: return (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
             <div style={{ gridColumn: "1 / -1" }}><FormField label="Project Name" required><input value={d.project_name} onChange={e => updateDraft("project_name", e.target.value)} placeholder="e.g. Frankfurt Campus Alpha" /></FormField></div>
-            <FormField label="Region Group" required help="Determines the scoring ruleset and country-specific thresholds applied">
+            <FormField label="Region" required help="Multi-region support currently covers EU, UK, US, and MENA only. Additional regions on roadmap.">
               <select value={d.projectRegionGroup} onChange={e => {
                 const rg = e.target.value;
+                if (rg && !SUPPORTED_REGIONS.includes(rg)) {
+                  throw new Error(`Unsupported region "${rg}". Supported regions: ${SUPPORTED_REGIONS.join(', ')}.`);
+                }
                 updateDraft("projectRegionGroup", rg);
                 updateDraft("country", "");
-                // Map region group to scoring region code
-                const regionMap = { 'Europe': 'EU', 'North America': 'US', 'Asia-Pacific': 'UK', 'MENA': 'MENA', 'Africa': 'UK', 'Latin America': 'US' };
-                updateDraft("region", regionMap[rg] || "UK");
+                // Region code == region group now; no mapping needed.
+                updateDraft("region", rg);
               }}>
-                <option value="">Select region group</option>
-                {Object.keys(DC_MARKETS).map(rg => <option key={rg} value={rg}>{rg}</option>)}
+                <option value="">Select region</option>
+                {SUPPORTED_REGIONS.map(rg => <option key={rg} value={rg}>{rg}</option>)}
               </select>
             </FormField>
             <FormField label="Country" required help="Select your project's country within the chosen region">
@@ -1243,21 +1245,12 @@ export default function App() {
                 </optgroup>
                 <optgroup label="EU Bond Instruments">
                   <option value="eugbs">European Green Bond (EuGBS) — Regulation (EU) 2023/2631</option>
-                  <option value="icma_green_bond">ICMA Green Bond Principles</option>
-                  <option value="icma_slb">ICMA Sustainability-Linked Bond Principles</option>
-                  <option value="icma_social_bond">ICMA Social Bond Principles</option>
                 </optgroup>
                 <optgroup label="UK Frameworks">
                   <option value="uk_sdr_focus">UK SDR — Sustainability Focus</option>
                   <option value="uk_sdr_improvers">UK SDR — Sustainability Improvers</option>
                   <option value="uk_sdr_impact">UK SDR — Sustainability Impact</option>
                   <option value="uk_sdr_mixed">UK SDR — Sustainability Mixed Goals</option>
-                </optgroup>
-                <optgroup label="Development Finance">
-                  <option value="eib">EIB green finance</option>
-                  <option value="ifc">IFC / World Bank green finance</option>
-                  <option value="ebrd">EBRD green finance</option>
-                  <option value="afdb">AfDB green finance</option>
                 </optgroup>
               </select>
             </FormField>
@@ -1371,31 +1364,81 @@ export default function App() {
           </div>
         );
         case 7: {
-          const sections = [
-            { name: "Project Basics", fields: ["project_name", "projectRegionGroup", "country", "development_stage"], step: 0 },
-            { name: "Technical Specs", fields: ["planned_capacity_mw", "pue", "cooling_type", "backup_power_type"], step: 1 },
-            { name: "Energy Profile", fields: ["grid_connection_status", "renewable_energy_share_pct", "renewable_energy_source"], step: 2 },
-            { name: "Water & Resources", fields: ["water_recycling_included"], step: 3 },
-            { name: "Site & Climate", fields: ["adaptation_measures_present"], step: 4 },
-            { name: "Sustainability", fields: ["sustainability_disclosures_ready"], step: 5 },
-            { name: "Delivery Readiness", fields: ["financing_strategy_defined"], step: 6 },
-          ];
+          const sections = Object.values(REQUIRED_FIELDS_BY_TAB);
+
+          // Key efficiency metrics — PUE and WUE are user-entered; CUE is
+          // derived per ISO/IEC 30134-8 as PUE × grid carbon intensity.
+          // CUE has no prescribed performance thresholds per the standard
+          // and therefore gets no band / colour / score — display only.
+          const pueNum = parseFloat(d.pue);
+          const wueNum = parseFloat(d.wue);
+          const countryProfile = d.country ? getCountryProfile(d.country) : null;
+          const gridCarbon = countryProfile?.gridCarbon; // gCO2e/kWh
+          const cueVal = isFinite(pueNum) && gridCarbon != null
+            ? (pueNum * gridCarbon) / 1000   // → kg CO2e / kWh of IT load
+            : null;
           return (
             <div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24 }}>Review Your Project</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Review Your Project</h3>
+
+              <Card style={{ marginBottom: 24, background: COLORS.surfaceRaised }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textSecondary, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 12 }}>Key Efficiency Metrics</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>PUE</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: COLORS.text }}>
+                      {isFinite(pueNum) ? pueNum.toFixed(2) : "—"}
+                    </div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Power Usage Effectiveness</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>WUE</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: COLORS.text }}>
+                      {isFinite(wueNum) ? wueNum.toFixed(2) : "—"}
+                    </div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>m³/MWh</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>CUE</span>
+                      <span title="CUE is a disclosure metric per ISO/IEC 30134-8. The standard defines the measurement methodology but does not prescribe performance thresholds. Value shown is for reporting and benchmarking purposes only." style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: COLORS.border, color: COLORS.textSecondary, fontSize: 9, fontWeight: 700, cursor: "help" }}>i</span>
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: COLORS.text }}>
+                      {cueVal != null ? cueVal.toFixed(2) : "—"}
+                    </div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>kg CO₂e / kWh IT · ISO/IEC 30134-8</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 12, fontStyle: "italic", lineHeight: 1.5 }}>
+                  CUE is a disclosure metric per ISO/IEC 30134-8. The standard defines the measurement methodology but does not prescribe performance thresholds. Value shown is for reporting and benchmarking purposes only.
+                </div>
+              </Card>
+
               {sections.map((section, si) => {
-                const filled = section.fields.filter(f => d[f] !== "" && d[f] !== undefined && d[f] !== false).length;
-                const total = section.fields.length;
-                const pct = Math.round((filled / total) * 100);
+                const hasRequired = section.fields.length > 0;
+                const pct = getTabCompletionPct(section.step, d);
+                const barColor = pct === 100 ? COLORS.green : pct === 0 ? COLORS.red : COLORS.amber;
                 return (
                   <div key={si} style={{ marginBottom: 16, padding: 16, borderRadius: 10, background: COLORS.bg, border: `1px solid ${COLORS.border}`, cursor: "pointer" }} onClick={() => setWizardStep(section.step)}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 500 }}>{section.name}</span>
-                      <span style={{ fontSize: 12, color: pct === 100 ? COLORS.green : COLORS.amber }}>{pct}% complete</span>
+                      {hasRequired ? (
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: barColor }}>
+                          {pct === 100 && <Icon name="check" size={12} color={COLORS.green} />}
+                          <span>{pct}% complete</span>
+                        </span>
+                      ) : (
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.textMuted }}>
+                          <Icon name="check" size={12} color={COLORS.green} />
+                          <span>No action required</span>
+                        </span>
+                      )}
                     </div>
-                    <div style={{ height: 3, borderRadius: 2, background: COLORS.border }}>
-                      <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? COLORS.green : COLORS.amber, borderRadius: 2, transition: "width 0.3s" }} />
-                    </div>
+                    {hasRequired && (
+                      <div style={{ height: 3, borderRadius: 2, background: COLORS.border }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 2, transition: "width 0.3s" }} />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1414,7 +1457,7 @@ export default function App() {
               <div style={{ width: 28, height: 28, borderRadius: 6, background: `linear-gradient(135deg, #1B6B4A, #2A8C62)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Icon name="shield" size={14} color="#fff" />
               </div>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>Perennity</span>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>Perennity Bridge</span>
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setScreen("app"); setNavItem("dashboard"); }}>Exit Wizard</Button>
           </nav>

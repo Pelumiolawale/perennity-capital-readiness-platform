@@ -10,17 +10,10 @@ export const FINANCING_LABELS = {
   sfdr_article_9:   'SFDR Article 9 — sustainable investment objective',
   eu_taxonomy_8_1:  'EU Taxonomy aligned — Activity 8.1 (climate change mitigation)',
   eugbs:            'European Green Bond (EuGBS) — Regulation (EU) 2023/2631',
-  icma_green_bond:  'ICMA Green Bond Principles',
-  icma_slb:         'ICMA Sustainability-Linked Bond Principles',
-  icma_social_bond: 'ICMA Social Bond Principles',
   uk_sdr_focus:     'UK SDR — Sustainability Focus',
   uk_sdr_improvers: 'UK SDR — Sustainability Improvers',
   uk_sdr_impact:    'UK SDR — Sustainability Impact',
   uk_sdr_mixed:     'UK SDR — Sustainability Mixed Goals',
-  eib:              'EIB green finance',
-  ifc:              'IFC / World Bank green finance',
-  ebrd:             'EBRD green finance',
-  afdb:             'AfDB green finance',
 };
 
 // Primary + secondary framework mapping per methodology v3.1 §Fix 3.2.
@@ -30,10 +23,6 @@ const FRAMEWORK_MAPPING = {
   eugbs: {
     primary:   ['EU Regulation 2023/2631 — European Green Bond Standard'],
     secondary: ['EU Taxonomy Regulation 2020/852', 'SFDR 2019/2088', 'Activity 8.1 TSC (Climate DA 2021/2139 Annex I)'],
-  },
-  icma_green_bond: {
-    primary:   ['ICMA Green Bond Principles (latest)'],
-    secondary: ['EU Taxonomy 2020/852 (voluntary alignment)', 'TCFD / ISSB IFRS S2'],
   },
   sfdr_article_8: {
     primary:   ['SFDR 2019/2088 Article 8'],
@@ -63,30 +52,6 @@ const FRAMEWORK_MAPPING = {
     primary:   ['FCA PS23/16 — Sustainability Mixed Goals (must meet each constituent label for the proportion invested)'],
     secondary: ['ESG 4.3.1R anti-greenwashing rule', 'ESG 4 naming & marketing rules'],
   },
-  icma_slb: {
-    primary:   ['ICMA Sustainability-Linked Bond Principles (June 2024)'],
-    secondary: ['TCFD / ISSB IFRS S2', 'GHG Protocol'],
-  },
-  icma_social_bond: {
-    primary:   ['ICMA Social Bond Principles (June 2025)'],
-    secondary: ['ICMA Sustainability Bond Guidelines (June 2021)'],
-  },
-  eib: {
-    primary:   ['EIB Environmental and Social Standards'],
-    secondary: ['EU Taxonomy 2020/852', 'ICMA Green Bond Principles'],
-  },
-  ifc: {
-    primary:   ['IFC Performance Standards on Environmental and Social Sustainability'],
-    secondary: ['EU Taxonomy 2020/852', 'ICMA Green Bond Principles'],
-  },
-  ebrd: {
-    primary:   ['EBRD Environmental and Social Policy'],
-    secondary: ['EU Taxonomy 2020/852', 'ICMA Green Bond Principles'],
-  },
-  afdb: {
-    primary:   ['AfDB Integrated Safeguards System'],
-    secondary: ['EU Taxonomy 2020/852', 'ICMA Green Bond Principles'],
-  },
 };
 
 // Returned when the user has not yet selected a label. Neutral — does not
@@ -97,9 +62,8 @@ const UNSET_FRAMEWORKS = {
   secondary: [
     'SFDR 2019/2088 (if targeting EU fund capital)',
     'EU Taxonomy 2020/852 + Activity 8.1 (for green claims)',
+    'EU Regulation 2023/2631 — European Green Bond Standard (for EU green bond issuance)',
     'FCA PS23/16 UK SDR (for UK fund capital)',
-    'ICMA Green Bond / SLB / Social Bond Principles (for bond issuance)',
-    'DFI standards (EIB / IFC / EBRD / AfDB, for development finance)',
   ],
 };
 
