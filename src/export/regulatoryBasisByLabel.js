@@ -11,10 +11,10 @@
 //   wre → Water Efficiency (WUE)
 //   epv → Renewable Energy
 //   csr → Governance & Minimum Safeguards
-//   dfr → Delivery readiness (kept for structural parity; treated
-//         as Circular Economy & Waste page framing — see note
-//         below). Returns null where the label does not frame the
-//         project against circular-economy expectations.
+//   dfr → Delivery & Funding Readiness — issuer diligence signals
+//         (site control, permitting, EPC, financing strategy).
+//         Not a regulatory pass/fail category; treated as
+//         investor-facing supporting evidence across all labels.
 //
 // Returns `null` for a (label, pillar) combination that should not
 // render a dedicated pillar page (page omitted entirely — no "N/A"
@@ -37,7 +37,7 @@ export const PILLAR_DISPLAY_NAMES = {
   wre: 'Water Efficiency (WUE)',
   epv: 'Renewable Energy',
   csr: 'Governance & Minimum Safeguards',
-  dfr: 'Circular Economy & Waste',
+  dfr: 'Delivery & Funding Readiness',
 };
 
 // Canonical PAI map (per Commission Delegated Regulation (EU)
@@ -78,10 +78,14 @@ const DNSH_GOV_THRESHOLDS = [
   { threshold: 'Supply chain labour policy',       value: 'ILO Declaration', source: 'EU 2020/852 Art 18' },
 ];
 
-const CIRCULAR_THRESHOLDS = [
-  { threshold: 'IT end-of-life (WEEE)',            value: 'Compliant plan',   source: 'WEEE Directive 2012/19/EU' },
-  { threshold: 'Low-GWP refrigerants',             value: 'F-Gas compliant',  source: 'EU Regulation 517/2014' },
-  { threshold: 'Equipment lifecycle',              value: '≥ 5 years target', source: 'Perennity Bridge methodology v3.1' },
+// Delivery & Funding Readiness evidence tables. Not regulatory
+// pass/fail thresholds — these are issuer-diligence signals that
+// funds and lenders expect to see before committing capital.
+const DFR_EVIDENCE = [
+  { threshold: 'Site control',            value: 'Secured',                        source: 'Investor diligence (Perennity Bridge v3.1)' },
+  { threshold: 'Permitting status',       value: 'Underway or complete',           source: 'Investor diligence (Perennity Bridge v3.1)' },
+  { threshold: 'EPC / contractor',        value: 'Identified',                     source: 'Investor diligence (Perennity Bridge v3.1)' },
+  { threshold: 'Financing strategy',      value: 'Defined + investment memo ready', source: 'Investor diligence (Perennity Bridge v3.1)' },
 ];
 
 // UK SDR labels share a common "evidence standard" framing —
@@ -101,8 +105,9 @@ const UK_SDR_GOVERNANCE_EVIDENCE = [
   { threshold: 'Stewardship strategy',     value: 'Documented', source: 'FCA PS23/16 ESG 5.3.1R' },
   { threshold: 'Escalation plan',          value: 'Documented', source: 'FCA PS23/16 ESG 5.3.1R' },
 ];
-const UK_SDR_CIRCULAR_EVIDENCE = [
-  { threshold: 'Supporting circular-economy evidence', value: 'WEEE plan / equipment lifecycle documented (supporting)', source: 'Perennity Bridge methodology v3.1 (indicative)' },
+const UK_SDR_DFR_EVIDENCE = [
+  { threshold: 'Delivery milestones disclosed', value: 'Site control + permitting + EPC documented', source: 'FCA PS23/16 ESG 5.3.1R (general disclosure)' },
+  { threshold: 'Financing strategy',            value: 'Investment memo or term sheet available',     source: 'Investor diligence (Perennity Bridge v3.1)' },
 ];
 
 // ── Per-label × per-pillar encoding ──────────────────────────
@@ -147,12 +152,12 @@ function euTaxonomyBasis(pillar) {
       };
     case 'dfr':
       return {
-        primaryRegime: 'EU 2020/852 Art 17 (DNSH) — Circular Economy (Objective 4)',
-        objectiveOrCategory: 'Transition to a Circular Economy (Objective 4) — DNSH',
-        paiMapping: PAI.waste,
-        sources: ['EU 2020/852 Art 17 + Annex IV', 'WEEE Directive 2012/19/EU'],
-        thresholdTable: CIRCULAR_THRESHOLDS,
-        framing: 'passfail',
+        primaryRegime: 'Investor diligence (not an EU Taxonomy criterion)',
+        objectiveOrCategory: 'Delivery & Funding Readiness — issuer diligence signals',
+        paiMapping: null,
+        sources: ['Perennity Bridge methodology v3.1'],
+        thresholdTable: DFR_EVIDENCE,
+        framing: 'indicative',
       };
     default:
       return null;
@@ -207,11 +212,11 @@ function sfdrArt8Basis(pillar) {
       };
     case 'dfr':
       return {
-        primaryRegime: 'SFDR 2019/2088 Art 8 + RTS 2022/1288',
-        objectiveOrCategory: 'E/S characteristics — PAI 9 hazardous waste',
-        paiMapping: PAI.waste,
-        sources: ['SFDR 2019/2088 Art 8', 'RTS 2022/1288 Annex I Table 1', 'WEEE Directive 2012/19/EU'],
-        thresholdTable: CIRCULAR_THRESHOLDS,
+        primaryRegime: 'Investor diligence (not an SFDR disclosure item)',
+        objectiveOrCategory: 'Delivery & Funding Readiness — issuer diligence signals',
+        paiMapping: null,
+        sources: ['Perennity Bridge methodology v3.1'],
+        thresholdTable: DFR_EVIDENCE,
         framing: 'indicative',
         footnote,
       };
@@ -263,12 +268,12 @@ function sfdrArt9Basis(pillar) {
       };
     case 'dfr':
       return {
-        primaryRegime: 'SFDR 2019/2088 Art 9 + DNSH via EU 2020/852 Art 17',
-        objectiveOrCategory: 'DNSH — circular economy',
-        paiMapping: PAI.waste,
-        sources: ['SFDR 2019/2088 Art 9', 'EU 2020/852 Art 17 + Annex IV', 'WEEE Directive 2012/19/EU'],
-        thresholdTable: CIRCULAR_THRESHOLDS,
-        framing: 'passfail',
+        primaryRegime: 'Investor diligence (not an SFDR disclosure item)',
+        objectiveOrCategory: 'Delivery & Funding Readiness — issuer diligence signals',
+        paiMapping: null,
+        sources: ['Perennity Bridge methodology v3.1'],
+        thresholdTable: DFR_EVIDENCE,
+        framing: 'indicative',
       };
     default:
       return null;
@@ -326,15 +331,15 @@ function ukSdrBasis(sublabel, pillar) {
         ...common,
       };
     case 'dfr':
-      // Only applies for Focus / Mixed Goals / Impact (as supporting);
-      // Improvers returns null since circular economy evidence is not
-      // a qualifying criterion under ESG 5.3.3R.
+      // Improvers is strictly about forward-looking improvement targets;
+      // delivery/funding readiness is not a qualifying criterion under
+      // ESG 5.3.3R, so omit the pillar page for that sublabel.
       if (sublabel === 'uk_sdr_improvers') return null;
       return {
         primaryRegime: regime.primary,
-        objectiveOrCategory: regime.tag + ' — supporting circular-economy evidence',
+        objectiveOrCategory: regime.tag + ' — delivery & funding readiness (supporting)',
         sources: [regime.primary, 'Perennity Bridge methodology v3.1 (indicative)'],
-        thresholdTable: UK_SDR_CIRCULAR_EVIDENCE,
+        thresholdTable: UK_SDR_DFR_EVIDENCE,
         ...common,
       };
     default:
@@ -385,7 +390,7 @@ export const PAI_MAPPING_ROWS = [
   ['PAI 5',  'Non-renewable energy consumption',                      'Energy Efficiency + Renewable Energy'],
   ['PAI 7',  'Activities affecting biodiversity-sensitive areas',     'Governance & Minimum Safeguards'],
   ['PAI 8',  'Emissions to water',                                    'Water Efficiency'],
-  ['PAI 9',  'Hazardous waste ratio',                                 'Circular Economy & Waste'],
+  ['PAI 9',  'Hazardous waste ratio',                                 'Governance & Minimum Safeguards'],
   ['PAI 10', 'UNGC/OECD violations',                                  'Governance & Minimum Safeguards'],
   ['PAI 11', 'UNGC compliance processes',                             'Governance & Minimum Safeguards'],
   ['PAI 13', 'Board gender diversity',                                'Governance & Minimum Safeguards'],

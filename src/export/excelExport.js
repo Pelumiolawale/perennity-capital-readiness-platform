@@ -47,7 +47,7 @@ function buildSummarySheet(project, assessment, assessmentId, date) {
     ['Renewable Energy',                    assessment.subscores.epv, `${Math.round((assessment.weights.epv || 0) * 100)}%`],
     ['Water Efficiency (WUE)',              assessment.subscores.wre, `${Math.round((assessment.weights.wre || 0) * 100)}%`],
     ['Governance & Minimum Safeguards',     assessment.subscores.csr, `${Math.round((assessment.weights.csr || 0) * 100)}%`],
-    ['Circular Economy & Waste',            assessment.subscores.dfr, `${Math.round((assessment.weights.dfr || 0) * 100)}%`],
+    ['Delivery & Funding Readiness',        assessment.subscores.dfr, `${Math.round((assessment.weights.dfr || 0) * 100)}%`],
     [],
     ['APPLICABLE REGULATORY FRAMEWORKS'],
     ...fw.primary.map(f => ['Primary', f]),

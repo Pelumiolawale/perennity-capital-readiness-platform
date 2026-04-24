@@ -663,8 +663,27 @@ export function calculateConfidence(project) {
   return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
 }
 
-export function generateRecommendations(project, subscores, region) {
+// Map a criterion pillar to the UI-facing pillar name. Falls back
+// to 'Sustainability Alignment' when the criterion doesn't clearly
+// map (label evaluators don't always tag pillar consistently).
+function criterionToPillarName(criterion) {
+  const id = (criterion.id || '').toLowerCase();
+  if (id.includes('pue') || id.includes('energy') || id.includes('taxonomy') || id.includes('ccm')) return 'Sustainability Alignment';
+  if (id.includes('wue') || id.includes('water')) return 'Water & Resource Efficiency';
+  if (id.includes('ppa') || id.includes('renewable')) return 'Energy & Power Viability';
+  if (id.includes('climate') || id.includes('adapt') || id.includes('flood')) return 'Climate & Site Resilience';
+  if (id.includes('safeguards') || id.includes('governance') || id.includes('dnsh')) return 'Sustainability Alignment';
+  return 'Sustainability Alignment';
+}
+
+const UK_SDR_LABELS = new Set([
+  'uk_sdr_focus', 'uk_sdr_improvers', 'uk_sdr_impact', 'uk_sdr_mixed',
+]);
+
+export function generateRecommendations(project, subscores, region, labelEvaluation = null) {
   const thresholds = REGION_THRESHOLDS[region] || REGION_THRESHOLDS.UK;
+  const label = project?.target_financing_label || null;
+  const isUkSdr = UK_SDR_LABELS.has(label);
   const recs = [];
 
   if (!project.ppa_secured && subscores.epv < 80) {
@@ -700,15 +719,57 @@ export function generateRecommendations(project, subscores, region) {
     recs.push({ action: 'Transition backup power from diesel', uplift: 5, impact: 'Medium', difficulty: 'High', reason: 'Diesel-heavy strategy weakens sustainability alignment and EU Taxonomy DNSH', pillar: 'Sustainability Alignment' });
   }
 
-  if (!project.taxonomy_alignment_claimed && (region === 'EU' || region === 'UK')) {
+  // EU Taxonomy alignment is only a relevant rec for EU-regime labels.
+  // Suppress for UK SDR labels — SDR is a disclosure regime that does
+  // not use the EU Taxonomy as a qualifying criterion.
+  if (!project.taxonomy_alignment_claimed && !isUkSdr && (region === 'EU' || region === 'UK')) {
     recs.push({ action: 'Target EU Taxonomy alignment', uplift: 7, impact: 'High', difficulty: 'Medium', reason: 'Unlocks Article 8/9 SFDR eligibility and green bond market access', pillar: 'Sustainability Alignment' });
   }
 
   if (!project.net_zero_commitment_present) {
-    recs.push({ action: 'Establish net-zero commitment', uplift: 4, impact: 'Medium', difficulty: 'Low', reason: 'Required for SFDR Article 9 and increasingly expected by DFIs', pillar: 'Sustainability Alignment' });
+    const reason = isUkSdr
+      ? 'Supports UK SDR sustainability claims and is increasingly expected by DFIs'
+      : 'Required for SFDR Article 9 and increasingly expected by DFIs';
+    recs.push({ action: 'Establish net-zero commitment', uplift: 4, impact: 'Medium', difficulty: 'Low', reason, pillar: 'Sustainability Alignment' });
   }
 
-  return recs.sort((a, b) => b.uplift - a.uplift).slice(0, 5);
+  // Label-specific prepend: up to 3 recs driven by failing criteria
+  // from the label evaluation. Ranked above generic recs so the user
+  // sees "close these gaps" first. Deduped against generic recs by
+  // action text (soft match).
+  const labelRecs = [];
+  if (labelEvaluation && Array.isArray(labelEvaluation.criteria)) {
+    const failing = labelEvaluation.criteria.filter(c => c.status === 'FAIL' || c.status === 'PARTIAL');
+    const byWeight = (w) => (w === 'critical' ? 0 : w === 'required' ? 1 : 2);
+    failing.sort((a, b) => byWeight(a.weight) - byWeight(b.weight));
+    for (const c of failing.slice(0, 3)) {
+      const upliftMap = { critical: 10, required: 6, supporting: 3 };
+      const levelMap = { critical: { impact: 'High', difficulty: 'High' }, required: { impact: 'Medium', difficulty: 'Medium' }, supporting: { impact: 'Low', difficulty: 'Low' } };
+      const u = upliftMap[c.weight] ?? 5;
+      const lv = levelMap[c.weight] ?? { impact: 'Medium', difficulty: 'Medium' };
+      labelRecs.push({
+        action: `Address: ${c.title}`,
+        uplift: u,
+        impact: lv.impact,
+        difficulty: lv.difficulty,
+        reason: c.detail || `Required for ${labelEvaluation.labelName}.`,
+        pillar: criterionToPillarName(c),
+      });
+    }
+  }
+
+  const generic = recs.sort((a, b) => b.uplift - a.uplift);
+  const combined = [...labelRecs, ...generic];
+  // Dedup by action text (case-insensitive) while preserving order.
+  const seen = new Set();
+  const deduped = [];
+  for (const r of combined) {
+    const key = r.action.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(r);
+  }
+  return deduped.slice(0, 5);
 }
 
 export function runAssessment(project, region, countryProfile) {
@@ -743,7 +804,6 @@ export function runAssessment(project, region, countryProfile) {
 
   const subscores = { sa: saAdjusted.score, epv: epv.score, wre: wre.score, csr: csr.score, dfr: dfr.score };
   const confidence = calculateConfidence(project);
-  const recommendations = generateRecommendations(project, subscores, region);
   const band = READINESS_BANDS.find(b => finalScore >= b.min) || READINESS_BANDS[READINESS_BANDS.length - 1];
 
   const sfdr = determineSfdrClassification(project, region);
@@ -760,6 +820,19 @@ export function runAssessment(project, region, countryProfile) {
   // doesn't touch scoring thresholds — interprets existing outputs.
   const preLabelAssessment = { taxonomy, dnsh: { score: dnsh.score, details: dnsh.details } };
   const labelEvaluation = evaluateLabel(preLabelAssessment, project);
+
+  // Hard stop overrides the label verdict. A score-capped project
+  // cannot be presented as label-eligible regardless of criteria —
+  // the criterion array is preserved for transparency.
+  if (labelEvaluation && hardStopTriggered) {
+    labelEvaluation.verdict = 'FAIL';
+    labelEvaluation.summary = `Hard-stop triggered (${hardStopReason}) — label verdict fails automatically regardless of individual criteria.`;
+    labelEvaluation.hardStopOverride = true;
+  }
+
+  // Recommendations are generated after label evaluation so they can
+  // incorporate failing criteria and filter label-irrelevant advice.
+  const recommendations = generateRecommendations(project, subscores, region, labelEvaluation);
 
   return {
     capitalReadinessScore: finalScore,

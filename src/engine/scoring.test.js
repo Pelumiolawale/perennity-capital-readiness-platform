@@ -295,3 +295,57 @@ describe('runAssessment — end-to-end integration', () => {
     expect(result.band.label).toBe('Capital Ready');
   });
 });
+
+describe('hard-stop overrides label verdict', () => {
+  it('triggers hardStopOverride on labelEvaluation when hard stop fires', () => {
+    // Extreme unmitigated flood risk (>80 without adaptation) caps score.
+    const project = newBuildProject({
+      target_financing_label: 'sfdr_article_9',
+      flood_risk_score: 95,
+      adaptation_measures_present: false,
+    });
+    const result = runAssessment(project, 'MENA', MENA_PROFILE);
+    expect(result.hardStopTriggered).toBe(true);
+    expect(result.labelEvaluation).toBeTruthy();
+    expect(result.labelEvaluation.hardStopOverride).toBe(true);
+    expect(result.labelEvaluation.verdict).toBe('FAIL');
+    expect(result.labelEvaluation.summary).toMatch(/Hard-stop triggered/);
+  });
+
+  it('does NOT set hardStopOverride when no hard stop fires', () => {
+    const project = newBuildProject({ target_financing_label: 'sfdr_article_8' });
+    const result = runAssessment(project, 'EU', EU_PROFILE);
+    expect(result.hardStopTriggered).toBe(false);
+    expect(result.labelEvaluation).toBeTruthy();
+    expect(result.labelEvaluation.hardStopOverride).toBeUndefined();
+  });
+});
+
+describe('recommendations are label-aware', () => {
+  it('suppresses "Target EU Taxonomy alignment" rec for UK SDR Focus projects', () => {
+    // UK SDR Focus project that would otherwise trigger the rec
+    // (taxonomy_alignment_claimed = false, region UK).
+    const project = newBuildProject({
+      region: 'UK',
+      country: 'United Kingdom',
+      target_financing_label: 'uk_sdr_focus',
+      taxonomy_alignment_claimed: false,
+    });
+    const ukProfile = { pueTarget: 1.3, waterStress: 'low', gridCarbon: 230, renewableGrid: 42 };
+    const result = runAssessment(project, 'UK', ukProfile);
+    const actions = result.recommendations.map(r => r.action);
+    expect(actions).not.toContain('Target EU Taxonomy alignment');
+  });
+
+  it('still emits "Target EU Taxonomy alignment" rec for SFDR Article 8 projects', () => {
+    const project = newBuildProject({
+      region: 'EU',
+      country: 'Germany',
+      target_financing_label: 'sfdr_article_8',
+      taxonomy_alignment_claimed: false,
+    });
+    const result = runAssessment(project, 'EU', EU_PROFILE);
+    const actions = result.recommendations.map(r => r.action);
+    expect(actions).toContain('Target EU Taxonomy alignment');
+  });
+});

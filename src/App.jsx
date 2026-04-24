@@ -977,6 +977,10 @@ export default function App() {
               <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
                 <Button size="lg" onClick={() => setScreen("onboarding")}>Create Account</Button>
                 <Button variant="secondary" size="lg" onClick={() => {
+                  // Rotate demo label across framework families so
+                  // repeat visitors see verdict/criteria variety.
+                  const DEMO_LABELS = ["eu_taxonomy_8_1", "sfdr_article_9", "uk_sdr_focus"];
+                  const demoLabel = DEMO_LABELS[Math.floor(Math.random() * DEMO_LABELS.length)];
                   const sampleProject = {
                     id: "sample-demo", project_name: "Frankfurt Campus Alpha — Sample", region: "EU", projectRegionGroup: "EU", country: "Germany", city: "Frankfurt",
                     development_stage: "pre_permitting", planned_capacity_mw: 30, it_load_mw: 24, pue: 1.28, wue: 0.4,
@@ -991,7 +995,7 @@ export default function App() {
                     sustainability_disclosures_ready: true, carbon_reduction_strategy_present: true,
                     financing_strategy_defined: true, investment_memo_ready: false,
                     site_control_secured: true, permitting_status: "underway", contractor_or_epc_identified: true,
-                    schedule_confidence_level: "high", target_financing_label: "sfdr_article_8",
+                    schedule_confidence_level: "high", target_financing_label: demoLabel,
                     // Flag drives the neutered-demo rendering on the Results
                     // page so methodology IP isn't exposed to logged-out visitors.
                     isDemoSample: true,
@@ -1956,6 +1960,19 @@ export default function App() {
             <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>Assessment generated: {new Date(a.assessedAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} · Methodology: Perennity Bridge v3.1 · April 2026</div>
           </div>
 
+          {isDemo && (
+            <div style={{ padding: 18, borderRadius: 12, background: COLORS.accentSubtle, border: `1px solid ${COLORS.accent}55`, display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 24 }}>
+              <Icon name="star" size={18} color={COLORS.accent} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.accent }}>Sample Assessment</div>
+                <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+                  This is a pre-populated example showing the Perennity Bridge headline score and pillar breakdown. Criteria, risks, recommendations, exports and advisory are available after sign-up.
+                </div>
+              </div>
+              <Button size="sm" onClick={() => { setUser(null); setCurrentProject(null); setScreen("onboarding"); }}>Create Account</Button>
+            </div>
+          )}
+
           {a.hardStopTriggered && (
             <div style={{ padding: 16, borderRadius: 10, background: COLORS.redBg, border: `1px solid ${COLORS.red}33`, display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 24 }}>
               <Icon name="alert" size={18} color={COLORS.red} />
@@ -1978,6 +1995,9 @@ export default function App() {
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>Label Verdict</div>
                   <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.text, marginTop: 2 }}>{le.labelName}</div>
                   {!isDemo && <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 6 }}>{le.summary}</div>}
+                  {!isDemo && le.hardStopOverride && (
+                    <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.red, marginTop: 6 }}>Verdict overridden by hard-stop rule — see alert above.</div>
+                  )}
                   {!isDemo && <a href="#label-criteria" style={{ display: "inline-block", marginTop: 10, fontSize: 12, fontWeight: 600, color: verdictColor, textDecoration: "none" }}>View criteria breakdown ↓</a>}
                 </div>
               </div>

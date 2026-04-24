@@ -255,6 +255,15 @@ function drawExecutiveSummary(doc, project, assessment, pageNum, totalPages) {
     summaryLines.slice(0, 2).forEach((ln, i) => {
       doc.text(ln, M + 34, y + 8 + (i * 4));
     });
+    if (le.hardStopOverride) {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...RED);
+      doc.setFontSize(8);
+      doc.text('Hard-stop override — verdict forced to FAIL.', M + 34, y + 16);
+      doc.setTextColor(...DARK_GREY);
+      doc.setFont('helvetica', 'normal');
+      y += 4;
+    }
     y += 16;
   }
 
@@ -537,11 +546,7 @@ function getPillarList(assessment) {
     {
       key: 'dfr', name: PILLAR_DISPLAY_NAMES.dfr,
       score: a.subscores.dfr,
-      gapNote: 'Extend equipment lifecycle and evidence WEEE end-of-life plan.',
-      // Per session scope: pillar names stay generic; DFR is the
-      // existing Delivery & Funding Readiness scoring slot — page
-      // title reframes as Circular Economy & Waste but drivers
-      // still come from dfr explanations. Recognised limitation.
+      gapNote: 'Secure site control, advance permitting, identify EPC, finalise financing strategy.',
       inputs: pillarInputs(a.pillarDetails?.dfr, 3, 2),
     },
   ];
