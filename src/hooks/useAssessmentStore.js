@@ -2,16 +2,36 @@ import { openDB } from 'idb';
 
 const DB = 'perennity-db';
 const STORE = 'assessments';
+const USERS_STORE = 'users';
 const DRAFT_KEY = 'perennity_wizard_draft';
 
+// v2 adds a `users` object store for client-side auth
+// (see hooks/useAuthStore.js). The upgrade is guarded so existing
+// assessments are preserved when moving from v1 → v2.
 async function db() {
-  return openDB(DB, 1, {
-    upgrade(d) {
-      const s = d.createObjectStore(STORE, { keyPath: 'id' });
-      s.createIndex('savedAt', 'savedAt');
+  return openDB(DB, 2, {
+    upgrade(d, oldVersion) {
+      if (oldVersion < 1) {
+        const s = d.createObjectStore(STORE, { keyPath: 'id' });
+        s.createIndex('savedAt', 'savedAt');
+      }
+      if (oldVersion < 2) {
+        if (!d.objectStoreNames.contains(USERS_STORE)) {
+          d.createObjectStore(USERS_STORE, { keyPath: 'email' });
+        }
+      }
     }
   });
 }
+
+// Exported so useAuthStore can open the same DB at the same version
+// without racing the upgrade.
+export async function getDb() {
+  return db();
+}
+
+export const DB_NAME = DB;
+export const USERS_STORE_NAME = USERS_STORE;
 
 export async function saveAssessment(id, project, assessment) {
   const conn = await db();

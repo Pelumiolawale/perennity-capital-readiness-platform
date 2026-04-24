@@ -199,7 +199,7 @@ export function determineEuTaxonomyAlignment(project, countryProfile) {
 }
 
 // ── PUE scoring — EU Taxonomy Climate Delegated Act (EU) 2021/2139, Annex I, Activity 8.1
-// Bands per Perennity methodology v3.1:
+// Bands per Perennity Bridge methodology v3.1:
 //   New-build:  ≤1.2  → 95 (post-2025 best-in-class)
 //               ≤1.3  → 85 (v3.1 new-build gate — Activity 8.1 ¶1(a))
 //               ≤1.5  → 55 (fail-for-new-build; allowed only for existing)

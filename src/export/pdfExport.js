@@ -834,20 +834,22 @@ function drawActionPlan(doc, project, assessment, pageNum, totalPages) {
     }
   }
 
-  // CTA
-  y = Math.max(y, PH - 45);
+  // CTA — clamp tightened to leave room for the relocated CONFIDENTIAL
+  // notice (prev bug: notice and standard footer both rendered at PH-8).
+  y = Math.max(y, PH - 48);
   doc.setFillColor(...TEAL);
   doc.roundedRect(M, y, CW, 11, 2, 2, 'F');
   doc.setTextColor(...WHITE);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('Next step: contact Perennity for advisory support — hello@perennitybridge.com', M + 5, y + 7.5);
+  doc.text('Next step: contact Perennity Bridge for advisory support — hello@perennitybridge.com', M + 5, y + 7.5);
 
-  // Confidential footer
+  // Confidential notice — moved above the standard footer at PH-14 so
+  // the two strings no longer overlay each other on the bottom-left.
   doc.setTextColor(...MID_GREY);
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'italic');
-  doc.text(`CONFIDENTIAL — Prepared by Perennity Bridge for ${name} — ${date} — Not for distribution without the written consent of Perennity.`, M, PH - 8);
+  doc.text(`CONFIDENTIAL — Prepared by Perennity Bridge for ${name} — ${date} — Not for distribution without the written consent of Perennity Bridge.`, M, PH - 14);
 
   footer(doc, 'Action Plan', pageNum, totalPages);
 }

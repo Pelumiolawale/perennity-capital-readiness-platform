@@ -254,4 +254,20 @@ describe('regressions', () => {
     expect(b.thresholdTable.some(t => t.value === '≤ 1.3')).toBe(true);
     expect(b.thresholdTable.some(t => t.value === '≤ 1.2')).toBe(true);
   });
+
+  it('regulatory citations use "Perennity Bridge", never bare "Perennity"', () => {
+    // Brand sweep regression — every Perennity reference in the
+    // citation module must be "Perennity Bridge" (the current brand),
+    // not the older bare "Perennity".
+    ['eu_taxonomy_8_1', 'sfdr_article_8', 'sfdr_article_9', 'uk_sdr_focus', 'uk_sdr_improvers', 'uk_sdr_impact', 'uk_sdr_mixed'].forEach(lb => {
+      ['sa', 'wre', 'epv', 'csr', 'dfr'].forEach(p => {
+        const b = getRegulatoryBasis(p, lb);
+        if (!b) return;
+        const blob = JSON.stringify(b);
+        // Match bare "Perennity" not immediately followed by " Bridge"
+        // (the acceptable compound) or a URL host character.
+        expect(blob).not.toMatch(/Perennity(?! Bridge)(?!bridge\.)/);
+      });
+    });
+  });
 });

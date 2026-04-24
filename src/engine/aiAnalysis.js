@@ -20,7 +20,7 @@ function buildSystemPrompt() {
     .map(f => `## ${f.name || f.id} (v${f.version || 'current'}, status: ${f.status || 'active'})\n${JSON.stringify(f, null, 2)}`)
     .join('\n\n---\n\n');
 
-  return `You are a senior green finance and infrastructure compliance expert at Perennity, specialising in data centre capital readiness across EU, UK, US, and MENA markets.
+  return `You are a senior green finance and infrastructure compliance expert at Perennity Bridge, specialising in data centre capital readiness across EU, UK, US, and MENA markets.
 
 The following regulatory frameworks are the authoritative source for your analysis:
 

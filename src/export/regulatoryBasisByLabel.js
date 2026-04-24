@@ -61,14 +61,14 @@ const EU_TAX_PUE_THRESHOLDS = [
 
 const CNDCP_WUE_THRESHOLDS = [
   { threshold: 'WUEmax formula',                 value: '0.4 × K1 × K2 × K3', source: 'EUDCA CNDCP White Paper (Oct 2024)' },
-  { threshold: 'Exceeds CNDCP target',           value: 'WUE ≤ WUEmax × 0.8', source: 'Perennity methodology v3.1' },
-  { threshold: 'Meets CNDCP target',             value: 'WUE ≤ WUEmax',       source: 'Perennity methodology v3.1' },
+  { threshold: 'Exceeds CNDCP target',           value: 'WUE ≤ WUEmax × 0.8', source: 'Perennity Bridge methodology v3.1' },
+  { threshold: 'Meets CNDCP target',             value: 'WUE ≤ WUEmax',       source: 'Perennity Bridge methodology v3.1' },
 ];
 
 const RENEWABLE_TIER_THRESHOLDS = [
   { threshold: 'Tier 1 — matched PPA / on-site',   value: '100% ≥ 90 pts',  source: 'GHG Protocol Scope 2 (2015); EU Tax 8.1 §1(c)' },
   { threshold: 'Tier 2 — Guarantees of Origin',    value: '100% ≥ 72 pts',  source: 'GHG Protocol Scope 2 (2015)' },
-  { threshold: 'Tier 3 — utility green tariff',    value: 'capped at 40 pts (no additionality)', source: 'Perennity methodology v3.1' },
+  { threshold: 'Tier 3 — utility green tariff',    value: 'capped at 40 pts (no additionality)', source: 'Perennity Bridge methodology v3.1' },
 ];
 
 const DNSH_GOV_THRESHOLDS = [
@@ -81,7 +81,7 @@ const DNSH_GOV_THRESHOLDS = [
 const CIRCULAR_THRESHOLDS = [
   { threshold: 'IT end-of-life (WEEE)',            value: 'Compliant plan',   source: 'WEEE Directive 2012/19/EU' },
   { threshold: 'Low-GWP refrigerants',             value: 'F-Gas compliant',  source: 'EU Regulation 517/2014' },
-  { threshold: 'Equipment lifecycle',              value: '≥ 5 years target', source: 'Perennity methodology v3.1' },
+  { threshold: 'Equipment lifecycle',              value: '≥ 5 years target', source: 'Perennity Bridge methodology v3.1' },
 ];
 
 // UK SDR labels share a common "evidence standard" framing —
@@ -102,7 +102,7 @@ const UK_SDR_GOVERNANCE_EVIDENCE = [
   { threshold: 'Escalation plan',          value: 'Documented', source: 'FCA PS23/16 ESG 5.3.1R' },
 ];
 const UK_SDR_CIRCULAR_EVIDENCE = [
-  { threshold: 'Supporting circular-economy evidence', value: 'WEEE plan / equipment lifecycle documented (supporting)', source: 'Perennity methodology v3.1 (indicative)' },
+  { threshold: 'Supporting circular-economy evidence', value: 'WEEE plan / equipment lifecycle documented (supporting)', source: 'Perennity Bridge methodology v3.1 (indicative)' },
 ];
 
 // ── Per-label × per-pillar encoding ──────────────────────────
@@ -114,7 +114,7 @@ function euTaxonomyBasis(pillar) {
         primaryRegime: 'EU Taxonomy Regulation (EU) 2020/852 + Climate Delegated Act (EU) 2021/2139',
         objectiveOrCategory: 'Climate Change Mitigation (Objective 1) — Activity 8.1 TSC',
         paiMapping: PAI.energy,
-        sources: ['EU 2021/2139 Annex I §8.1', 'Perennity methodology v3.1'],
+        sources: ['EU 2021/2139 Annex I §8.1', 'Perennity Bridge methodology v3.1'],
         thresholdTable: EU_TAX_PUE_THRESHOLDS,
         framing: 'passfail',
       };
@@ -333,7 +333,7 @@ function ukSdrBasis(sublabel, pillar) {
       return {
         primaryRegime: regime.primary,
         objectiveOrCategory: regime.tag + ' — supporting circular-economy evidence',
-        sources: [regime.primary, 'Perennity methodology v3.1 (indicative)'],
+        sources: [regime.primary, 'Perennity Bridge methodology v3.1 (indicative)'],
         thresholdTable: UK_SDR_CIRCULAR_EVIDENCE,
         ...common,
       };
