@@ -11,50 +11,18 @@ import { saveAssessment, listAssessments, loadAssessmentById, deleteAssessment, 
 import { signup as authSignup, signin as authSignin, signout as authSignout, getCurrentSession, userExists } from "./hooks/useAuthStore.js";
 import { getApplicableFrameworks, flattenFrameworks, FINANCING_LABELS } from "./regulations/frameworks/financing-labels.js";
 import { REQUIRED_FIELDS_BY_TAB, getTabCompletionPct, getTabFieldStatus, getAllMissingRequiredFields } from "./schema/fieldRegistry.js";
+// Day 3 rewire: Airtable client extracted to lib/, router-driven default export
+// at file bottom. LegacyAppShell body is otherwise unchanged.
+import { sendToAirtable } from "./lib/airtableClient.js";
+import AppRoutes from "./routes/AppRoutes.jsx";
 
 // ============================================================
 // PERENNITY CAPITAL READINESS PLATFORM — FULL MVP APPLICATION
 // ============================================================
 
 // ─── AIRTABLE BACKEND ───────────────────────────────────────
-const AIRTABLE_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID;
-const AIRTABLE_API_KEY = import.meta.env.VITE_AIRTABLE_API_KEY;
-
-async function sendToAirtable(tableName, fields) {
-  if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) {
-    console.error("❌ Airtable credentials not configured. Check your .env.local file and restart the dev server.");
-    console.log("BASE_ID present:", !!AIRTABLE_BASE_ID, "API_KEY present:", !!AIRTABLE_API_KEY);
-    return false;
-  }
-  console.log(`📤 Sending to Airtable table "${tableName}":`, fields);
-  try {
-    const res = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${AIRTABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ fields }),
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      console.error("❌ Airtable error:", error);
-      if (tableName === "Users") {
-        console.error('Airtable Users error:', error);
-      }
-      return false;
-    }
-    const result = await res.json();
-    console.log(`✅ Successfully sent to Airtable table "${tableName}"`);
-    if (tableName === "Users") {
-      console.log('Airtable Users response:', result);
-    }
-    return true;
-  } catch (err) {
-    console.error("❌ Airtable send failed:", err);
-    if (tableName === "Users") {
-      console.error('Airtable Users error:', err);
-    }
-    return false;
-  }
-}
+// Implementation moved to src/lib/airtableClient.js as part of Day 3 rewire.
+// `sendToAirtable` is imported at the top of this file. Behaviour unchanged.
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 const COLORS = {
@@ -666,7 +634,7 @@ function TOSModal({ onClose, onAccept, showAccept = false }) {
   );
 }
 
-export default function App() {
+export function LegacyAppShell() {
   const [screen, setScreen] = useState("landing");
   const [user, setUser] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -2534,4 +2502,11 @@ export default function App() {
       )}
     </>
   );
+}
+
+// Day 3 rewire: the default export now mounts the router. LegacyAppShell
+// (the original prototype, untouched in body) renders at /. The new
+// engine-driven Snapshot path renders at /assessment/snapshot.
+export default function App() {
+  return <AppRoutes />;
 }
