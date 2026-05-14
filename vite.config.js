@@ -54,6 +54,18 @@ export default defineConfig({
   },
   define: {
     'import.meta.env.VITE_ENGINE_COMMIT_SHA': JSON.stringify(ENGINE_COMMIT_SHA),
+
+    // Shim Node-environment APIs that browser-bundled libs occasionally probe
+    // during module init. jspdf calls process.platform inside a Node-branch
+    // check; without these defines the production Rollup bundle ships the
+    // unshimmed reference, throws "t.platform is not a function" at runtime,
+    // and React never mounts (blank page). The dev-server case is handled
+    // separately by optimizeDeps.exclude: ['jspdf'] above — different parts of
+    // the build pipeline (dev = esbuild pre-bundling, prod = Rollup), each
+    // needs its own fix.
+    'process.platform': JSON.stringify(''),
+    'process.env': JSON.stringify({}),
+    'global': 'globalThis',
   },
   build: {
     outDir: 'dist',
