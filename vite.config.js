@@ -41,8 +41,26 @@ function readEngineCommitSha() {
 
 const ENGINE_COMMIT_SHA = readEngineCommitSha()
 
+const osShimPath = resolve(__dirname, 'src/lib/os-shim.js')
+
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      // @perennity/engine's KB loader transitively pulls in fast-glob, which
+      // calls os.platform()/os.cpus()/path.posix.dirname at MODULE INIT.
+      // Vite externalizes Node built-ins in browser builds to {}, so init
+      // throws "platform is not a function" and React never mounts (blank
+      // page). Aliasing os/path to a tiny shim lets module init succeed; the
+      // downstream fast-glob runtime is dead in the browser code path (we
+      // consume the engine's statically-bundled BUNDLED_ACTIVITIES, not its
+      // filesystem KB loader). See src/lib/os-shim.js for the shim surface.
+      'os': osShimPath,
+      'node:os': osShimPath,
+      'path': osShimPath,
+      'node:path': osShimPath,
+    },
+  },
   // jspdf dynamically imports the optional peer `canvg` (for SVG rendering)
   // which is never installed. The dynamic import is wrapped in .catch() so
   // it's harmless at runtime, but esbuild's pre-bundling fails on the
