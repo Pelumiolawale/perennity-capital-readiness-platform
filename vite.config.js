@@ -88,5 +88,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    rollupOptions: {
+      // jspdf does a `import("canvg").catch(...)` for optional SVG rendering;
+      // canvg is jspdf's optional peer and is skipped on macOS/x64 by npm.
+      // The optimizeDeps.exclude above handles the dev-server (esbuild) side;
+      // this entry handles the prod-build (Rollup) side. Symmetric fix:
+      // Rollup leaves the dynamic import unresolved and jspdf's runtime
+      // .catch() handles the missing module. snapshotPDF.js uses only text/
+      // rect primitives — never the SVG path.
+      external: ['canvg'],
+    },
   },
 })
