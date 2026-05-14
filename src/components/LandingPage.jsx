@@ -24,9 +24,9 @@ export function LandingPage() {
           Capital readiness, assessed against the rules that move capital.
         </h1>
         <p className="text-lg text-[#5C6B5C] mb-10 max-w-2xl mx-auto">
-          Perennity Bridge maps data centre projects against EU and UK
-          sustainable finance frameworks and produces investor-grade readiness
-          reports.
+          Perennity Bridge assesses data centre projects against EU Taxonomy
+          Activity 8.1 substantial contribution and do-no-significant-harm
+          criteria, and produces investor-grade readiness reports.
         </p>
         <Link
           to="/assessment/snapshot"
@@ -34,6 +34,11 @@ export function LandingPage() {
         >
           Start a Capital Alignment Review
         </Link>
+        <p className="mt-6 text-xs text-[#8A957F] max-w-2xl mx-auto">
+          Activity 8.1 coverage is live today. Broader framework coverage
+          &mdash; SFDR Article 8/9, UK SDR, EU Green Bond Standard &mdash; is
+          in active development.
+        </p>
       </section>
 
       {/* Three-column "what you'll get" */}
