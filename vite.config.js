@@ -43,6 +43,15 @@ const ENGINE_COMMIT_SHA = readEngineCommitSha()
 
 export default defineConfig({
   plugins: [react()],
+  // jspdf dynamically imports the optional peer `canvg` (for SVG rendering)
+  // which is never installed. The dynamic import is wrapped in .catch() so
+  // it's harmless at runtime, but esbuild's pre-bundling fails on the
+  // unresolved import. Excluding jspdf from optimizeDeps skips pre-bundling
+  // and lets the .catch() handle the missing dep at runtime. snapshotPDF.js
+  // uses only text/rect primitives — never the SVG path.
+  optimizeDeps: {
+    exclude: ['jspdf'],
+  },
   define: {
     'import.meta.env.VITE_ENGINE_COMMIT_SHA': JSON.stringify(ENGINE_COMMIT_SHA),
   },

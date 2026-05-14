@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('@perennity/engine').SnapshotOutput} SnapshotOutput */
 import { METHODOLOGY_VERSION } from "@perennity/engine";
+import { generateSnapshotPDF } from "../export/snapshotPDF.js";
 
 /**
  * Renders a SnapshotOutput. Reads ONLY the closed allowlist
@@ -18,6 +19,20 @@ import { METHODOLOGY_VERSION } from "@perennity/engine";
  * @param {{ output: SnapshotOutput }} props
  */
 export function SnapshotResults({ output }) {
+  function handleDownloadPDF() {
+    try {
+      const pdf = generateSnapshotPDF(output);
+      const shortId = (output.run_id || "snapshot").slice(0, 8);
+      const date = new Date().toISOString().slice(0, 10);
+      pdf.save(`perennity-snapshot-${shortId}-${date}.pdf`);
+    } catch (err) {
+      console.error("Snapshot PDF generation failed:", err);
+      alert(
+        "Could not generate the PDF. Please try again or contact hello@perennitybridge.com.",
+      );
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto my-10 px-8 font-sans text-[#0B1F2A]">
       <div className="text-xs text-[#A63D2F] text-center mb-4 uppercase tracking-wider font-semibold">
@@ -60,13 +75,20 @@ export function SnapshotResults({ output }) {
           </ol>
         )}
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 flex flex-col items-center gap-3">
           <button
             type="button"
             onClick={() => console.log("CTA clicked:", output.cta)}
             className="bg-[#0B1F2A] text-[#F8F6F2] px-7 py-3.5 rounded-lg text-base font-semibold cursor-pointer hover:bg-[#15293a]"
           >
             {ctaLabel(output.cta)}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            className="text-[#0B1F2A] bg-transparent border border-[#DDD5CA] px-5 py-2 rounded text-sm font-medium cursor-pointer hover:bg-[#F0EAE2]"
+          >
+            Download PDF
           </button>
         </div>
 

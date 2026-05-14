@@ -2,11 +2,11 @@
 /** @typedef {import('@perennity/engine').ProjectInput} ProjectInput */
 import { useState } from "react";
 
-// DAY 3 SCOPE NOTE: This wizard collects only the Activity 8.1-relevant
-// inputs needed to drive the engine end-to-end. The full ~70-field legacy
-// intake (LegacyAppShell, src/App.jsx) is preserved untouched at /. When the
-// legacy is deleted on Day 4+, the broader intake scope (label-specific
-// branching, multi-tab field set) will be re-evaluated and ported here.
+// SCOPE NOTE: This wizard collects only the Activity 8.1-relevant inputs
+// needed to drive the engine end-to-end. The broader intake scope (label-
+// specific branching, multi-tab field set from the original prototype) will
+// be re-evaluated and ported here when the Snapshot route grows past
+// Activity 8.1 coverage.
 //
 // Inputs we don't yet collect (and the engine handles gracefully with
 // "data_missing" verdicts) are flagged below.
@@ -101,7 +101,7 @@ export function IntakeWizard({ onSubmit }) {
     <div className="max-w-2xl mx-auto my-10 px-8 font-sans text-[#0B1F2A]">
       <h1 className="text-2xl font-bold mb-2">Capital Alignment Snapshot</h1>
       <p className="text-sm text-[#5C6B5C] mb-8">
-        Day 3 scaffold — Activity 8.1 inputs only. Full intake field set lands when LegacyAppShell is retired.
+        Activity 8.1 inputs. A broader intake field set will land as Snapshot coverage expands.
       </p>
 
       <div className="mb-6 p-4 bg-[rgba(78,205,164,0.08)] border border-[#4ECDA4] rounded">
