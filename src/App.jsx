@@ -4,8 +4,19 @@ const SIDEBAR_KEY = "pb_sidebar_collapsed";
 import pbDarkLogo from "./assets/pb_dark_v2.png";
 import pbRgbaLogo from "./assets/pb_rgba.png";
 import { runAssessment as runScoringEngine, determineSfdrClassification, determineUkSdrEligibility, determineEuTaxonomyAlignment, REGION_WEIGHTS as ENGINE_REGION_WEIGHTS, REGION_THRESHOLDS as ENGINE_REGION_THRESHOLDS } from "./engine/scoring.js";
-import { downloadPdf } from "./export/pdfExport.js";
-import { downloadExcel } from "./export/excelExport.js";
+// Day 4 commit 1: the legacy export pipeline (pdfExport, excelExport,
+// exportPlan, regulatoryBasisByLabel) is deleted in this commit. LegacyAppShell
+// still references downloadPdf / downloadExcel — they are temporarily replaced
+// with no-op handlers below. Full LegacyAppShell removal happens in Day 4
+// commit 2 alongside the new snapshotPDF.js.
+// import { downloadPdf } from "./export/pdfExport.js";
+// import { downloadExcel } from "./export/excelExport.js";
+const downloadPdf = () =>
+  alert(
+    "Export disabled during Day 4 migration. The new SnapshotPDF lands in commit 2.",
+  );
+const downloadExcel = () =>
+  alert("Export disabled during Day 4 migration.");
 import { generateNarrative, answerRegulatoryQuestion } from "./engine/aiAnalysis.js";
 import { saveAssessment, listAssessments, loadAssessmentById, deleteAssessment, saveDraft, loadDraft, clearDraft } from "./hooks/useAssessmentStore.js";
 import { signup as authSignup, signin as authSignin, signout as authSignout, getCurrentSession, userExists } from "./hooks/useAuthStore.js";

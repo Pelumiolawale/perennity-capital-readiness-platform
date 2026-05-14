@@ -11,11 +11,17 @@ import {
   computeKnowledgeBaseHash,
 } from "@perennity/engine";
 
-// engine_commit_sha: a real SHA should come from the lockfile or a build-time
-// injected env var on Day 4+. "dev" is intentionally non-production-looking
-// so any run produced by this build cannot be mistaken for audit-bearing
-// output.
-const ENGINE_COMMIT_SHA = import.meta.env.VITE_ENGINE_COMMIT_SHA ?? "dev";
+// engine_commit_sha is audit-bearing and must always be defined at build time.
+// vite.config.js parses it from package-lock.json's @perennity/engine entry
+// and exposes it via define. No silent fallback — a missing SHA in a built
+// artifact would be an audit regression and must fail loudly.
+const ENGINE_COMMIT_SHA = import.meta.env.VITE_ENGINE_COMMIT_SHA;
+if (!ENGINE_COMMIT_SHA) {
+  throw new Error(
+    "VITE_ENGINE_COMMIT_SHA not defined. Check vite.config.js — this is an " +
+      "audit-bearing field and must always be set at build time.",
+  );
+}
 
 // Pre-compute the KB hash once at module load. Stable for the lifetime of
 // the page; refreshed on next reload (and on engine version bumps via the
