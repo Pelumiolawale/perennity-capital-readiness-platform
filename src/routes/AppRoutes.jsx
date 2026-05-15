@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { LandingPage } from "../components/LandingPage.jsx";
 import { SnapshotRoute } from "./SnapshotRoute";
-import { ReportRoute } from "./ReportRoute";
+import ReportRoute from "./ReportRoute";
 import { NotFound } from "./NotFound";
 
 // Day 4 commit 2: / now renders the new LandingPage. The legacy prototype
