@@ -29,6 +29,7 @@ import {
   ENTITLEMENT_ERROR_COPY,
   ENGINE_ERROR_COPY,
 } from "../lib/disclaimers.js";
+import { generateReportPDF } from "../export/reportPDF.js";
 
 // Default signatory when the engagement record has no overrides set.
 // Commit 3 will replace the placeholder URI with the real pre-signed
@@ -160,23 +161,81 @@ export default function ReportRoute() {
     );
   }
 
-  // entitlement_valid — Commit 2 verification gate: eyeball the ReportOutput
-  // structure as raw JSON. Commit 3 wires PDF generation.
+  // entitlement_valid — Commit 3 wires the paid-tier PDF generator. The
+  // route renders a brief summary card + Download button; the PDF itself
+  // is rendered client-side by generateReportPDF on click.
+  function handleDownload() {
+    try {
+      const pdf = generateReportPDF(
+        reportOutput,
+        engagement?.report_metadata,
+      );
+      const shortRef = (reportOutput.engagement_reference || "report").slice(0, 8);
+      const date = new Date().toISOString().slice(0, 10);
+      pdf.save(`perennity-report-${shortRef}-${date}.pdf`);
+    } catch (err) {
+      console.error("Report PDF generation failed:", err);
+      alert(
+        "Could not generate the PDF. Please try again or contact hello@perennitybridge.com.",
+      );
+    }
+  }
+
+  const shortRef = (reportOutput?.engagement_reference || "").slice(0, 8);
+  const generatedDate =
+    reportOutput?.generated_at && typeof reportOutput.generated_at === "string"
+      ? reportOutput.generated_at.slice(0, 10)
+      : "—";
+
   return (
-    <div className="max-w-4xl mx-auto my-10 px-6 font-sans text-[#0B1F2A]">
+    <div className="max-w-2xl mx-auto my-10 px-8 font-sans text-[#0B1F2A]">
       {engagement?.ecocc_parse_warning && (
         <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
           <strong>ECoCC Practices JSON parse warning:</strong>{" "}
           {engagement.ecocc_parse_warning}
         </div>
       )}
-      <h1 className="text-3xl font-bold mb-4">Report ready for review</h1>
-      <pre className="font-mono text-xs bg-[#F8F6F2] border border-[#DDD5CA] rounded p-4 overflow-x-auto whitespace-pre">
-        {JSON.stringify(reportOutput, null, 2)}
-      </pre>
-      <p className="mt-4 text-sm text-[#5C6B5C]">
-        Commit 3 will replace this with a downloadable PDF.
+
+      <h1 className="text-3xl font-bold mb-2">Report ready</h1>
+      <p className="text-sm text-[#5C6B5C] mb-8">
+        Investor-grade. Signed. Issued under your engagement reference.
       </p>
+
+      <div className="bg-[#F8F6F2] border border-[#DDD5CA] rounded-xl p-6 mb-6">
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-3 text-sm">
+          <dt className="text-[#5C6B5C]">Engagement</dt>
+          <dd className="font-mono text-[#0B1F2A] break-all">
+            {shortRef ? `${shortRef}…` : "—"}
+          </dd>
+          <dt className="text-[#5C6B5C]">Client</dt>
+          <dd className="text-[#0B1F2A]">
+            {engagement?.report_metadata?.client_name || "—"}
+          </dd>
+          <dt className="text-[#5C6B5C]">Project</dt>
+          <dd className="text-[#0B1F2A]">
+            {engagement?.report_metadata?.project_name || "—"}
+          </dd>
+          <dt className="text-[#5C6B5C]">Generated</dt>
+          <dd className="text-[#0B1F2A]">{generatedDate}</dd>
+        </dl>
+      </div>
+
+      <div className="flex flex-col items-center gap-3">
+        <button
+          type="button"
+          onClick={handleDownload}
+          className="bg-[#0B1F2A] text-[#F8F6F2] px-7 py-3.5 rounded-lg text-base font-semibold cursor-pointer hover:bg-[#15293a]"
+        >
+          Download PDF
+        </button>
+      </div>
+
+      <div className="mt-10 pt-5 border-t border-[#DDD5CA] text-xs text-[#8A957F] leading-relaxed">
+        <p>
+          <strong>EU Taxonomy Article 26 disclaimer:</strong>{" "}
+          {ARTICLE_26_DISCLAIMER}
+        </p>
+      </div>
     </div>
   );
 }
