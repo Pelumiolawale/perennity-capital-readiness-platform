@@ -102,7 +102,12 @@ export default function ReportRoute() {
           signatory:
             entitlement.engagement.signatory_overrides ?? DEFAULT_SIGNATORY,
           disclaimer: ARTICLE_26_DISCLAIMER,
-          engagement_reference_for: (run_id) => run_id,
+          // Deliberately ignore the engine's run_id arg: the engine generates a
+          // fresh UUID per render (useful internal serial for replay/debug),
+          // but the public engagement_reference must be the stable Airtable
+          // UUID Dolapo issued — the same value the customer typed in ?ref=
+          // and the primary key of the Engagements row.
+          engagement_reference_for: () => entitlement.engagement.run_id,
           ic_defence_pack_version: "v1",
         });
         const run = await engine.run(
