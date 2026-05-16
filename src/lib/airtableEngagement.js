@@ -41,6 +41,10 @@ const FID = {
   SIGNATORY_NAME: "fldLkslrH9GckfPIf",
   SIGNATORY_TITLE: "fld4Or0uEUFg5xG3o",
   SIGNATORY_SIG_URI: "fldRYnapeizVC4Hd5",
+  // Methodology v3.2: a single multilineText column carries every new
+  // data_point as one JSON object. Future v3.x keys are added inside that
+  // blob without touching the Airtable schema.
+  V32_DATA_POINTS_JSON: "fldw55DbhicnyNjEM",
 };
 
 function parseEvidenceDocuments(raw) {
@@ -189,6 +193,27 @@ export async function fetchEngagement(engagementReference) {
     }
   }
 
+  // Methodology v3.2 data points live in a single JSON blob column. Parse
+  // safely; on failure, surface a top-level warning the route can render as a
+  // banner without blocking the rest of the report (same pattern as ECoCC).
+  // The blob's keys are merged into data_points after the v3.1 keys, so an
+  // explicit v3.2 value wins over any v3.1 default with the same key.
+  let v32Value = null;
+  let v32ParseWarning = null;
+  const v32Raw = fields[FID.V32_DATA_POINTS_JSON];
+  if (v32Raw && typeof v32Raw === "string" && v32Raw.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(v32Raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        v32Value = parsed;
+      } else {
+        v32ParseWarning = "v3.2 Data Points (JSON) must decode to a JSON object.";
+      }
+    } catch (e) {
+      v32ParseWarning = e && e.message ? e.message : "JSON.parse failed.";
+    }
+  }
+
   // Airtable returns true for checked, undefined (not false) for unchecked.
   const data_points = {
     ecocc_practices_implemented: ecoccValue,
@@ -199,6 +224,7 @@ export async function fetchEngagement(engagementReference) {
       fields[FID.CLIMATE_RISK_METHODOLOGY] ?? null,
     wue_annualised: fields[FID.WUE_ANNUALISED] ?? null,
     site_water_stress_classification: fields[FID.SITE_WATER_STRESS] ?? null,
+    ...(v32Value ?? {}),
   };
 
   const evidence_documents = parseEvidenceDocuments(
@@ -232,6 +258,9 @@ export async function fetchEngagement(engagementReference) {
 
   if (ecoccParseWarning) {
     engagement.ecocc_parse_warning = ecoccParseWarning;
+  }
+  if (v32ParseWarning) {
+    engagement.v32_parse_warning = v32ParseWarning;
   }
 
   return { ok: true, engagement };
