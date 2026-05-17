@@ -33,19 +33,19 @@ export async function getDb() {
 export const DB_NAME = DB;
 export const USERS_STORE_NAME = USERS_STORE;
 
-export async function saveAssessment(id, project, assessment) {
+export async function saveAssessment(id, projectInput, snapshotOutput) {
   const conn = await db();
   await conn.put(STORE, {
     id,
-    projectName: project.project_name || 'Untitled',
-    region: project.region || '',
-    country: project.country || '',
+    projectId: projectInput.project_id || 'Untitled',
+    facilityType: projectInput.facility_type || '',
+    jurisdiction: projectInput.jurisdiction || '',
     savedAt: new Date().toISOString(),
-    score: assessment.capitalReadinessScore,
-    band: assessment.band?.label,
-    sfdr: assessment.sfdr?.classification,
-    project,
-    assessment,
+    indicativeScore: snapshotOutput.indicative_score,
+    indicativeBand: snapshotOutput.indicative_band,
+    runId: snapshotOutput.run_id,
+    projectInput,
+    snapshotOutput,
   });
 }
 

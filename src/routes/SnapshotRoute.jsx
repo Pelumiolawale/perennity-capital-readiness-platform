@@ -2,6 +2,7 @@ import { useState } from "react";
 import { IntakeWizard } from "../components/IntakeWizard";
 import { SnapshotResults } from "../components/SnapshotResults";
 import { runSnapshot } from "../lib/engineClient";
+import { saveAssessment, clearDraft } from "../hooks/useAssessmentStore";
 
 // SnapshotRoute owns the intake → engine → results flow. Local useState
 // for phase only; we'll consolidate state mgmt on Day 4 once the shape is
@@ -15,6 +16,8 @@ export function SnapshotRoute() {
   const handleSubmit = async (input) => {
     try {
       const snapshot = await runSnapshot(input);
+      await saveAssessment(crypto.randomUUID(), input, snapshot);
+      clearDraft();
       setOutput(snapshot);
       setPhase("results");
     } catch (e) {

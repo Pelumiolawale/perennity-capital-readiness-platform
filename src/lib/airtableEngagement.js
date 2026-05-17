@@ -45,7 +45,38 @@ const FID = {
   // data_point as one JSON object. Future v3.x keys are added inside that
   // blob without touching the Airtable schema.
   V32_DATA_POINTS_JSON: "fldw55DbhicnyNjEM",
+  // v3.2 explicit columns. Created against table tblRnd8BdQ65kuaej. Option
+  // names match the engine's expected string values verbatim — do not rename
+  // in the Airtable UI without bumping the engine's EXPECTED_*_ITEMS arrays
+  // and PUE_METHODOLOGIES/PUE_CATEGORIES at src/logic/safeguards_*.ts and
+  // src/logic/sc_8_1_2_pue_measurement_compliance.ts in the engine repo.
+  PUE_MEASUREMENT_METHODOLOGY: "fldt3uBF2X9fTA8Ew",
+  PUE_MEASUREMENT_CATEGORY: "fldLR3EglrPW8km09",
+  PUE_MEASUREMENT_BOUNDARY: "fldgoN1r6KYX6YgXW",
+  PUE_REPORTING_BASIS: "fldv4ouVCZS1RaBin",
+  HUMAN_RIGHTS_ITEMS: "fldhlCI68cqPZyzvb",
+  BRIBERY_CORRUPTION_ITEMS: "fldk44Pyugc1Rwv4X",
+  TAXATION_ITEMS: "fldOvqxo1JYDtqGIu",
+  FAIR_COMPETITION_ITEMS: "fldq23xLBmqgSyNDZ",
 };
+
+// Spread an { key: value } pair only when value is meaningful. Suppresses
+// undefined, null, and empty arrays so the engine treats absence as
+// "no input" rather than "explicit false/empty".
+function optionalKey(key, value) {
+  if (value === undefined || value === null) return {};
+  if (Array.isArray(value) && value.length === 0) return {};
+  return { [key]: value };
+}
+
+// Airtable checkbox semantics: true when ticked, undefined when not.
+// We need an explicit boolean only when the cell has been touched, since
+// undefined here means "leave the key out and let the engine return
+// data_missing" rather than "the boundary is not documented".
+function coerceCheckbox(value) {
+  if (value === true) return true;
+  return undefined;
+}
 
 function parseEvidenceDocuments(raw) {
   if (!raw || typeof raw !== "string") return [];
@@ -225,6 +256,17 @@ export async function fetchEngagement(engagementReference) {
     wue_annualised: fields[FID.WUE_ANNUALISED] ?? null,
     site_water_stress_classification: fields[FID.SITE_WATER_STRESS] ?? null,
     ...(v32Value ?? {}),
+    // v3.2 explicit columns — override the v32 JSON blob when present. Each
+    // key is omitted if the Airtable cell is empty, so the engine's
+    // "data_missing" path fires honestly for unpopulated fields.
+    ...optionalKey("pue_measurement_methodology_declared", fields[FID.PUE_MEASUREMENT_METHODOLOGY]),
+    ...optionalKey("pue_measurement_category", fields[FID.PUE_MEASUREMENT_CATEGORY]),
+    ...optionalKey("pue_measurement_boundary_documented", coerceCheckbox(fields[FID.PUE_MEASUREMENT_BOUNDARY])),
+    ...optionalKey("pue_reporting_basis", fields[FID.PUE_REPORTING_BASIS]),
+    ...optionalKey("human_rights_compliance_items", fields[FID.HUMAN_RIGHTS_ITEMS]),
+    ...optionalKey("bribery_corruption_compliance_items", fields[FID.BRIBERY_CORRUPTION_ITEMS]),
+    ...optionalKey("taxation_compliance_items", fields[FID.TAXATION_ITEMS]),
+    ...optionalKey("fair_competition_compliance_items", fields[FID.FAIR_COMPETITION_ITEMS]),
   };
 
   const evidence_documents = parseEvidenceDocuments(

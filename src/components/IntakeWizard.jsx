@@ -1,6 +1,32 @@
 // @ts-check
 /** @typedef {import('@perennity/engine').ProjectInput} ProjectInput */
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { saveDraft, loadDraft } from "../hooks/useAssessmentStore";
+
+// v3.2 safeguards canonical item identifiers. Must match the engine's
+// EXPECTED_*_ITEMS arrays at src/logic/safeguards_*.ts in the engine repo
+// (Perennity_Bridge_V2). Bump in lockstep with engine v3.x changes.
+const HUMAN_RIGHTS_ITEMS = [
+  { id: "human_rights_policy_published", label: "Published human rights policy" },
+  { id: "due_diligence_process_operational", label: "Operational due diligence process" },
+  { id: "grievance_mechanism_operational", label: "Operational grievance mechanism" },
+  { id: "ilo_core_conventions_compliance", label: "Compliance with ILO core conventions" },
+  { id: "no_ungc_violations_24m", label: "No UN Global Compact violations in past 24 months" },
+];
+const BRIBERY_CORRUPTION_ITEMS = [
+  { id: "anti_bribery_policy_published", label: "Published anti-bribery policy" },
+  { id: "anti_bribery_training_programme", label: "Operational anti-bribery training programme" },
+  { id: "no_bribery_convictions_24m", label: "No bribery convictions in past 24 months" },
+];
+const TAXATION_ITEMS = [
+  { id: "tax_governance_policy_published", label: "Published tax governance policy" },
+  { id: "no_tax_evasion_findings_24m", label: "No tax evasion findings in past 24 months" },
+  { id: "country_by_country_reporting_or_below_threshold", label: "Active country-by-country reporting (or attestation of being below threshold)" },
+];
+const FAIR_COMPETITION_ITEMS = [
+  { id: "competition_policy_published", label: "Published competition policy" },
+  { id: "no_competition_law_breaches_24m", label: "No competition law breaches in past 24 months" },
+];
 
 // SCOPE NOTE: This wizard collects only the Activity 8.1-relevant inputs
 // needed to drive the engine end-to-end. The broader intake scope (label-
@@ -60,7 +86,21 @@ export function IntakeWizard({ onSubmit }) {
     site_water_stress_classification: "Low",
     climate_risk_assessment_completed: false,
     climate_risk_assessment_methodology: "",
+    pue_measurement_compliance_attested: false,
+    human_rights_compliance_items: HUMAN_RIGHTS_ITEMS.map((i) => i.id),
+    bribery_corruption_compliance_items: BRIBERY_CORRUPTION_ITEMS.map((i) => i.id),
+    taxation_compliance_items: TAXATION_ITEMS.map((i) => i.id),
+    fair_competition_compliance_items: FAIR_COMPETITION_ITEMS.map((i) => i.id),
   });
+
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft?.wizardData) setForm(draft.wizardData);
+  }, []);
+
+  useEffect(() => {
+    saveDraft(form);
+  }, [form]);
 
   const update = (k) => (e) => {
     const v =
@@ -72,8 +112,42 @@ export function IntakeWizard({ onSubmit }) {
     setForm((s) => ({ ...s, [k]: v }));
   };
 
+  const toggleItem = (key, id) => () => {
+    setForm((s) => {
+      const arr = s[key];
+      return {
+        ...s,
+        [key]: arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id],
+      };
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const data_points = {
+      annualised_pue: form.annualised_pue,
+      wue_annualised: form.wue_annualised,
+      site_water_stress_classification: form.site_water_stress_classification,
+      climate_risk_assessment_completed: form.climate_risk_assessment_completed,
+      climate_risk_assessment_methodology:
+        form.climate_risk_assessment_methodology,
+      // Day 3 not yet collected — engine returns "data_missing" for these.
+      ecocc_practices_implemented: [],
+      human_rights_compliance_items: form.human_rights_compliance_items,
+      bribery_corruption_compliance_items: form.bribery_corruption_compliance_items,
+      taxation_compliance_items: form.taxation_compliance_items,
+      fair_competition_compliance_items: form.fair_competition_compliance_items,
+    };
+
+    // PUE measurement: only populate keys when attested. Unchecked = no claim =
+    // data_missing (the engine's correct verdict; we don't fabricate failure).
+    if (form.pue_measurement_compliance_attested) {
+      data_points.pue_measurement_methodology_declared = "EN_50600_4_2";
+      data_points.pue_measurement_category = "category_2";
+      data_points.pue_measurement_boundary_documented = true;
+      data_points.pue_reporting_basis = "annualised";
+    }
+
     /** @type {ProjectInput} */
     const input = {
       project_id: form.project_id || "PB-NEW-001",
@@ -82,16 +156,7 @@ export function IntakeWizard({ onSubmit }) {
       jurisdiction: form.jurisdiction,
       facility_status: form.facility_status,
       build_completion_year: form.build_completion_year,
-      data_points: {
-        annualised_pue: form.annualised_pue,
-        wue_annualised: form.wue_annualised,
-        site_water_stress_classification: form.site_water_stress_classification,
-        climate_risk_assessment_completed: form.climate_risk_assessment_completed,
-        climate_risk_assessment_methodology:
-          form.climate_risk_assessment_methodology,
-        // Day 3 not yet collected — engine returns "data_missing" for these.
-        ecocc_practices_implemented: [],
-      },
+      data_points,
       evidence_documents: [],
     };
     onSubmit(input);
@@ -212,6 +277,56 @@ export function IntakeWizard({ onSubmit }) {
           />
         </Field>
 
+        <div className="pt-4 mt-2 border-t border-[#DDD5CA]">
+          <h2 className="text-lg font-semibold mb-1">PUE measurement compliance</h2>
+          <p className="text-sm text-[#5C6B5C] mb-3">
+            Single attestation for snapshot; the underlying methodology, category, boundary, and reporting basis are captured individually in the paid Project Readiness Report session.
+          </p>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={form.pue_measurement_compliance_attested}
+              onChange={update("pue_measurement_compliance_attested")}
+              className="mt-1"
+            />
+            <span className="text-sm">
+              PUE measured per EN 50600-4-2, Category 2, with documented boundary and annualised reporting.
+            </span>
+          </label>
+        </div>
+
+        <div className="pt-4 mt-2 border-t border-[#DDD5CA]">
+          <h2 className="text-lg font-semibold mb-1">Minimum safeguards (Article 18)</h2>
+          <p className="text-sm text-[#5C6B5C] mb-4">
+            Pre-checked attestations. Un-tick any item that does not apply to your organisation. The snapshot heatmap renders the rollup verdict only; the paid Report surfaces each pillar individually.
+          </p>
+
+          <SafeguardsPillar
+            title="Human rights"
+            items={HUMAN_RIGHTS_ITEMS}
+            selected={form.human_rights_compliance_items}
+            onToggle={(id) => toggleItem("human_rights_compliance_items", id)}
+          />
+          <SafeguardsPillar
+            title="Bribery & corruption"
+            items={BRIBERY_CORRUPTION_ITEMS}
+            selected={form.bribery_corruption_compliance_items}
+            onToggle={(id) => toggleItem("bribery_corruption_compliance_items", id)}
+          />
+          <SafeguardsPillar
+            title="Taxation"
+            items={TAXATION_ITEMS}
+            selected={form.taxation_compliance_items}
+            onToggle={(id) => toggleItem("taxation_compliance_items", id)}
+          />
+          <SafeguardsPillar
+            title="Fair competition"
+            items={FAIR_COMPETITION_ITEMS}
+            selected={form.fair_competition_compliance_items}
+            onToggle={(id) => toggleItem("fair_competition_compliance_items", id)}
+          />
+        </div>
+
         <button
           type="submit"
           className="bg-[#0B1F2A] text-[#F8F6F2] px-7 py-3 rounded text-base font-semibold cursor-pointer mt-4"
@@ -231,5 +346,26 @@ function Field({ label, children }) {
       </span>
       {children}
     </label>
+  );
+}
+
+function SafeguardsPillar({ title, items, selected, onToggle }) {
+  return (
+    <div className="mb-3 p-3 border border-[#DDD5CA] rounded bg-white">
+      <h3 className="text-sm font-semibold mb-2">{title}</h3>
+      <div className="space-y-1.5">
+        {items.map((item) => (
+          <label key={item.id} className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={selected.includes(item.id)}
+              onChange={onToggle(item.id)}
+              className="mt-1"
+            />
+            <span className="text-sm">{item.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
   );
 }
