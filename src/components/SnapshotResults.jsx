@@ -1,20 +1,30 @@
 // @ts-check
 /** @typedef {import('@perennity/engine').SnapshotOutput} SnapshotOutput */
+/** @typedef {import('@perennity/engine').HeatmapCell} HeatmapCell */
+/** @typedef {import('@perennity/engine').PillarVerdict} PillarVerdict */
 import { METHODOLOGY_VERSION } from "@perennity/engine";
 import { generateSnapshotPDF } from "../export/snapshotPDF.js";
 
+const FRAMEWORK_LABELS = {
+  minimum_safeguards: "Minimum Safeguards (Article 18)",
+};
+
+const PILLAR_LABELS = {
+  human_rights: "Human Rights",
+  bribery_corruption: "Bribery & Corruption",
+  taxation: "Taxation",
+  fair_competition: "Fair Competition",
+};
+
+const AUTHORITY_LABELS = {
+  1: "Regulatory",
+  2: "Perennity Bridge methodology",
+  3: "Informational",
+};
+
 /**
- * Renders a SnapshotOutput. Reads ONLY the closed allowlist
- * (run_id, indicative_score, indicative_band, heatmap, gap_list,
- * disclaimer, generated_at, cta). The engine's structural gate test
- * enforces what can appear in the input; this component does not
- * derive, enrich, or invent additional fields.
- *
- * Note on heatmap: SnapshotOutput exposes framework-level verdicts only
- * (HeatmapCell[] keyed by framework). Per-criterion SC/DNSH rows are
- * paid-tier-only — the allowlist deliberately excludes them. The Day 3
- * Snapshot therefore renders one row per framework cell, plus the static
- * safeguards-pending row.
+ * Renders a SnapshotOutput. Reads only fields the engine's snapshot
+ * allowlist exposes — see snapshot.gate.test.ts in the engine repo.
  *
  * @param {{ output: SnapshotOutput }} props
  */
@@ -48,18 +58,8 @@ export function SnapshotResults({ output }) {
         <h2 className="text-lg font-semibold mt-8 mb-3">Framework verdicts</h2>
         <div className="grid gap-2">
           {output.heatmap.map((cell) => (
-            <div
-              key={cell.framework}
-              className="flex justify-between items-center px-3.5 py-2.5 border border-[#DDD5CA] rounded bg-white"
-            >
-              <span>{cell.framework}</span>
-              <VerdictPill verdict={cell.verdict} />
-            </div>
+            <HeatmapRow key={cell.framework} cell={cell} />
           ))}
-        </div>
-
-        <div className="mt-3 px-3.5 py-2.5 border border-dashed border-[#C9BFB2] rounded text-[#5C6B5C] text-sm">
-          Minimum safeguards: <em>Pending — assessed in paid Report</em>
         </div>
 
         <h2 className="text-lg font-semibold mt-8 mb-3">Gaps</h2>
@@ -123,10 +123,62 @@ function VerdictPill({ verdict }) {
     pass: "bg-[rgba(27,107,74,0.12)] text-[#1B6B4A]",
     partial: "bg-[rgba(184,134,11,0.15)] text-[#B8860B]",
     fail: "bg-[rgba(166,61,47,0.15)] text-[#A63D2F]",
+    data_missing: "bg-[rgba(92,107,92,0.12)] text-[#5C6B5C]",
   };
+  const labelMap = { data_missing: "data missing" };
   return (
     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${map[verdict] || "bg-gray-200 text-gray-700"}`}>
-      {verdict}
+      {labelMap[verdict] ?? verdict}
+    </span>
+  );
+}
+
+/** @param {{ cell: HeatmapCell }} props */
+function HeatmapRow({ cell }) {
+  const label = FRAMEWORK_LABELS[cell.framework] ?? cell.framework;
+  const isSafeguards = cell.framework === "minimum_safeguards";
+  return (
+    <div className="border border-[#DDD5CA] rounded bg-white">
+      <div className="flex justify-between items-center px-3.5 py-2.5 gap-3">
+        <span className="flex-1">{label}</span>
+        {cell.authority_level && <AuthorityChip level={cell.authority_level} />}
+        <VerdictPill verdict={cell.verdict} />
+      </div>
+      {isSafeguards && cell.pillar_verdicts && cell.pillar_verdicts.length > 0 && (
+        <div className="px-3.5 pb-2.5 pt-1 flex flex-wrap gap-1.5 border-t border-[#F0EAE2]">
+          {cell.pillar_verdicts.map((pv) => (
+            <PillarPill key={pv.pillar_id} pillar={pv} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** @param {{ level: 1 | 2 | 3 }} props */
+function AuthorityChip({ level }) {
+  const label = AUTHORITY_LABELS[level];
+  if (!label) return null;
+  return (
+    <span className="px-2 py-0.5 rounded border border-[#DDD5CA] text-[10px] uppercase tracking-wider text-[#5C6B5C] whitespace-nowrap">
+      {label}
+    </span>
+  );
+}
+
+/** @param {{ pillar: PillarVerdict }} props */
+function PillarPill({ pillar }) {
+  const map = {
+    pass: "bg-[rgba(78,205,164,0.18)] text-[#1B6B4A] border-[rgba(78,205,164,0.4)]",
+    partial: "bg-[rgba(184,134,11,0.12)] text-[#B8860B] border-[rgba(184,134,11,0.3)]",
+    fail: "bg-[rgba(166,61,47,0.12)] text-[#A63D2F] border-[rgba(166,61,47,0.3)]",
+    data_missing: "bg-[rgba(92,107,92,0.08)] text-[#5C6B5C] border-[#DDD5CA]",
+    not_applicable: "bg-[rgba(92,107,92,0.08)] text-[#5C6B5C] border-[#DDD5CA]",
+  };
+  const cls = map[pillar.verdict] ?? "bg-gray-100 text-gray-600 border-gray-200";
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-[11px] border ${cls}`}>
+      {PILLAR_LABELS[pillar.pillar_id] ?? pillar.pillar_id}
     </span>
   );
 }

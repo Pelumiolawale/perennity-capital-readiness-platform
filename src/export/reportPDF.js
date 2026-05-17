@@ -2,7 +2,14 @@
 /**
  * @typedef {import('@perennity/engine').ReportOutput} ReportOutput
  * @typedef {import('@perennity/engine').ReportSection} ReportSection
+ * @typedef {import('@perennity/engine').PUESummary} PUESummary
  */
+
+const AUTHORITY_LABELS = {
+  1: "Regulatory",
+  2: "Perennity Bridge methodology",
+  3: "Informational",
+};
 
 import { jsPDF } from "jspdf";
 
@@ -108,6 +115,11 @@ export function generateReportPDF(output, engagementMetadata) {
 
   doc.addPage();
   drawSectionPage(doc, frameworks, "Frameworks Applied", { showReferences: true });
+
+  if (output.pue_summary) {
+    doc.addPage();
+    drawPueSummaryPage(doc, output.pue_summary);
+  }
 
   doc.addPage();
   drawSectionPage(doc, evidence, "Evidence Presented", { showReferences: true });
@@ -346,6 +358,175 @@ function drawSectionPage(
       y += excerptLines.length * 5 + 5;
     }
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* PUE measurement compliance — side-by-side declared vs verdict              */
+/* -------------------------------------------------------------------------- */
+
+function drawPueSummaryPage(
+  /** @type {jsPDF} */ doc,
+  /** @type {PUESummary} */ pue,
+) {
+  let y = MARGIN_MM;
+  y = drawWordmark(doc, y);
+  y += 8;
+
+  // Heading
+  setText(doc, NAVY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(FONT_SECTION);
+  doc.text("PUE Measurement Compliance", MARGIN_MM, y);
+  y += 8;
+
+  const GUTTER = 6;
+  const colWidth = (CONTENT_WIDTH_MM - GUTTER) / 2;
+  const leftX = MARGIN_MM;
+  const rightX = MARGIN_MM + colWidth + GUTTER;
+  const headerHeight = 9;
+  const declaredAuthority = pue.verdict?.authority_level;
+
+  // Left header — Declared (intake)
+  setFill(doc, NAVY);
+  doc.rect(leftX, y, colWidth, headerHeight, "F");
+  setText(doc, WARM_WHITE);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(FONT_BODY);
+  doc.text("Declared (intake)", leftX + 3, y + 6);
+  if (declaredAuthority) {
+    drawAuthorityBadge(doc, leftX + colWidth - 3, y + headerHeight / 2, declaredAuthority, "right");
+  }
+
+  // Right header — Verdict (engine)
+  setFill(doc, NAVY);
+  doc.rect(rightX, y, colWidth, headerHeight, "F");
+  setText(doc, WARM_WHITE);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(FONT_BODY);
+  doc.text("Verdict (engine)", rightX + 3, y + 6);
+  if (declaredAuthority) {
+    drawAuthorityBadge(doc, rightX + colWidth - 3, y + headerHeight / 2, declaredAuthority, "right");
+  }
+
+  y += headerHeight;
+
+  // Body backgrounds
+  const bodyTopY = y;
+  const bodyPad = 4;
+  let leftY = y + bodyPad + 4;
+  let rightY = y + bodyPad + 4;
+
+  // Left body content
+  setText(doc, NAVY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(FONT_BODY);
+  leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Methodology", humanise(pue.declared.methodology));
+  leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Category", humanise(pue.declared.category));
+  leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Boundary documented", boolLabel(pue.declared.boundary_documented));
+  leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Reporting basis", humanise(pue.declared.reporting_basis));
+
+  // Right body content — verdict label, gap_summary, missing_items, evidence count
+  setText(doc, NAVY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(FONT_BODY);
+  doc.text("Verdict:", rightX + bodyPad, rightY);
+  setText(doc, verdictColour(pue.verdict.label));
+  doc.text(humanise(pue.verdict.label), rightX + bodyPad + 18, rightY);
+  rightY += 6;
+
+  setText(doc, NAVY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(FONT_BODY);
+  const gapLines = doc.splitTextToSize(pue.verdict.gap_summary || "—", colWidth - 2 * bodyPad);
+  doc.text(gapLines, rightX + bodyPad, rightY);
+  rightY += gapLines.length * 5 + 4;
+
+  if (Array.isArray(pue.verdict.missing_items) && pue.verdict.missing_items.length > 0) {
+    setText(doc, MUTED_GREY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(FONT_FOOTNOTE);
+    doc.text("Missing:", rightX + bodyPad, rightY);
+    rightY += 4;
+    doc.setFont("helvetica", "normal");
+    for (const item of pue.verdict.missing_items) {
+      const itemLines = doc.splitTextToSize(`• ${humanise(item)}`, colWidth - 2 * bodyPad - 2);
+      doc.text(itemLines, rightX + bodyPad + 2, rightY);
+      rightY += itemLines.length * 4;
+    }
+    rightY += 2;
+  }
+
+  setText(doc, MUTED_GREY);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(FONT_FOOTNOTE);
+  doc.text(
+    `Evidence references: ${pue.verdict.evidence_refs_count}`,
+    rightX + bodyPad,
+    rightY,
+  );
+  rightY += 4;
+
+  // Draw the body backgrounds (after content so we know how tall they are).
+  // jsPDF doesn't draw behind existing content, so we use unfilled borders.
+  const bodyHeight = Math.max(leftY - bodyTopY, rightY - bodyTopY) + bodyPad;
+  setText(doc, NAVY); // no-op; clears any leftover colour
+  doc.setDrawColor(221, 213, 202); // border #DDD5CA
+  doc.setLineWidth(0.2);
+  doc.rect(leftX, bodyTopY, colWidth, bodyHeight, "S");
+  doc.rect(rightX, bodyTopY, colWidth, bodyHeight, "S");
+}
+
+function drawStatLine(
+  /** @type {jsPDF} */ doc,
+  /** @type {number} */ x,
+  /** @type {number} */ y,
+  /** @type {number} */ width,
+  /** @type {string} */ label,
+  /** @type {string} */ value,
+) {
+  setText(doc, MUTED_GREY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(FONT_FOOTNOTE);
+  doc.text(label, x, y);
+  setText(doc, NAVY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(FONT_BODY);
+  const valueLines = doc.splitTextToSize(value, width);
+  doc.text(valueLines, x, y + 4);
+  return y + 4 + valueLines.length * 5 + 3;
+}
+
+function drawAuthorityBadge(
+  /** @type {jsPDF} */ doc,
+  /** @type {number} */ x,
+  /** @type {number} */ centerY,
+  /** @type {1 | 2 | 3} */ level,
+  /** @type {"left" | "right"} */ align,
+) {
+  const label = AUTHORITY_LABELS[level];
+  if (!label) return;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(FONT_FOOTNOTE);
+  const textW = doc.getTextWidth(label);
+  const padX = 2;
+  const padY = 1.2;
+  const w = textW + 2 * padX;
+  const h = 4.5;
+  const rectX = align === "right" ? x - w : x;
+  const rectY = centerY - h / 2;
+  doc.setDrawColor(248, 246, 242); // warm-white border on navy bg
+  doc.setLineWidth(0.2);
+  doc.setFillColor(248, 246, 242);
+  doc.roundedRect(rectX, rectY, w, h, 1, 1, "FD");
+  setText(doc, NAVY);
+  doc.text(label, rectX + padX, rectY + h - padY);
+}
+
+// Turn snake_case engine values like "EN_50600_4_2" or "data_missing" into
+// human-readable strings. Leaves already-spaced strings alone.
+function humanise(/** @type {string | null | undefined} */ value) {
+  if (value === null || value === undefined || value === "") return "—";
+  return String(value).replace(/_/g, " ");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -657,8 +838,5 @@ function isoToDate(value) {
   return tIndex > 0 ? value.slice(0, tIndex) : value;
 }
 
-// Keep TEAL/PASS_GREEN/FAIL_RED/verdictColour exported-shaped (used by
-// future Commit 4+ work — IC Defence Pack verdict pills, etc.). For now
-// just silence unused-var by referencing.
+// TEAL still reserved for future use (IC Defence Pack verdict pills).
 void TEAL;
-void verdictColour;
