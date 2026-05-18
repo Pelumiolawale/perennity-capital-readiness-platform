@@ -137,8 +137,17 @@ function VerdictPill({ verdict }) {
 function HeatmapRow({ cell }) {
   const label = FRAMEWORK_LABELS[cell.framework] ?? cell.framework;
   const isSafeguards = cell.framework === "minimum_safeguards";
+  // Defensive consumption of the v0.4.0+ HeatmapCell.archetype field. Surfaced
+  // on the row as a data-attribute so it's DOM-inspectable but invisible to
+  // users. Phase 1 (SFDR) will design the visible chip/label. Undefined on
+  // pre-v0.4.0 engine output and on the minimum_safeguards cell — React omits
+  // the attribute when the value is undefined, so legacy data renders unchanged.
+  const { archetype } = cell;
   return (
-    <div className="border border-[#DDD5CA] rounded bg-white">
+    <div
+      className="border border-[#DDD5CA] rounded bg-white"
+      data-archetype={archetype}
+    >
       <div className="flex justify-between items-center px-3.5 py-2.5 gap-3">
         <span className="flex-1">{label}</span>
         {cell.authority_level && <AuthorityChip level={cell.authority_level} />}
