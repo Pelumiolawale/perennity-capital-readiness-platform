@@ -1,0 +1,900 @@
+[
+  {
+    "_meta": {
+      "engagement_number": 1,
+      "tier": "strong",
+      "label": "eu_taxonomy_aligned_8_1",
+      "uuid": "6239c407-a1fa-4335-86fb-5cdda3e480cb",
+      "profile_note": "Nordic Tier-1 hyperscale, cool climate, new build. Modelled on AirTrunk/Equinix Nordic disclosures."
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "6239c407-a1fa-4335-86fb-5cdda3e480cb",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "North Edge Holdings AB",
+      "fldjKsziDEQDkPwJM": "NORDX1 Stockholm",
+      "fldEz7HRUGVtoGvvg": "PB-NORDX1-001",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-15",
+      "fldqCCE6k8C0zyGdR": "hyperscale",
+      "fldai1BfwsJOXtzMI": "SE",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2024,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"raised_floor_pressurisation\",\"variable_speed_fans\",\"economiser_freecooling\"]",
+      "fldPdSduYAx7WOSw7": "2026-02-10",
+      "fldchEW30UY1Pucd0": 1.18,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "TCFD-aligned climate-risk vulnerability assessment, RCP 4.5 / 8.5 scenarios, site-level physical and transition risk scored on 5-point heat map by independent advisor.",
+      "fld7ioUkoZN6jpMHU": 0.32,
+      "fldTD5iMXyPxojoIy": "Low",
+      "fldDYxT0PxmhhJrsW": "eu_taxonomy_aligned_8_1",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_2",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "due_diligence_process_operational",
+        "grievance_mechanism_operational",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "anti_bribery_training_programme",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "no_tax_evasion_findings_24m",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "ecodesign_2009_125",
+        "rohs_2011_65",
+        "waste_management_plan",
+        "weee_endoflife_2012_19"
+      ],
+      "fldwz4Gcfx35bXxzy": "doc-001 | audit_report | https://prospects.example/audits/nordx1-2026.pdf | 2026-02-10T00:00:00Z | a1b2c3d4e5f60718293a4b5c6d7e8f901a2b3c4d5e6f70819203a4b5c6d7e8f9"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 2,
+      "tier": "gap",
+      "label": "eu_taxonomy_aligned_8_1",
+      "uuid": "b4ca4e61-1800-4190-bd4e-b3ac07b9c7ed",
+      "profile_note": "US warm-climate brownfield colo. Modelled on STT GDC US / Lumen disclosures."
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "b4ca4e61-1800-4190-bd4e-b3ac07b9c7ed",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Lonestar Colocation LLC",
+      "fldjKsziDEQDkPwJM": "DAL-COL-002 Dallas",
+      "fldEz7HRUGVtoGvvg": "PB-DALCOL-002",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-22",
+      "fldqCCE6k8C0zyGdR": "colocation",
+      "fldai1BfwsJOXtzMI": "US",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2014,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\"]",
+      "fldchEW30UY1Pucd0": 1.45,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Internal physical risk review; methodology not externally documented.",
+      "fld7ioUkoZN6jpMHU": 1.05,
+      "fldTD5iMXyPxojoIy": "High",
+      "fldDYxT0PxmhhJrsW": "eu_taxonomy_aligned_8_1",
+      "fldt3uBF2X9fTA8Ew": "other_with_documentation",
+      "fldLR3EglrPW8km09": "category_3",
+      "fldgoN1r6KYX6YgXW": false,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "ilo_core_conventions_compliance"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "rohs_2011_65",
+        "weee_endoflife_2012_19"
+      ],
+      "fldwz4Gcfx35bXxzy": "doc-002 | audit_report | https://prospects.example/audits/dalcol-2022.pdf | 2022-09-15T00:00:00Z | b1c2d3e4f50617283940516273849506172839405061728394051627384950"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 3,
+      "tier": "strong",
+      "label": "sfdr_article_8",
+      "uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8",
+      "profile_note": "EU hyperscale operator with Big-4 limited assurance + SBTi validation. Modelled on Equinix Frankfurt / Digital Realty FRA disclosures.",
+      "child_rows_required": [
+        "es_characteristics (3 rows)",
+        "pai_coverage (11 rows)",
+        "annex_ii_coverage (9 rows)",
+        "project_reports (2 rows)"
+      ]
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "595791d1-b2ef-4036-9a6e-066bb42be1e8",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Centrum Digital AG",
+      "fldjKsziDEQDkPwJM": "FRA-HYP-01 Frankfurt",
+      "fldEz7HRUGVtoGvvg": "PB-FRAHYP-001",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-18",
+      "fldqCCE6k8C0zyGdR": "hyperscale",
+      "fldai1BfwsJOXtzMI": "DE",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2023,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"raised_floor_pressurisation\",\"variable_speed_fans\",\"economiser_freecooling\"]",
+      "fldPdSduYAx7WOSw7": "2026-03-04",
+      "fldchEW30UY1Pucd0": 1.28,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Independent TCFD assessment by ERM Group; quantitative climate-risk model with site-specific RCP scenarios.",
+      "fld7ioUkoZN6jpMHU": 0.42,
+      "fldTD5iMXyPxojoIy": "Medium - High",
+      "fldDYxT0PxmhhJrsW": "sfdr_article_8",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_2",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "due_diligence_process_operational",
+        "grievance_mechanism_operational",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "anti_bribery_training_programme",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "no_tax_evasion_findings_24m",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "ecodesign_2009_125",
+        "rohs_2011_65",
+        "waste_management_plan",
+        "weee_endoflife_2012_19"
+      ],
+      "fldwz4Gcfx35bXxzy": "doc-003 | audit_report | https://prospects.example/audits/frahyp-2026.pdf | 2026-03-04T00:00:00Z | c1d2e3f405162738495061728394050617283940506172839405061728394050",
+      "fldvtQNN3XWkeiNgI": "Reduce operational GHG emissions through renewable-energy-matched data centre infrastructure across the EMEA portfolio.",
+      "fldVPq9x6wuULQ0id": "Environmental",
+      "fldLFXTGOM5n7fETe": "limited_big4",
+      "fldJPtegliI4lHXRX": 4,
+      "fldgH49EkrqB7tagy": true,
+      "fld7690x3sY6C5rOy": true,
+      "fldIomLtkP15kwidO": true,
+      "fld5fa8O9esBAoDuK": true,
+      "fldtb9r3zLMTuXybX": 0,
+      "fldVYPWfAYsgNf66s": true,
+      "fldJ32M03W7NuggUS": true,
+      "fld6SDCU4VijvVDSC": true,
+      "fldKmeppe62DYEaoY": true,
+      "fldrqSBEaqojWnfMZ": true,
+      "fldyeL10mKogwPnsT": 87,
+      "fldNhgbYFlTiPzzgE": true,
+      "fldv21PJcqP0EQcg8": true,
+      "fldUJf7KbM07UBkgG": "DE, NL, FR, SE, IE, LU, ES, IT, BE, GB, US, CH, HK, SG",
+      "fldZBIG3h1ex937hv": 6,
+      "fld1Wqu4NuFdamzgK": 0,
+      "fldJ8ffkihsDokUw7": "https://centrum-digital.example/sustainability/pai-statement-2026.pdf",
+      "fldbmYuT5phWjRhwB": "2026-04-30",
+      "fld4lun18zlJQpUzD": true,
+      "fldTgr6vvCqioE5Zc": "operational",
+      "fldeOrOsLRaYLqmDc": "2023-11-15",
+      "fldu2L8EYHf07AjpL": true,
+      "fld0w2xxvpFtgQOlJ": true,
+      "fldn3fXTvGl8gciFm": true,
+      "fldJSLW9dBx0YM4ZC": "gri"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 4,
+      "tier": "gap",
+      "label": "sfdr_article_8",
+      "uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c",
+      "profile_note": "MENA colo operator with stale PAI statement + weak governance domain D (tax compliance). No SBTi.",
+      "child_rows_required": [
+        "es_characteristics (1 row)",
+        "pai_coverage (4 rows)",
+        "annex_ii_coverage (5 rows)"
+      ]
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Najd Data Holdings",
+      "fldjKsziDEQDkPwJM": "RUH-COL-004 Riyadh",
+      "fldEz7HRUGVtoGvvg": "PB-RUHCOL-004",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-20",
+      "fldqCCE6k8C0zyGdR": "colocation",
+      "fldai1BfwsJOXtzMI": "SA",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2019,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"raised_floor_pressurisation\"]",
+      "fldchEW30UY1Pucd0": 1.52,
+      "fld8T86YqHN3y0bMZ": false,
+      "fld7ioUkoZN6jpMHU": 1.12,
+      "fldTD5iMXyPxojoIy": "High",
+      "fldDYxT0PxmhhJrsW": "sfdr_article_8",
+      "fldt3uBF2X9fTA8Ew": "other_with_documentation",
+      "fldLR3EglrPW8km09": "category_3",
+      "fldgoN1r6KYX6YgXW": false,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "ilo_core_conventions_compliance"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "rohs_2011_65",
+        "weee_endoflife_2012_19"
+      ],
+      "fldvtQNN3XWkeiNgI": "Energy efficiency improvements in regional data-centre operations.",
+      "fldVPq9x6wuULQ0id": "Environmental",
+      "fldLFXTGOM5n7fETe": "management_only",
+      "fldJPtegliI4lHXRX": 1,
+      "fldgH49EkrqB7tagy": false,
+      "fld7690x3sY6C5rOy": false,
+      "fldIomLtkP15kwidO": false,
+      "fld5fa8O9esBAoDuK": false,
+      "fldtb9r3zLMTuXybX": 0,
+      "fldVYPWfAYsgNf66s": true,
+      "fldJ32M03W7NuggUS": false,
+      "fld6SDCU4VijvVDSC": true,
+      "fldKmeppe62DYEaoY": false,
+      "fldrqSBEaqojWnfMZ": false,
+      "fldNhgbYFlTiPzzgE": false,
+      "fldv21PJcqP0EQcg8": false,
+      "fldUJf7KbM07UBkgG": "DE, NL",
+      "fldZBIG3h1ex937hv": 1,
+      "fld1Wqu4NuFdamzgK": 15000000,
+      "fldJ8ffkihsDokUw7": "https://najd-data.example/sustainability/pai-2024.pdf",
+      "fldbmYuT5phWjRhwB": "2024-09-12",
+      "fld4lun18zlJQpUzD": false
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 5,
+      "tier": "strong",
+      "label": "sfdr_article_9",
+      "uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff",
+      "profile_note": "Pure-play green DC fund target asset. Named SI objective, all 3 dominance conditions true, Tier-2 TNFD LEAP biodiversity assessment.",
+      "child_rows_required": [
+        "es_characteristics (4 rows incl. quantified indicators with indicator_source)",
+        "pai_coverage (11 rows)",
+        "annex_ii_coverage (9 rows)",
+        "project_reports (2 rows)",
+        "project_pai_data (11 rows)"
+      ]
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "48f32d4d-be5a-41bf-bbac-b720ab5612ff",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Fjord Sustainable DC Fund I",
+      "fldjKsziDEQDkPwJM": "OSL-GRN-01 Oslo",
+      "fldEz7HRUGVtoGvvg": "PB-OSLGRN-001",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-12",
+      "fldqCCE6k8C0zyGdR": "hyperscale",
+      "fldai1BfwsJOXtzMI": "NO",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2025,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"raised_floor_pressurisation\",\"variable_speed_fans\",\"economiser_freecooling\"]",
+      "fldPdSduYAx7WOSw7": "2026-04-22",
+      "fldchEW30UY1Pucd0": 1.16,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Big-4 limited assurance climate-risk + TNFD LEAP biodiversity assessment (low risk, site-level mitigation committed).",
+      "fld7ioUkoZN6jpMHU": 0.28,
+      "fldTD5iMXyPxojoIy": "Low",
+      "fldDYxT0PxmhhJrsW": "sfdr_article_9",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_1",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "due_diligence_process_operational",
+        "grievance_mechanism_operational",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "anti_bribery_training_programme",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "no_tax_evasion_findings_24m",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "ecodesign_2009_125",
+        "rohs_2011_65",
+        "waste_management_plan",
+        "weee_endoflife_2012_19"
+      ],
+      "fldvtQNN3XWkeiNgI": "Deliver a fully renewable-matched, low-PUE hyperscale data centre in a cool-climate Nordic region, displacing higher-carbon European DC capacity and underpinning a 1.5°C-aligned data infrastructure thesis.",
+      "fldVPq9x6wuULQ0id": "Environmental",
+      "fldGPJ7DOeiwGiEqE": "{\"named_in_investment_memorandum\":true,\"economic_rationale_depends_on_si\":true,\"marketing_leads_with_si\":true,\"investment_memorandum_ref\":\"Fjord Fund I IM, Section 2.3\",\"economic_rationale_description\":\"Sustainability-linked credit margin (-25bps) and EU Taxonomy-aligned capital access depend on PUE \\u22641.2 and 100% renewable matching. Project economics would not clear hurdle rate without these.\"}",
+      "fldLFXTGOM5n7fETe": "limited_big4",
+      "fldJPtegliI4lHXRX": 5,
+      "fldgH49EkrqB7tagy": true,
+      "fld7690x3sY6C5rOy": true,
+      "fldIomLtkP15kwidO": true,
+      "fld5fa8O9esBAoDuK": true,
+      "fldtb9r3zLMTuXybX": 0,
+      "fldVYPWfAYsgNf66s": true,
+      "fldJ32M03W7NuggUS": true,
+      "fld6SDCU4VijvVDSC": true,
+      "fldKmeppe62DYEaoY": true,
+      "fldrqSBEaqojWnfMZ": true,
+      "fldyeL10mKogwPnsT": 42,
+      "fldNhgbYFlTiPzzgE": true,
+      "fldv21PJcqP0EQcg8": true,
+      "fldUJf7KbM07UBkgG": "DE, NL, FR",
+      "fldZBIG3h1ex937hv": 3,
+      "fld1Wqu4NuFdamzgK": 0,
+      "fldJ8ffkihsDokUw7": "https://fjord-fund.example/sustainability/pai-statement-2026.pdf",
+      "fldbmYuT5phWjRhwB": "2026-05-08",
+      "fld4lun18zlJQpUzD": true,
+      "fldTgr6vvCqioE5Zc": "operational",
+      "fldeOrOsLRaYLqmDc": "2025-04-01",
+      "fldu2L8EYHf07AjpL": true,
+      "fld0w2xxvpFtgQOlJ": true,
+      "fldn3fXTvGl8gciFm": true,
+      "fldJSLW9dBx0YM4ZC": "ifrs_s2",
+      "fldZof3buzHeCIMJC": true,
+      "fld9bOCmePEWMBGvA": 92,
+      "fld1LdHxujbiGgiyu": "capex",
+      "fldXxHlUoFRKJcV6h": true,
+      "fld2FSLCYaw27Vz5S": "2026-05-08",
+      "fldZaUVd2DQB6P9ei": 88,
+      "fldOqqE0u9Ffunhbi": 4
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 6,
+      "tier": "gap",
+      "label": "sfdr_article_9",
+      "uuid": "b01bb716-997f-42e8-828c-6345aeb708bc",
+      "profile_note": "Mixed-use DC where SI objective is real but not load-bearing (dominance condition b fails — economics don't depend on SI). c10 PAI verification incomplete.",
+      "child_rows_required": [
+        "es_characteristics (2 rows)",
+        "pai_coverage (6 rows)",
+        "annex_ii_coverage (6 rows)",
+        "project_pai_data (5 rows, no third-party verification)"
+      ]
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "b01bb716-997f-42e8-828c-6345aeb708bc",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Lowland Digital BV",
+      "fldjKsziDEQDkPwJM": "AMS-MIX-003 Amsterdam",
+      "fldEz7HRUGVtoGvvg": "PB-AMSMIX-003",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-17",
+      "fldqCCE6k8C0zyGdR": "colocation",
+      "fldai1BfwsJOXtzMI": "NL",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2020,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"variable_speed_fans\"]",
+      "fldPdSduYAx7WOSw7": "2026-01-18",
+      "fldchEW30UY1Pucd0": 1.38,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Climate-risk assessment per ISO 14091 framework, last reviewed 2025-Q4.",
+      "fld7ioUkoZN6jpMHU": 0.61,
+      "fldTD5iMXyPxojoIy": "Medium - High",
+      "fldDYxT0PxmhhJrsW": "sfdr_article_9",
+      "fldt3uBF2X9fTA8Ew": "ISO_IEC_30134_2",
+      "fldLR3EglrPW8km09": "category_2",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "due_diligence_process_operational",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "anti_bribery_training_programme",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "no_tax_evasion_findings_24m",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "rohs_2011_65",
+        "weee_endoflife_2012_19",
+        "ecodesign_2009_125"
+      ],
+      "fldvtQNN3XWkeiNgI": "Modernise Tier-3 colocation footprint with progressive renewable energy procurement.",
+      "fldVPq9x6wuULQ0id": "Mixed",
+      "fldGPJ7DOeiwGiEqE": "{\"named_in_investment_memorandum\":true,\"economic_rationale_depends_on_si\":false,\"marketing_leads_with_si\":true,\"investment_memorandum_ref\":\"AMS-MIX IM v3, Annex A\",\"economic_rationale_description\":\"Sustainability commitments are a marketed feature but do not anchor the deal economics; project would clear hurdle rate without them.\"}",
+      "fldLFXTGOM5n7fETe": "limited_partial",
+      "fldJPtegliI4lHXRX": 3,
+      "fldgH49EkrqB7tagy": true,
+      "fld7690x3sY6C5rOy": true,
+      "fldIomLtkP15kwidO": true,
+      "fld5fa8O9esBAoDuK": true,
+      "fldtb9r3zLMTuXybX": 0,
+      "fldVYPWfAYsgNf66s": true,
+      "fldJ32M03W7NuggUS": true,
+      "fld6SDCU4VijvVDSC": true,
+      "fldKmeppe62DYEaoY": true,
+      "fldrqSBEaqojWnfMZ": false,
+      "fldNhgbYFlTiPzzgE": false,
+      "fldv21PJcqP0EQcg8": true,
+      "fldUJf7KbM07UBkgG": "DE, NL, FR, SE, IE",
+      "fldZBIG3h1ex937hv": 4,
+      "fld1Wqu4NuFdamzgK": 500000,
+      "fldJ8ffkihsDokUw7": "https://lowland-digital.example/sustainability/pai-2025.pdf",
+      "fldbmYuT5phWjRhwB": "2025-12-15",
+      "fld4lun18zlJQpUzD": false,
+      "fldTgr6vvCqioE5Zc": "operational",
+      "fldeOrOsLRaYLqmDc": "2020-06-30"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 7,
+      "tier": "strong",
+      "label": "uk_sdr_focus",
+      "uuid": "f517f09f-587f-4094-99ec-e78dd29e72ae",
+      "profile_note": "Sub-Saharan African hyperscale. EU Taxonomy 8.1 claimed credible standard; all 4 KPIs committed annually."
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "f517f09f-587f-4094-99ec-e78dd29e72ae",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Sahara Edge Capital",
+      "fldjKsziDEQDkPwJM": "LOS-HYP-01 Lagos",
+      "fldEz7HRUGVtoGvvg": "PB-LOSHYP-001",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-25",
+      "fldqCCE6k8C0zyGdR": "hyperscale",
+      "fldai1BfwsJOXtzMI": "NG",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2025,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"raised_floor_pressurisation\",\"variable_speed_fans\",\"economiser_freecooling\"]",
+      "fldPdSduYAx7WOSw7": "2026-04-02",
+      "fldchEW30UY1Pucd0": 1.36,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "TCFD-aligned climate-risk assessment with site-specific RCP 4.5/8.5 scenarios.",
+      "fld7ioUkoZN6jpMHU": 0.52,
+      "fldTD5iMXyPxojoIy": "Medium - High",
+      "fldDYxT0PxmhhJrsW": "uk_sdr_focus",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_2",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "due_diligence_process_operational",
+        "grievance_mechanism_operational",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "anti_bribery_training_programme",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "no_tax_evasion_findings_24m",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "ecodesign_2009_125",
+        "rohs_2011_65",
+        "waste_management_plan",
+        "weee_endoflife_2012_19"
+      ],
+      "fldMHcQV5YWYuMfZP": "eu_taxonomy_8_1",
+      "fldJ01YejLamlwxN2": [
+        "pue",
+        "renewable_energy_pct",
+        "ghg_emissions",
+        "wue"
+      ],
+      "fld771ulYlnwmZZbT": "annual"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 8,
+      "tier": "gap",
+      "label": "uk_sdr_focus",
+      "uuid": "0d9a20e3-17b0-4217-9514-4ddfb200e83b",
+      "profile_note": "Asia-Pacific colo. Claims LEED Gold (not Platinum) → c2 not_aligned. Only 3 of 4 KPIs committed → c4 partially_aligned. [Adjusted: leed_gold not a valid Airtable option; using \"other\" which also triggers c2 not_aligned.]"
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "0d9a20e3-17b0-4217-9514-4ddfb200e83b",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Strait Data Ltd",
+      "fldjKsziDEQDkPwJM": "SIN-COL-005 Singapore",
+      "fldEz7HRUGVtoGvvg": "PB-SINCOL-005",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-21",
+      "fldqCCE6k8C0zyGdR": "colocation",
+      "fldai1BfwsJOXtzMI": "SG",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2018,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"variable_speed_fans\"]",
+      "fldchEW30UY1Pucd0": 1.42,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Internal climate-risk review; methodology not externally documented.",
+      "fld7ioUkoZN6jpMHU": 1.85,
+      "fldTD5iMXyPxojoIy": "High",
+      "fldDYxT0PxmhhJrsW": "uk_sdr_focus",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_3",
+      "fldgoN1r6KYX6YgXW": false,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "ilo_core_conventions_compliance"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "rohs_2011_65",
+        "weee_endoflife_2012_19"
+      ],
+      "fldMHcQV5YWYuMfZP": "other",
+      "fldJ01YejLamlwxN2": [
+        "pue",
+        "renewable_energy_pct",
+        "ghg_emissions"
+      ],
+      "fld771ulYlnwmZZbT": "annual"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 9,
+      "tier": "strong",
+      "label": "uk_sdr_improvers",
+      "uuid": "6325c039-3137-471b-840b-6a6dd87cd9dc",
+      "profile_note": "Latin American DC with full baseline + 3-year plan + 3 actions + third-party verification. All UK SDR Improvers criteria align."
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "6325c039-3137-471b-840b-6a6dd87cd9dc",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Atlas Sustentável Brasil",
+      "fldjKsziDEQDkPwJM": "SAO-IMP-01 São Paulo",
+      "fldEz7HRUGVtoGvvg": "PB-SAOIMP-001",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-19",
+      "fldqCCE6k8C0zyGdR": "hyperscale",
+      "fldai1BfwsJOXtzMI": "BR",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2021,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"raised_floor_pressurisation\",\"variable_speed_fans\"]",
+      "fldPdSduYAx7WOSw7": "2026-03-28",
+      "fldchEW30UY1Pucd0": 1.5,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Climate-risk assessment per IFRS S2 disclosure framework, RCP 4.5/8.5 scenarios.",
+      "fld7ioUkoZN6jpMHU": 0.78,
+      "fldTD5iMXyPxojoIy": "Medium - High",
+      "fldDYxT0PxmhhJrsW": "uk_sdr_improvers",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_2",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "due_diligence_process_operational",
+        "grievance_mechanism_operational",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "anti_bribery_training_programme",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "no_tax_evasion_findings_24m",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "ecodesign_2009_125",
+        "rohs_2011_65",
+        "waste_management_plan",
+        "weee_endoflife_2012_19"
+      ],
+      "fldMHcQV5YWYuMfZP": "sbti",
+      "fldJ01YejLamlwxN2": [
+        "pue",
+        "renewable_energy_pct",
+        "ghg_emissions",
+        "wue"
+      ],
+      "fld771ulYlnwmZZbT": "annual",
+      "fldugUZ2qX710zK9g": "{\"baseline_metrics\":{\"pue_current\":1.50,\"renewable_pct_current\":60,\"ghg_current\":12500,\"wue_current\":0.78},\"strategy\":{\"timeline_years\":3,\"actions\":[\"Migrate 100% of grid demand to renewable PPAs by 2027\",\"Deploy liquid cooling on next compute refresh cycle (2026 Q3)\",\"Implement site-level water recycling targeting 50% reduction by 2028\"],\"verification_method\":\"third_party_audit\"},\"targets\":{\"pue_target\":1.25,\"renewable_pct_target\":95,\"ghg_reduction_pct\":35,\"wue_target\":0.55}}"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 10,
+      "tier": "gap",
+      "label": "uk_sdr_improvers",
+      "uuid": "219dbbaa-83e5-4c59-bdc4-9f22aa4027bb",
+      "profile_note": "Australian DC. Partial baseline (PUE only); 5-year plan; 2 actions; no verification mechanism. c5 + c6 + c8 weak → c9 partially_aligned cascade."
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "219dbbaa-83e5-4c59-bdc4-9f22aa4027bb",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Tasman Cloud Pty",
+      "fldjKsziDEQDkPwJM": "SYD-IMP-003 Sydney",
+      "fldEz7HRUGVtoGvvg": "PB-SYDIMP-003",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-23",
+      "fldqCCE6k8C0zyGdR": "colocation",
+      "fldai1BfwsJOXtzMI": "AU",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2017,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\"]",
+      "fldchEW30UY1Pucd0": 1.48,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Climate-risk review per internal framework.",
+      "fld7ioUkoZN6jpMHU": 0.92,
+      "fldTD5iMXyPxojoIy": "Medium - High",
+      "fldDYxT0PxmhhJrsW": "uk_sdr_improvers",
+      "fldt3uBF2X9fTA8Ew": "ISO_IEC_30134_2",
+      "fldLR3EglrPW8km09": "category_3",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "rohs_2011_65",
+        "weee_endoflife_2012_19"
+      ],
+      "fldMHcQV5YWYuMfZP": "sbti",
+      "fldJ01YejLamlwxN2": [
+        "pue",
+        "renewable_energy_pct"
+      ],
+      "fld771ulYlnwmZZbT": "annual",
+      "fldugUZ2qX710zK9g": "{\"baseline_metrics\":{\"pue_current\":1.48},\"strategy\":{\"timeline_years\":5,\"actions\":[\"Procurement of renewable energy certificates\",\"Cooling efficiency review by 2028\"],\"verification_method\":\"none\"},\"targets\":{\"pue_target\":1.35,\"renewable_pct_target\":60}}"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 11,
+      "tier": "strong",
+      "label": "uk_sdr_impact",
+      "uuid": "01af2113-46f1-4d6b-bc65-ee89b0fb1a32",
+      "profile_note": "Sub-Sahara hyperscale displacing diesel-grid emissions. Named objective, full ToC, 4 quantified indicators, substantive additionality narrative, all 4 reporting elements committed."
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "01af2113-46f1-4d6b-bc65-ee89b0fb1a32",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Sub-Sahara Impact Infrastructure",
+      "fldjKsziDEQDkPwJM": "ACC-IMP-01 Accra",
+      "fldEz7HRUGVtoGvvg": "PB-ACCIMP-001",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-14",
+      "fldqCCE6k8C0zyGdR": "hyperscale",
+      "fldai1BfwsJOXtzMI": "GH",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2024,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"raised_floor_pressurisation\",\"variable_speed_fans\",\"economiser_freecooling\"]",
+      "fldPdSduYAx7WOSw7": "2026-04-10",
+      "fldchEW30UY1Pucd0": 1.32,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Big-4 limited assurance TCFD climate-risk + TNFD LEAP biodiversity (low risk, mitigation committed).",
+      "fld7ioUkoZN6jpMHU": 0.48,
+      "fldTD5iMXyPxojoIy": "Medium - High",
+      "fldDYxT0PxmhhJrsW": "uk_sdr_impact",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_2",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "due_diligence_process_operational",
+        "grievance_mechanism_operational",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "anti_bribery_training_programme",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "no_tax_evasion_findings_24m",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "ecodesign_2009_125",
+        "rohs_2011_65",
+        "waste_management_plan",
+        "weee_endoflife_2012_19"
+      ],
+      "fldMHcQV5YWYuMfZP": "eu_taxonomy_8_1",
+      "fldJ01YejLamlwxN2": [
+        "pue",
+        "renewable_energy_pct",
+        "ghg_emissions",
+        "wue"
+      ],
+      "fld771ulYlnwmZZbT": "annual",
+      "fldBgf9Wr6ioPdkNu": "{\"impact_objective\":\"Displace diesel-grid emissions across three underserved West African markets by anchoring renewable-powered hyperscale infrastructure that catalyses regional grid decarbonisation\",\"objective_category\":\"environmental_climate_mitigation\",\"declared_in\":\"Sub-Sahara Impact Infrastructure Fund I Investment Memorandum, Section 3.2 (Impact Thesis), dated 2025-09-12\",\"theory_of_change\":\"Anchor renewable PPA demand at scale in Ghana, Côte d'Ivoire, and Senegal grids historically supplemented by diesel generation. The 80MW PPA underwrites grid-scale solar buildout (Solamira Ghana Phase B, signed 2024-Q4); displacement of 18,000 diesel-DG-hours annually across colocated regional operators reduces aggregate Scope 1 emissions; Tier-3 data centre availability enables AI and cloud workloads to onshore in West Africa instead of trans-Atlantic latency-bound routing.\",\"quantified_indicators\":[{\"name\":\"Annual displaced diesel emissions\",\"baseline\":0,\"target\":11500,\"unit\":\"tCO2e/yr\",\"source\":\"eu_taxonomy\"},{\"name\":\"Renewable PPA capacity anchored\",\"baseline\":0,\"target\":80,\"unit\":\"MW\",\"source\":\"bespoke\"},{\"name\":\"Regional DC efficiency uplift vs incumbent\",\"baseline\":1.85,\"target\":1.32,\"unit\":\"PUE ratio\",\"source\":\"bespoke\"},{\"name\":\"Grid-scale solar enabled\",\"baseline\":0,\"target\":120,\"unit\":\"MW\",\"source\":\"bespoke\"}],\"additionality_evidence\":\"Counterfactual analysis (IM Annex C, signed off by independent advisor Vivid Economics, 2025-11): no comparable hyperscale-anchored renewable PPA would exist in this market absent the fund. Sustainability-linked capital structure ties coupon (-30bps) to verified achievement of PUE \\u22641.32 and 80MW PPA milestones, materially altering project economics relative to a brownfield-only counterfactual. Without this financing the developer would have built a smaller 12MW diesel-fallback colo at PUE 1.7 by end-2025.\",\"reporting_commitment\":{\"annual_cadence\":true,\"reports_against_indicators\":true,\"outcome_level_reporting\":true,\"verification_method\":\"third_party_audit\"}}"
+    }
+  },
+  {
+    "_meta": {
+      "engagement_number": 12,
+      "tier": "gap",
+      "label": "uk_sdr_impact",
+      "uuid": "fff71f4b-2a49-4cbd-97be-c32000412a6d",
+      "profile_note": "UK DC claiming generic impact. Objective vague (\"reduce emissions\"), no theory of change, brief additionality narrative. c10 + c11 + c12 weak → c13 cascade not_aligned."
+    },
+    "fields": {
+      "fldiwINotrRmo7EQ3": "fff71f4b-2a49-4cbd-97be-c32000412a6d",
+      "fldX4ynEolKL4BnKX": "active",
+      "fldHMab6pBtJ25i0R": "2026-06-03T00:00:00.000Z",
+      "fldv7xhqzcWQE0up5": "2026-09-03T00:00:00.000Z",
+      "fldkrOYerYWFSu21O": "Thameside Digital Estates",
+      "fldjKsziDEQDkPwJM": "LDN-IMP-002 London",
+      "fldEz7HRUGVtoGvvg": "PB-LDNIMP-002",
+      "fldQYH3u8F46SlNhB": true,
+      "fld0u55O1k44M3MrA": "2026-05-24",
+      "fldqCCE6k8C0zyGdR": "colocation",
+      "fldai1BfwsJOXtzMI": "GB",
+      "fldJEyPQoovMd8bC1": "operational",
+      "fldVQYpATONr5GiDW": 2019,
+      "fldasjZgK9L7XFE5k": "[\"airflow_management\",\"hot_cold_aisle_containment\",\"variable_speed_fans\"]",
+      "fldchEW30UY1Pucd0": 1.41,
+      "fld8T86YqHN3y0bMZ": true,
+      "fld1JdsMPiuevVIXR": "Internal climate-risk review per UK Streamlined Energy & Carbon Reporting framework.",
+      "fld7ioUkoZN6jpMHU": 0.68,
+      "fldTD5iMXyPxojoIy": "Medium - High",
+      "fldDYxT0PxmhhJrsW": "uk_sdr_impact",
+      "fldt3uBF2X9fTA8Ew": "EN_50600_4_2",
+      "fldLR3EglrPW8km09": "category_2",
+      "fldgoN1r6KYX6YgXW": true,
+      "fldv4ouVCZS1RaBin": "annualised",
+      "fldhlCI68cqPZyzvb": [
+        "human_rights_policy_published",
+        "ilo_core_conventions_compliance",
+        "no_ungc_violations_24m"
+      ],
+      "fldk44Pyugc1Rwv4X": [
+        "anti_bribery_policy_published",
+        "no_bribery_convictions_24m"
+      ],
+      "fldOvqxo1JYDtqGIu": [
+        "tax_governance_policy_published",
+        "country_by_country_reporting_or_below_threshold"
+      ],
+      "fldq23xLBmqgSyNDZ": [
+        "competition_policy_published",
+        "no_competition_law_breaches_24m"
+      ],
+      "fldQWCWDGXyOhZKMM": [
+        "rohs_2011_65",
+        "weee_endoflife_2012_19",
+        "ecodesign_2009_125"
+      ],
+      "fldMHcQV5YWYuMfZP": "eu_taxonomy_8_1",
+      "fldJ01YejLamlwxN2": [
+        "pue",
+        "renewable_energy_pct",
+        "ghg_emissions",
+        "wue"
+      ],
+      "fld771ulYlnwmZZbT": "annual",
+      "fldBgf9Wr6ioPdkNu": "{\"impact_objective\":\"Reduce emissions\",\"reporting_commitment\":{\"annual_cadence\":true,\"reports_against_indicators\":false,\"outcome_level_reporting\":false,\"verification_method\":\"internal\"},\"additionality_evidence\":\"This investment supports sustainability.\"}"
+    }
+  }
+]

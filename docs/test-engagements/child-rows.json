@@ -1,0 +1,249 @@
+{
+  "_meta": {
+    "purpose": "Child-table rows for SFDR Art 8 / Art 9 engagements (#3, #4, #5, #6). Each top-level key is one of the linked child tables (CHILD_TABLES enum in src/lib/airtableEngagement.js). Each value is an array of rows; each row has an `engagement_uuid` pointing at the parent and a `fields` object keyed by the child table's field IDs (CHILD_FIDS enum). Operator process: seed parent engagements first via engagements.json, then create child rows pointing at the parent via the linked-record field (which Airtable resolves by primary field = engagement UUID).",
+    "child_tables": {
+      "ES_CHARACTERISTICS": "tbl5bnYyE8aMkOmXj",
+      "PAI_COVERAGE": "tblUDykO4OjwW4Thy",
+      "ANNEX_II_COVERAGE": "tblmZcN78oQutgsyS",
+      "PROJECT_REPORTS": "tbldOhfgFHFtkKOrR",
+      "PARENT_PORTFOLIO_REPORTS": "tblMTihs1RBrCOaUL",
+      "PROJECT_PAI_DATA": "tblLF40OS1rLZ7Dgj"
+    }
+  },
+  "ES_CHARACTERISTICS": [
+    {
+      "engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8",
+      "engagement_label": "Eng #3 (SFDR Art 8 strong) — FRA-HYP-01",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "PUE achievement",
+        "fldRmWc5pI7tYiPuh": 1,
+        "fldlv7qXPH3F1KZZj": "Annualised PUE",
+        "fldIqbt7bflJQJWDh": 1.2,
+        "fld7JnlNfswNVqpmV": 2028,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldo6xM3E8w2HecMZ": "https://centrum-digital.example/sustainability/pue-commitment",
+        "fldntLJtw5b4TnNUN": "l2_rts_annex_i_pai"
+      }
+    },
+    {
+      "engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8",
+      "engagement_label": "Eng #3 (SFDR Art 8 strong) — FRA-HYP-01",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "Renewable energy procurement",
+        "fldRmWc5pI7tYiPuh": 2,
+        "fldlv7qXPH3F1KZZj": "Renewable electricity share",
+        "fldIqbt7bflJQJWDh": 90,
+        "fld7JnlNfswNVqpmV": 2027,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldo6xM3E8w2HecMZ": "https://centrum-digital.example/sustainability/renewable-ppa-2026",
+        "fldntLJtw5b4TnNUN": "art_2_17_example"
+      }
+    },
+    {
+      "engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8",
+      "engagement_label": "Eng #3 (SFDR Art 8 strong) — FRA-HYP-01",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "WUE reduction commitment",
+        "fldRmWc5pI7tYiPuh": 3,
+        "fldlv7qXPH3F1KZZj": "Annualised WUE",
+        "fldIqbt7bflJQJWDh": 0.3,
+        "fld7JnlNfswNVqpmV": 2028,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldo6xM3E8w2HecMZ": "https://centrum-digital.example/sustainability/water-stewardship",
+        "fldntLJtw5b4TnNUN": "bespoke"
+      }
+    },
+    {
+      "engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c",
+      "engagement_label": "Eng #4 (SFDR Art 8 gap) — RUH-COL-004",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "Cooling efficiency upgrade",
+        "fldRmWc5pI7tYiPuh": 1,
+        "fldDZcacqTnser8uP": "environmental"
+      }
+    },
+    {
+      "engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff",
+      "engagement_label": "Eng #5 (SFDR Art 9 strong) — OSL-GRN-01",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "PUE achievement",
+        "fldRmWc5pI7tYiPuh": 1,
+        "fldlv7qXPH3F1KZZj": "Annualised PUE",
+        "fldIqbt7bflJQJWDh": 1.15,
+        "fld7JnlNfswNVqpmV": 2026,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldo6xM3E8w2HecMZ": "https://fjord-fund.example/sustainability/pue-target",
+        "fldntLJtw5b4TnNUN": "l2_rts_annex_i_pai",
+        "fldMixRtB53TMzF84": 1.16
+      }
+    },
+    {
+      "engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff",
+      "engagement_label": "Eng #5 (SFDR Art 9 strong) — OSL-GRN-01",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "100% renewable matching",
+        "fldRmWc5pI7tYiPuh": 2,
+        "fldlv7qXPH3F1KZZj": "Renewable electricity share",
+        "fldIqbt7bflJQJWDh": 100,
+        "fld7JnlNfswNVqpmV": 2026,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldo6xM3E8w2HecMZ": "https://fjord-fund.example/sustainability/renewable-matching",
+        "fldntLJtw5b4TnNUN": "art_2_17_example",
+        "fldMixRtB53TMzF84": 100
+      }
+    },
+    {
+      "engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff",
+      "engagement_label": "Eng #5 (SFDR Art 9 strong) — OSL-GRN-01",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "Scope 1+2 trajectory aligned with 1.5°C",
+        "fldRmWc5pI7tYiPuh": 3,
+        "fldlv7qXPH3F1KZZj": "Annual Scope 1+2 emissions intensity",
+        "fldIqbt7bflJQJWDh": 600,
+        "fld7JnlNfswNVqpmV": 2027,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldo6xM3E8w2HecMZ": "https://fjord-fund.example/sustainability/sbti-validation",
+        "fldntLJtw5b4TnNUN": "l2_rts_annex_i_pai",
+        "fldMixRtB53TMzF84": 850
+      }
+    },
+    {
+      "engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff",
+      "engagement_label": "Eng #5 (SFDR Art 9 strong) — OSL-GRN-01",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "WUE below industry quartile",
+        "fldRmWc5pI7tYiPuh": 4,
+        "fldlv7qXPH3F1KZZj": "Annualised WUE",
+        "fldIqbt7bflJQJWDh": 0.25,
+        "fld7JnlNfswNVqpmV": 2026,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldo6xM3E8w2HecMZ": "https://fjord-fund.example/sustainability/water-stewardship",
+        "fldntLJtw5b4TnNUN": "bespoke",
+        "fldMixRtB53TMzF84": 0.28
+      }
+    },
+    {
+      "engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc",
+      "engagement_label": "Eng #6 (SFDR Art 9 gap) — AMS-MIX-003",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "Renewable energy procurement progression",
+        "fldRmWc5pI7tYiPuh": 1,
+        "fldlv7qXPH3F1KZZj": "Renewable electricity share",
+        "fldIqbt7bflJQJWDh": 70,
+        "fld7JnlNfswNVqpmV": 2030,
+        "fldDZcacqTnser8uP": "environmental",
+        "fldntLJtw5b4TnNUN": "bespoke"
+      }
+    },
+    {
+      "engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc",
+      "engagement_label": "Eng #6 (SFDR Art 9 gap) — AMS-MIX-003",
+      "fields": {
+        "fldXEZ7jAKFccdPWi": "PUE improvement",
+        "fldRmWc5pI7tYiPuh": 2,
+        "fldlv7qXPH3F1KZZj": "Annualised PUE",
+        "fldIqbt7bflJQJWDh": 1.3,
+        "fld7JnlNfswNVqpmV": 2029,
+        "fldDZcacqTnser8uP": "environmental"
+      }
+    }
+  ],
+  "PAI_COVERAGE": [
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 1, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 2, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 3, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 5, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 6, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 7, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 8, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 9, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 10, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 11, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldd5bXCdsauLMYkf": 13, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "engagement_label": "Eng #4", "fields": {"fldd5bXCdsauLMYkf": 1, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": false, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "engagement_label": "Eng #4", "fields": {"fldd5bXCdsauLMYkf": 5, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": false, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "engagement_label": "Eng #4", "fields": {"fldd5bXCdsauLMYkf": 8, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": false, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "engagement_label": "Eng #4", "fields": {"fldd5bXCdsauLMYkf": 13, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": false, "fld89HjIOSss2RhLE": false}},
+
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 1, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 2, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 3, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 5, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 6, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 7, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 8, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 9, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 10, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 11, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldd5bXCdsauLMYkf": 13, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": true}},
+
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldd5bXCdsauLMYkf": 1, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldd5bXCdsauLMYkf": 5, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldd5bXCdsauLMYkf": 7, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": false, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldd5bXCdsauLMYkf": 8, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": true, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldd5bXCdsauLMYkf": 10, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": false, "fld89HjIOSss2RhLE": false}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldd5bXCdsauLMYkf": 13, "fldmtR5an2p87dSfm": true, "fld2RL7fJI8GU8IDX": false, "fld89HjIOSss2RhLE": false}}
+  ],
+  "ANNEX_II_COVERAGE": [
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3 (SFDR Art 8 strong)", "fields": {"fldV4umeCGyjq5XpM": "1", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "2", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "3", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "4", "fldVbdnEcmD6sesAd": "covered_specific", "fld5L3pQEGrKgh91v": "TCFD"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "5", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "6", "fldVbdnEcmD6sesAd": "covered_specific", "fld5L3pQEGrKgh91v": "GRI"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "7", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "9", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "fields": {"fldV4umeCGyjq5XpM": "10", "fldVbdnEcmD6sesAd": "covered_specific"}},
+
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "engagement_label": "Eng #4 (SFDR Art 8 gap)", "fields": {"fldV4umeCGyjq5XpM": "1", "fldVbdnEcmD6sesAd": "covered_generic"}},
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "fields": {"fldV4umeCGyjq5XpM": "2", "fldVbdnEcmD6sesAd": "covered_generic"}},
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "fields": {"fldV4umeCGyjq5XpM": "3", "fldVbdnEcmD6sesAd": "absent"}},
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "fields": {"fldV4umeCGyjq5XpM": "4", "fldVbdnEcmD6sesAd": "covered_generic"}},
+    {"engagement_uuid": "ba4634e6-bf5c-4bd3-93e7-0654e83e150c", "fields": {"fldV4umeCGyjq5XpM": "5", "fldVbdnEcmD6sesAd": "absent"}},
+
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5 (SFDR Art 9 strong)", "fields": {"fldV4umeCGyjq5XpM": "1", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "2", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "3", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "4", "fldVbdnEcmD6sesAd": "covered_specific", "fld5L3pQEGrKgh91v": "TCFD"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "5", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "6", "fldVbdnEcmD6sesAd": "covered_specific", "fld5L3pQEGrKgh91v": "IFRS S2"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "7", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "9", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "fields": {"fldV4umeCGyjq5XpM": "10", "fldVbdnEcmD6sesAd": "covered_specific"}},
+
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6 (SFDR Art 9 gap)", "fields": {"fldV4umeCGyjq5XpM": "1", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "fields": {"fldV4umeCGyjq5XpM": "2", "fldVbdnEcmD6sesAd": "covered_generic"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "fields": {"fldV4umeCGyjq5XpM": "3", "fldVbdnEcmD6sesAd": "covered_generic"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "fields": {"fldV4umeCGyjq5XpM": "4", "fldVbdnEcmD6sesAd": "covered_specific"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "fields": {"fldV4umeCGyjq5XpM": "5", "fldVbdnEcmD6sesAd": "absent"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "fields": {"fldV4umeCGyjq5XpM": "6", "fldVbdnEcmD6sesAd": "covered_generic"}}
+  ],
+  "PROJECT_REPORTS": [
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldrZAYpwq9Dl5Hih": 2024, "fld6GtVWZ8mTEZ5C3": "https://centrum-digital.example/sustainability/report-2024.pdf", "fldy29baeIsCOIV2X": "Annualised PUE; Renewable electricity share; Scope 1+2 emissions intensity", "fldp38BIUg0y5uytW": "GRI"}},
+    {"engagement_uuid": "595791d1-b2ef-4036-9a6e-066bb42be1e8", "engagement_label": "Eng #3", "fields": {"fldrZAYpwq9Dl5Hih": 2025, "fld6GtVWZ8mTEZ5C3": "https://centrum-digital.example/sustainability/report-2025.pdf", "fldy29baeIsCOIV2X": "Annualised PUE; Renewable electricity share; Scope 1+2 emissions intensity; WUE", "fldp38BIUg0y5uytW": "GRI"}},
+
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldrZAYpwq9Dl5Hih": 2024, "fld6GtVWZ8mTEZ5C3": "https://fjord-fund.example/sustainability/report-2024.pdf", "fldy29baeIsCOIV2X": "PUE; Renewable share; Scope 1+2; WUE; Biodiversity LEAP outcomes", "fldp38BIUg0y5uytW": "IFRS S2"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldrZAYpwq9Dl5Hih": 2025, "fld6GtVWZ8mTEZ5C3": "https://fjord-fund.example/sustainability/report-2025.pdf", "fldy29baeIsCOIV2X": "PUE; Renewable share; Scope 1+2; WUE; Biodiversity LEAP outcomes", "fldp38BIUg0y5uytW": "IFRS S2"}}
+  ],
+  "PARENT_PORTFOLIO_REPORTS": [],
+  "PROJECT_PAI_DATA": [
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5 — third-party assured", "fields": {"fldgZ8FouYtABzADT": 1, "fldn95DR7ajVDYkc0": 850, "fld5JtYMR0Eqn517W": "tCO2e/yr", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 2, "fldn95DR7ajVDYkc0": 14.5, "fld5JtYMR0Eqn517W": "tCO2e/M EUR", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 3, "fldn95DR7ajVDYkc0": 0, "fld5JtYMR0Eqn517W": "tCO2e/M EUR", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 5, "fldn95DR7ajVDYkc0": 95, "fld5JtYMR0Eqn517W": "% non-renewable", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 6, "fldn95DR7ajVDYkc0": 0.85, "fld5JtYMR0Eqn517W": "GWh/M EUR (high impact sectors)", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 7, "fldX1kLiflltOYWdK": "No project sites within 2km of KBA (LEAP Tier 2 assessment, low risk)", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 8, "fldn95DR7ajVDYkc0": 0.28, "fld5JtYMR0Eqn517W": "L/kWh (WUE)", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 9, "fldn95DR7ajVDYkc0": 18, "fld5JtYMR0Eqn517W": "tonnes hazardous waste/M EUR", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 10, "fldn95DR7ajVDYkc0": 0, "fld5JtYMR0Eqn517W": "UNGC violations 24m count", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 11, "fldX1kLiflltOYWdK": "UNGC monitoring procedures documented", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+    {"engagement_uuid": "48f32d4d-be5a-41bf-bbac-b720ab5612ff", "engagement_label": "Eng #5", "fields": {"fldgZ8FouYtABzADT": 13, "fldn95DR7ajVDYkc0": 42, "fld5JtYMR0Eqn517W": "% women on board", "fldBAB4NuIqoA6N0p": "PricewaterhouseCoopers AB", "fldroOPT2etcTjJLP": "Third-party assured"}},
+
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6 — unverified", "fields": {"fldgZ8FouYtABzADT": 1, "fldn95DR7ajVDYkc0": 3200, "fld5JtYMR0Eqn517W": "tCO2e/yr", "fldroOPT2etcTjJLP": "Unverified"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldgZ8FouYtABzADT": 5, "fldn95DR7ajVDYkc0": 65, "fld5JtYMR0Eqn517W": "% non-renewable", "fldroOPT2etcTjJLP": "Unverified"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldgZ8FouYtABzADT": 8, "fldn95DR7ajVDYkc0": 0.61, "fld5JtYMR0Eqn517W": "L/kWh (WUE)", "fldroOPT2etcTjJLP": "Unverified"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldgZ8FouYtABzADT": 10, "fldn95DR7ajVDYkc0": 0, "fld5JtYMR0Eqn517W": "UNGC violations 24m count", "fldroOPT2etcTjJLP": "Unverified"}},
+    {"engagement_uuid": "b01bb716-997f-42e8-828c-6345aeb708bc", "engagement_label": "Eng #6", "fields": {"fldgZ8FouYtABzADT": 13, "fldn95DR7ajVDYkc0": 22, "fld5JtYMR0Eqn517W": "% women on board", "fldroOPT2etcTjJLP": "Unverified"}}
+  ]
+}
