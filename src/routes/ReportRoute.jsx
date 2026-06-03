@@ -72,6 +72,11 @@ export default function ReportRoute() {
   const [engagement, setEngagement] = useState(null);
   const [reportOutput, setReportOutput] = useState(null);
   const [renderContract, setRenderContract] = useState(null);
+  // Dev-mode diagnostic: capture the raw error so the failing-engagement
+  // view can show it inline (gated to import.meta.env.DEV in the JSX). In
+  // production the friendly ENGINE_ERROR_COPY is the only visible surface;
+  // this state is unused.
+  const [engineErrorDetail, setEngineErrorDetail] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,6 +178,7 @@ export default function ReportRoute() {
       } catch (engineErr) {
         if (cancelled) return;
         console.error("[ReportRoute] engine render failed:", engineErr);
+        setEngineErrorDetail(engineErr);
         setState("engine_error");
       }
     })();
@@ -205,8 +211,24 @@ export default function ReportRoute() {
   if (state === "engine_error") {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 font-sans text-[#0B1F2A]">
-        <div className="max-w-md w-full bg-white border border-[#DDD5CA] rounded-lg p-8 shadow-sm text-center">
-          <p className="text-base leading-relaxed">{ENGINE_ERROR_COPY.message}</p>
+        <div className="max-w-2xl w-full bg-white border border-[#DDD5CA] rounded-lg p-8 shadow-sm">
+          <p className="text-base leading-relaxed text-center">{ENGINE_ERROR_COPY.message}</p>
+          {import.meta.env.DEV && engineErrorDetail && (
+            <details className="mt-6 text-left text-xs text-[#5C6B5C] bg-[#F8F6F2] border border-[#DDD5CA] rounded p-4">
+              <summary className="cursor-pointer font-mono text-[#A63D2F] font-semibold">
+                Dev-mode diagnostic (visible only in import.meta.env.DEV)
+              </summary>
+              <p className="mt-3 font-mono whitespace-pre-wrap break-words text-[#0B1F2A]">
+                <strong>{engineErrorDetail.name || "Error"}:</strong>{" "}
+                {engineErrorDetail.message || String(engineErrorDetail)}
+              </p>
+              {engineErrorDetail.stack && (
+                <pre className="mt-3 text-[10px] overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                  {engineErrorDetail.stack}
+                </pre>
+              )}
+            </details>
+          )}
         </div>
       </div>
     );
