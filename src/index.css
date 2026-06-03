@@ -1,0 +1,51 @@
+/*
+ * Perennity Bridge SPA stylesheet — main CSS entry.
+ *
+ * Imported by src/main.jsx at the top of the module graph. Vite + PostCSS
+ * (configured in postcss.config.js) process this file and emit a CSS
+ * bundle into dist/assets/index-*.css that index.html picks up via the
+ * Vite-injected <link>.
+ *
+ * Composition:
+ *   1. Tailwind v4 — CSS-first config. The @import statement pulls
+ *      preflight + utilities + theme. v4 auto-detects source files from
+ *      the project tree (no @source directive needed for the standard
+ *      Vite + React structure here).
+ *   2. @font-face declarations for the 4 TrueType fonts already shipped
+ *      in src/assets/fonts/ for the paid Report PDF (jsPDF embedding,
+ *      1.4d Phase A). The same files get reused for browser web rendering;
+ *      Tailwind's font-['Source_Serif_4'] / font-['Source_Sans_3']
+ *      arbitrary-value classes throughout the SPA resolve to these
+ *      font-family declarations.
+ */
+
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("./assets/fonts/SourceSerif4-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("./assets/fonts/SourceSerif4-Semibold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Source Sans 3";
+  src: url("./assets/fonts/SourceSans3-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Source Sans 3";
+  src: url("./assets/fonts/SourceSans3-Semibold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
