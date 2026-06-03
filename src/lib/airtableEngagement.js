@@ -87,6 +87,18 @@ const FID = {
   // fallback (entityInputAdapter prefers discrete columns when present).
   SFDR_ENTITY_DISCLOSURES: "fldoSVNknmEavH7Bh",
 
+  // ── UK SDR Specifics (v0.6.0 / Phase 2) ──────────────────────────────
+  // Five Airtable columns mirroring whatever the wizard collects for UK SDR
+  // Focus / Improvers / Impact engagements. Mapped into ProjectUKSDRInputs
+  // via src/lib/ukSDRInputAdapter.js. All fields are optional; absent
+  // fields resolve UK SDR criteria to insufficient_evidence per the engine's
+  // fail-soft pattern.
+  UK_SDR_STANDARD_CLAIMED: "fldMHcQV5YWYuMfZP",
+  UK_SDR_KPIS_COMMITTED: "fldJ01YejLamlwxN2",
+  UK_SDR_REPORTING_FREQUENCY: "fld771ulYlnwmZZbT",
+  UK_SDR_IMPROVEMENT_PLAN: "fldugUZ2qX710zK9g",
+  UK_SDR_IMPACT_PLAN: "fldBgf9Wr6ioPdkNu",
+
   // ── PR A1 — discrete entity scalars (c2 / c3 / c7) ──────────────────
   // c2 governance — domain A (board structure)
   C2_INDEPENDENT_NED_COUNT: "fldJPtegliI4lHXRX",
@@ -494,6 +506,23 @@ export async function fetchEngagement(engagementReference) {
   // PR A1/A4).
   const sfdr_entity_disclosures = fields[FID.SFDR_ENTITY_DISCLOSURES] ?? undefined;
 
+  // ── UK SDR (v0.6.0) — raw cell values, adapter assembles ProjectUKSDRInputs.
+  // Single-select fields go through singleSelectValue; multi-select is read
+  // directly (Airtable returns string[] which ukSDRInputAdapter's defensive
+  // Array.isArray check handles); long-text JSON blobs are passed as strings
+  // for the adapter's safeJsonParse to handle.
+  const uk_sdr_standard_claimed = singleSelectValue(
+    fields[FID.UK_SDR_STANDARD_CLAIMED],
+    undefined,
+  );
+  const uk_sdr_kpis_committed = fields[FID.UK_SDR_KPIS_COMMITTED] ?? undefined;
+  const uk_sdr_reporting_frequency = singleSelectValue(
+    fields[FID.UK_SDR_REPORTING_FREQUENCY],
+    undefined,
+  );
+  const uk_sdr_improvement_plan = fields[FID.UK_SDR_IMPROVEMENT_PLAN] ?? undefined;
+  const uk_sdr_impact_plan = fields[FID.UK_SDR_IMPACT_PLAN] ?? undefined;
+
   // ── PR A2 + A4 — fetch linked child tables in parallel ──────────────
   // Six API calls in parallel. Each child table is filtered by the engagement
   // reference UUID (NOT the Airtable record.id). ARRAYJOIN({engagement}) on a
@@ -527,6 +556,13 @@ export async function fetchEngagement(engagementReference) {
     sfdr_pai_data,
     sfdr_assurance_tier,
     sfdr_entity_disclosures,
+    // v0.6.0 (UK SDR Phase 2): five raw Airtable fields, consumed by
+    // ukSDRInputAdapter.buildUKSDRInputs() in the paid Report flow.
+    uk_sdr_standard_claimed,
+    uk_sdr_kpis_committed,
+    uk_sdr_reporting_frequency,
+    uk_sdr_improvement_plan,
+    uk_sdr_impact_plan,
     // PR A1 — c2/c3/c7 discrete entity scalars (raw cell values; adapter
     // composes the EntityInput shape from these).
     c2_independent_ned_count: fields[FID.C2_INDEPENDENT_NED_COUNT] ?? undefined,

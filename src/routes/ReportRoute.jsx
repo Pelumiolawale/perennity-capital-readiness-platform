@@ -27,6 +27,7 @@ import {
 import { fetchEngagement } from "../lib/airtableEngagement.js";
 import { frameworksForLabel } from "../lib/engineClient.js";
 import { buildSFDRInputs } from "../lib/sfdrInputAdapter.js";
+import { buildUKSDRInputs } from "../lib/ukSDRInputAdapter.js";
 import { buildEntityInputs } from "../lib/entityInputAdapter.js";
 import {
   serialisePAIDataFile,
@@ -133,9 +134,17 @@ export default function ReportRoute() {
         // the engine cleanly resolves every SFDR criterion to
         // insufficient_evidence in that case.
         const sfdrInputs = buildSFDRInputs(entitlement.engagement);
-        const projectInput = sfdrInputs
-          ? { ...entitlement.engagement.project_input, sfdr: sfdrInputs }
-          : entitlement.engagement.project_input;
+        // v0.6.0 (UK SDR Phase 2): merge UK SDR inputs onto project_input
+        // when the engagement carries UK SDR Specifics fields. Undefined
+        // when no UK SDR fields populated — engine resolves every UK SDR
+        // criterion to insufficient_evidence in that case.
+        const ukSDRInputs = buildUKSDRInputs(entitlement.engagement);
+        const projectInputBase = entitlement.engagement.project_input;
+        const projectInput = {
+          ...projectInputBase,
+          ...(sfdrInputs ? { sfdr: sfdrInputs } : {}),
+          ...(ukSDRInputs ? { uk_sdr: ukSDRInputs } : {}),
+        };
         // Entity-level inputs from the new sfdr_entity_disclosures JSON
         // blob field. Undefined when the field is missing / empty / not
         // recognised, in which case the engine resolves c2/c3/c5/c7 to

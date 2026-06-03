@@ -109,10 +109,48 @@ export function IntakeWizard({ onSubmit }) {
     sfdr_es_characteristic: "",
     sfdr_pai_rows: emptyPAIRows(),
     sfdr_assurance_tier: "limited_big4",
+    // v0.6.0 (UK SDR Phase 2): flat form keys; ukSDRInputAdapter assembles
+    // them into ProjectUKSDRInputs. Always-shown for any uk_sdr_* label;
+    // sub-section visibility for improvers/impact is conditioned in JSX.
+    uk_sdr_standard_claimed: "eu_taxonomy_8_1",
+    uk_sdr_kpis_pue: true,
+    uk_sdr_kpis_renewable: true,
+    uk_sdr_kpis_ghg: true,
+    uk_sdr_kpis_wue: true,
+    uk_sdr_reporting_frequency: "annual",
+    // Improvers — baseline + strategy + targets
+    uk_sdr_baseline_pue: "",
+    uk_sdr_baseline_renewable_pct: "",
+    uk_sdr_baseline_ghg: "",
+    uk_sdr_baseline_wue: "",
+    uk_sdr_strategy_timeline_years: "3",
+    uk_sdr_strategy_actions: "",
+    uk_sdr_strategy_verification: "third_party_audit",
+    uk_sdr_target_pue: "",
+    uk_sdr_target_renewable_pct: "",
+    uk_sdr_target_ghg_reduction_pct: "",
+    uk_sdr_target_wue: "",
+    // Impact — objective + theory of change + additionality + reporting
+    uk_sdr_impact_objective: "",
+    uk_sdr_impact_objective_category: "environmental_climate_mitigation",
+    uk_sdr_impact_declared_in: "",
+    uk_sdr_impact_theory_of_change: "",
+    uk_sdr_impact_indicators: "",
+    uk_sdr_impact_additionality: "",
+    uk_sdr_impact_annual_cadence: true,
+    uk_sdr_impact_reports_against_indicators: true,
+    uk_sdr_impact_outcome_level: true,
+    uk_sdr_impact_verification: "third_party_audit",
   });
 
   const showSFDRSection =
     form.target_label === "sfdr_article_8" || form.target_label === "sfdr_article_9";
+  const showUKSDRSection =
+    form.target_label === "uk_sdr_focus" ||
+    form.target_label === "uk_sdr_improvers" ||
+    form.target_label === "uk_sdr_impact";
+  const showUKSDRImproversBlock = form.target_label === "uk_sdr_improvers";
+  const showUKSDRImpactBlock = form.target_label === "uk_sdr_impact";
 
   useEffect(() => {
     const draft = loadDraft();
@@ -177,7 +215,7 @@ export function IntakeWizard({ onSubmit }) {
       data_points.pue_reporting_basis = "annualised";
     }
 
-    /** @type {ProjectInput} */
+    /** @type {ProjectInput & { target_label?: string }} */
     const input = {
       project_id: form.project_id || "PB-NEW-001",
       intake_timestamp: new Date().toISOString(),
@@ -187,6 +225,11 @@ export function IntakeWizard({ onSubmit }) {
       build_completion_year: form.build_completion_year,
       data_points,
       evidence_documents: [],
+      // v0.6.0: surface target_label so runSnapshot's frameworksForLabel()
+      // can route SFDR / UK SDR engagements to the right framework set.
+      // Without this, runSnapshot falls back to BUNDLED_ACTIVITIES (EU Tax
+      // 8.1 only) regardless of the wizard's framework dropdown.
+      target_label: form.target_label,
     };
     onSubmit(input);
   };
@@ -351,6 +394,170 @@ export function IntakeWizard({ onSubmit }) {
                 <option value="management_only">Management-only attestation</option>
               </select>
             </Field>
+          </section>
+        )}
+
+        {showUKSDRSection && (
+          <section
+            className="border-t border-[#D8DCDF] pt-8 mt-8 space-y-4"
+            data-testid="uk-sdr-specifics-section"
+          >
+            <h2 className="text-base font-semibold text-[#0B1F2A]">
+              UK SDR Specifics
+            </h2>
+            <p className="text-xs text-[#4A5760] leading-relaxed">
+              Additional inputs collected when the target framework is UK SDR Sustainability Focus, Improvers, or Impact. These inputs are captured here but are not scored in the free Snapshot — they support the signed Sustainability Readiness Report.
+            </p>
+            <Field
+              label="Sustainability standard claimed"
+              helper="Per PB methodology v3.5, EU Taxonomy 8.1 is the preferred credible standard for data centres. LEED Platinum (with Energy & Atmosphere prerequisites met) is also recognised; SBTi gives partial standing for Focus but is suitable for Improvers / Impact."
+            >
+              <select
+                value={form.uk_sdr_standard_claimed}
+                onChange={update("uk_sdr_standard_claimed")}
+                className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]"
+              >
+                <option value="eu_taxonomy_8_1">EU Taxonomy Activity 8.1</option>
+                <option value="leed_platinum">LEED Platinum (E&A prerequisites met)</option>
+                <option value="sbti">SBTi validation</option>
+                <option value="other">Other</option>
+              </select>
+            </Field>
+            <Field
+              label="KPIs committed to annual disclosure"
+              helper="PB methodology v3.5 requires PUE, renewable energy %, GHG Scope 1+2, and WUE for the Sustainability Focus label. All four are pre-checked; untick any the developer does not commit to reporting annually."
+            >
+              <div className="space-y-1">
+                {[
+                  { key: "uk_sdr_kpis_pue", label: "PUE (Power Usage Effectiveness)" },
+                  { key: "uk_sdr_kpis_renewable", label: "Renewable energy procurement %" },
+                  { key: "uk_sdr_kpis_ghg", label: "GHG emissions (Scope 1+2)" },
+                  { key: "uk_sdr_kpis_wue", label: "WUE (Water Usage Effectiveness)" },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-start gap-3 py-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form[key]}
+                      onChange={update(key)}
+                      className="mt-0.5 w-4 h-4 rounded-[2px] border border-[#D8DCDF] bg-[#F8F6F2] checked:bg-[#0B1F2A] checked:border-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-1 cursor-pointer appearance-none relative checked:after:content-['✓'] checked:after:text-[#F8F6F2] checked:after:text-[11px] checked:after:absolute checked:after:top-[-2px] checked:after:left-[2px]"
+                    />
+                    <span className="font-['Source_Serif_4'] text-[14px] leading-[20px] text-[#1A2329]">
+                      {label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <Field label="Reporting frequency">
+              <select
+                value={form.uk_sdr_reporting_frequency}
+                onChange={update("uk_sdr_reporting_frequency")}
+                className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]"
+              >
+                <option value="annual">Annual</option>
+                <option value="semi_annual">Semi-annual</option>
+                <option value="quarterly">Quarterly</option>
+              </select>
+            </Field>
+
+            {showUKSDRImproversBlock && (
+              <div className="space-y-4 border-l-2 border-[#D8DCDF] pl-4 mt-4">
+                <h3 className="text-sm font-semibold text-[#0B1F2A]">Improvers — baseline, strategy, targets</h3>
+                <Field label="Current PUE (baseline)">
+                  <input type="number" step="0.01" value={form.uk_sdr_baseline_pue} onChange={update("uk_sdr_baseline_pue")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Current renewable energy % (baseline)">
+                  <input type="number" step="1" value={form.uk_sdr_baseline_renewable_pct} onChange={update("uk_sdr_baseline_renewable_pct")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Current GHG emissions, Scope 1+2 (tonnes CO2e/year)">
+                  <input type="number" step="1" value={form.uk_sdr_baseline_ghg} onChange={update("uk_sdr_baseline_ghg")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Current WUE (baseline)" helper="Optional. Required for water-stressed sites.">
+                  <input type="number" step="0.01" value={form.uk_sdr_baseline_wue} onChange={update("uk_sdr_baseline_wue")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Improvement timeline (years)" helper="PB methodology v3.5 aligned tier expects ≤3 years; ≤5 acceptable with justification.">
+                  <input type="number" min="1" max="10" value={form.uk_sdr_strategy_timeline_years} onChange={update("uk_sdr_strategy_timeline_years")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Improvement actions" helper="One action per line. PB methodology v3.5 aligned tier requires ≥3 specific actions.">
+                  <textarea value={form.uk_sdr_strategy_actions} onChange={update("uk_sdr_strategy_actions")} rows={4} className="w-full px-3 py-2 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] placeholder:text-[#8A949B] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A] resize-vertical" />
+                </Field>
+                <Field label="Verification method for improvement reporting">
+                  <select value={form.uk_sdr_strategy_verification} onChange={update("uk_sdr_strategy_verification")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]">
+                    <option value="third_party_audit">Third-party audit</option>
+                    <option value="internal">Internal only</option>
+                    <option value="none">None stated</option>
+                  </select>
+                </Field>
+                <Field label="Target PUE">
+                  <input type="number" step="0.01" value={form.uk_sdr_target_pue} onChange={update("uk_sdr_target_pue")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Target renewable energy %">
+                  <input type="number" step="1" value={form.uk_sdr_target_renewable_pct} onChange={update("uk_sdr_target_renewable_pct")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Target GHG reduction (%)">
+                  <input type="number" step="1" value={form.uk_sdr_target_ghg_reduction_pct} onChange={update("uk_sdr_target_ghg_reduction_pct")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Target WUE" helper="Optional. Required for water-stressed sites.">
+                  <input type="number" step="0.01" value={form.uk_sdr_target_wue} onChange={update("uk_sdr_target_wue")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+              </div>
+            )}
+
+            {showUKSDRImpactBlock && (
+              <div className="space-y-4 border-l-2 border-[#D8DCDF] pl-4 mt-4">
+                <h3 className="text-sm font-semibold text-[#0B1F2A]">Impact — objective, theory of change, additionality, reporting</h3>
+                <Field label="Impact objective" helper='The specific positive sustainability outcome the asset is intended to deliver. Example: "Reduce data-centre Scope 1+2 emissions by 50% in Sub-Saharan African markets."'>
+                  <textarea value={form.uk_sdr_impact_objective} onChange={update("uk_sdr_impact_objective")} maxLength={400} rows={3} className="w-full px-3 py-2 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] placeholder:text-[#8A949B] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A] resize-vertical" />
+                </Field>
+                <Field label="Objective category" helper="Mapping to a recognised taxonomy of environmental / social outcomes (engine SIObjectiveCategory enum).">
+                  <select value={form.uk_sdr_impact_objective_category} onChange={update("uk_sdr_impact_objective_category")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]">
+                    <option value="environmental_climate_mitigation">Environmental — climate mitigation</option>
+                    <option value="environmental_climate_adaptation">Environmental — climate adaptation</option>
+                    <option value="environmental_water_marine">Environmental — water & marine</option>
+                    <option value="environmental_circular_economy">Environmental — circular economy</option>
+                    <option value="environmental_pollution_prevention">Environmental — pollution prevention</option>
+                    <option value="environmental_biodiversity">Environmental — biodiversity</option>
+                    <option value="social_decent_work">Social — decent work</option>
+                    <option value="social_adequate_standards_of_living">Social — adequate standards of living</option>
+                    <option value="social_inclusive_communities">Social — inclusive communities</option>
+                    <option value="social_other_recognised">Social — other recognised</option>
+                  </select>
+                </Field>
+                <Field label="Declared in" helper='Deal-defining documentation that names the objective. Example: "Investment memorandum dated 2026-03-15".'>
+                  <input type="text" value={form.uk_sdr_impact_declared_in} onChange={update("uk_sdr_impact_declared_in")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] placeholder:text-[#8A949B] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]" />
+                </Field>
+                <Field label="Theory of change" helper="Causal chain from the asset's activities to the impact outcome. PB methodology v3.5 aligned tier requires a written ToC plus ≥3 quantified indicators below.">
+                  <textarea value={form.uk_sdr_impact_theory_of_change} onChange={update("uk_sdr_impact_theory_of_change")} rows={4} className="w-full px-3 py-2 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] placeholder:text-[#8A949B] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A] resize-vertical" />
+                </Field>
+                <Field label="Quantified indicators (JSON)" helper='Array of {name, baseline, target, unit, source?}. Example: [{"name":"Scope 1+2","baseline":8000,"target":5000,"unit":"tCO2e/yr"}].'>
+                  <textarea value={form.uk_sdr_impact_indicators} onChange={update("uk_sdr_impact_indicators")} rows={5} className="w-full px-3 py-2 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Sans_3'] text-[13px] text-[#0B1F2A] placeholder:text-[#8A949B] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A] resize-vertical" />
+                </Field>
+                <Field label="Additionality evidence" helper="Would this outcome have happened without this asset/financing? PB methodology v3.5 aligned tier requires substantive narrative (≥200 characters).">
+                  <textarea value={form.uk_sdr_impact_additionality} onChange={update("uk_sdr_impact_additionality")} rows={4} className="w-full px-3 py-2 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] placeholder:text-[#8A949B] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A] resize-vertical" />
+                </Field>
+                <Field label="Impact reporting commitment" helper="PB methodology v3.5 aligned tier requires all four: annual cadence, reports against the quantified indicators, outcome-level (not activity-only), and stated verification.">
+                  <div className="space-y-1">
+                    {[
+                      { key: "uk_sdr_impact_annual_cadence", label: "Annual cadence" },
+                      { key: "uk_sdr_impact_reports_against_indicators", label: "Reports against quantified indicators" },
+                      { key: "uk_sdr_impact_outcome_level", label: "Outcome-level reporting (not activity-only)" },
+                    ].map(({ key, label }) => (
+                      <label key={key} className="flex items-start gap-3 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={form[key]} onChange={update(key)} className="mt-0.5 w-4 h-4 rounded-[2px] border border-[#D8DCDF] bg-[#F8F6F2] checked:bg-[#0B1F2A] checked:border-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-1 cursor-pointer appearance-none relative checked:after:content-['✓'] checked:after:text-[#F8F6F2] checked:after:text-[11px] checked:after:absolute checked:after:top-[-2px] checked:after:left-[2px]" />
+                        <span className="font-['Source_Serif_4'] text-[14px] leading-[20px] text-[#1A2329]">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+                <Field label="Impact reporting verification method">
+                  <select value={form.uk_sdr_impact_verification} onChange={update("uk_sdr_impact_verification")} className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]">
+                    <option value="third_party_audit">Third-party impact verification / assurance</option>
+                    <option value="internal">Internal only</option>
+                    <option value="none">None stated</option>
+                  </select>
+                </Field>
+              </div>
+            )}
           </section>
         )}
 
