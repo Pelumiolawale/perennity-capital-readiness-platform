@@ -15,6 +15,8 @@ a recommended owner. Citations are against the engine repo at
 
 ### 1. Aggregate framework verdict is permanently `not_applicable`
 
+**✅ RESOLVED in engine v0.6.2** (commit `e8d1494`, 2026-06-04). Diagnosis was a documentation drift, not a code bug: `aggregateProductLabelVerdict` had been wired into `src/runtime.ts:188` since v0.5.0-alpha.2's E4 work — the "permanently `not_applicable`" framing in this audit was incorrect when written. Resolution shipped as a doc-truthing addendum at the top of `methodology.md` plus a v0.6.2 CLAUDE.md section, superseding the historical "deferred" framing in v3.4 / v3.3 sections. Audit-replay anchors preserved. Weight calibration remains genuinely deferred; severity-rank aggregation is the canonical operative rule until weights land.
+
 **Citation:** `src/sfdr/orchestration.ts:168-179` (`aggregateProductLabelVerdict`) +
 `regulatory-knowledge/frameworks/sfdr/v1/{art-8,art-9}.json` (`verdict_thresholds: { aligned: null, partially_aligned: null, not_aligned: 0 }`)
 + `src/runtime.ts:188` (the runtime call site that uses the aggregate).
@@ -42,6 +44,10 @@ to a finished competitor, it reads as "scoring works but doesn't compose into a 
 ---
 
 ### 2. Free-tier `rationale_text` carries verbatim regulatory citations
+
+**✅ RESOLVED in engine v0.6.2** (commit `e8d1494`, 2026-06-04). Audit estimated 8 offending strings; the actual sweep found ~30+ leaks across UK SDR + SFDR Art 8/9 scoring functions. All stripped from rationale_text and relocated into a new paid-tier-only `CriterionResult.regulatory_citations?: string[]` field, which is explicitly blocked from `SnapshotOutput` by the structural gate's `DISALLOWED_KEYS` walk. `snapshot.gate.test.ts` extended with a new "CONTENT WALK on real scoring output" describe block that runs the engine end-to-end and asserts no leak pattern matches (`/¶\d+\.\d+/`, `/\bPS23\/16\b/`, `/\bv3\.\d+\b/`, `/(?:≤|≥)\s*\d/`). 360/360 engine tests pass post-strip.
+
+
 
 **Citation:** `src/renderers/__tests__/snapshot.gate.test.ts:82` (the `ALLOWED_HEATMAP_CELL_KEYS`
 allowlist) + `src/sfdr/uk-sdr-scoring.ts:144` (an example UK SDR c1 rationale string).
@@ -73,6 +79,10 @@ external snapshot is widely shared.
 ---
 
 ### 3. UK SDR cross-framework dependency edge cases untested
+
+**✅ RESOLVED in engine v0.6.2** (commit `e8d1494`, 2026-06-04). Explicit `if (euTax.overall_verdict === "not_applicable")` branches added to `uk_sdr_c1_asset_sustainability_profile` and `uk_sdr_c15_no_significant_harm`. Both now return `not_aligned` with rationale citing the unmet dependency (c1 points at alternative recognised standards: LEED Platinum, SBTi; c15 explains DNSH-equivalent screening cannot be satisfied without Taxonomy alignment). Two new test cases lock the behaviour in `src/sfdr/__tests__/uk-sdr-focus.test.ts` and `uk-sdr-impact.test.ts`. Pre-v0.6.2 the case fell through to misleading rationale ("claim made and rejected" / "DNSH results are empty"); now the rationale is honest about the cause.
+
+
 
 **Citation:** `src/sfdr/uk-sdr-scoring.ts:131-180` (`uk_sdr_c1_asset_sustainability_profile`)
 and `:773-828` (`uk_sdr_c15_no_significant_harm`). Both criteria carry
