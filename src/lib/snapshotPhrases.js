@@ -2,10 +2,12 @@
 //
 // SNAPSHOT_PHRASES — v3.5 investor-grade per-criterion narrative phrases.
 //
-// 10 SFDR criteria × 5 verdict bands = 50 phrases. Sourced verbatim from
-// the v3.5 spec drafted against the 10 v3.5 SFDR criterion definitions.
-// Each phrase ≤40 words by design; institutional dense prose at this
-// length is the right register, longer phrases drift toward narrative.
+// 10 SFDR + 15 UK SDR criteria × 5 verdict bands = 125 phrases. SFDR
+// phrases sourced verbatim from the v3.5 spec; UK SDR phrases added in
+// v0.6.0 (Phase 2) against the 4/5/6 Focus/Improvers/Impact criterion
+// definitions. Each phrase ≤40 words by design; institutional dense
+// prose at this length is the right register, longer phrases drift
+// toward narrative.
 //
 // ====================================================================
 // FREE-TIER GUARD (CLAUDE.md hard rule — architectural, not enforceable
@@ -490,6 +492,585 @@ export const SNAPSHOT_PHRASES = {
       },
     },
   },
+
+  // ====================================================================
+  // UK SDR Focus — 4 criteria (engine v0.6.0 product_label framework)
+  // ====================================================================
+  // Criterion F1 — uk_sdr_v1_asset_sustainability_profile
+  uk_sdr_v1_asset_sustainability_profile: {
+    aligned: {
+      template:
+        "Assets demonstrate a sustainability profile against a credible standard, consistent with the FCA SDR Sustainability Focus qualifying criterion at ESG Sourcebook 5.3.2R.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "Assets demonstrate a sustainability profile, with {gap_summary} before the Focus qualifying threshold is met.",
+      defaults: {
+        gap_summary:
+          "incomplete mapping of asset performance to the credible standard, or partial coverage across the asset base",
+      },
+    },
+    not_aligned: {
+      template:
+        "Assets do not demonstrate a sustainability profile against a credible standard at the level required for SDR Sustainability Focus; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no asset-level sustainability profile documented, or the profile is not mappable to a recognised credible standard",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes UK SDR Focus assessment. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The asset sustainability profile cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "asset-level performance data or the mapping to a credible standard is not in evidence",
+      },
+    },
+  },
+
+  // Criterion F2 — uk_sdr_v1_credible_sustainability_standard
+  uk_sdr_v1_credible_sustainability_standard: {
+    aligned: {
+      template:
+        "The named sustainability standard is recognised as credible under the FCA SDR framework — a science-based, third-party-administered standard with a defensible methodology and evidence base.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "The named sustainability standard is industry-recognised, with {gap_summary} before unqualified credibility under SDR.",
+      defaults: {
+        gap_summary:
+          "the standard lacks one or more of: independent administration, scientific basis, or a published methodology traceable to public evidence",
+      },
+    },
+    not_aligned: {
+      template:
+        "The named sustainability standard is not credible under the FCA SDR framework; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "the standard is self-administered, lacks a scientific basis, or is not publicly documented at the granularity required for institutional reliance",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes credible-standard assessment. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "Standard credibility cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the standard's administrator, methodology, or evidence base is not in evidence",
+      },
+    },
+  },
+
+  // Criterion F3 — uk_sdr_v1_sustainable_proportion_threshold
+  uk_sdr_v1_sustainable_proportion_threshold: {
+    aligned: {
+      template:
+        "At least 70% of the asset base qualifies under the credible sustainability standard, satisfying the FCA SDR Sustainability Focus 70% threshold.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "A measured proportion of the asset base qualifies under the credible sustainability standard, with {gap_summary} before the 70% Focus threshold is met.",
+      defaults: {
+        gap_summary:
+          "the qualifying proportion sits below 70% but above 50%, or qualifying-asset attribution is partially evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "The qualifying proportion of the asset base does not meet the 70% threshold required for SDR Sustainability Focus; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "fewer than 50% of assets qualify, or qualifying-asset attribution cannot be substantiated",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes sustainable-proportion testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The sustainable proportion cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "asset-level qualification status or the proportion calculation is not in evidence",
+      },
+    },
+  },
+
+  // Criterion F4 — uk_sdr_v1_asset_kpi_reporting
+  uk_sdr_v1_asset_kpi_reporting: {
+    aligned: {
+      template:
+        "The manager commits to annual asset-level KPI reporting against the credible standard, consistent with the SDR Sustainability Focus ongoing-disclosure obligation.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "The manager has committed to asset-level KPI reporting, with {gap_summary} before unqualified compliance.",
+      defaults: {
+        gap_summary:
+          "the cadence, granularity, or governance of the reporting commitment is not fully evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "The manager has not made a credible commitment to asset-level KPI reporting under SDR Sustainability Focus; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no documented reporting obligation, or the obligation is generic rather than asset-level under the named standard",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes asset-level KPI reporting testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The asset-level KPI reporting commitment cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the reporting policy, cadence, or governance arrangement is not in evidence",
+      },
+    },
+  },
+
+  // ====================================================================
+  // UK SDR Improvers — 5 criteria
+  // ====================================================================
+  // Criterion I1 — uk_sdr_v1_baseline_sustainability_assessment
+  uk_sdr_v1_baseline_sustainability_assessment: {
+    aligned: {
+      template:
+        "A documented baseline sustainability assessment establishes the starting point for each asset, consistent with the FCA SDR Sustainability Improvers qualifying criterion.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "A baseline sustainability assessment is documented, with {gap_summary} before unqualified Improvers qualification.",
+      defaults: {
+        gap_summary:
+          "incomplete coverage across the asset base, or the baseline methodology is not fully traceable to evidence",
+      },
+    },
+    not_aligned: {
+      template:
+        "No baseline sustainability assessment has been documented at the level required for SDR Sustainability Improvers; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no baseline documented, or the baseline lacks the granularity needed to measure subsequent improvement",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes baseline assessment. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The baseline sustainability assessment cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "baseline data, methodology, or asset coverage is not in evidence",
+      },
+    },
+  },
+
+  // Criterion I2 — uk_sdr_v1_improvement_strategy
+  uk_sdr_v1_improvement_strategy: {
+    aligned: {
+      template:
+        "A documented improvement strategy with a defined timeline sets out how each asset will advance from baseline, consistent with the SDR Sustainability Improvers qualifying criterion.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "An improvement strategy is documented, with {gap_summary} before unqualified Improvers compliance.",
+      defaults: {
+        gap_summary:
+          "the timeline, asset coverage, or governance of the strategy is not fully evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "No credible improvement strategy with a defined timeline has been documented for SDR Sustainability Improvers; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no strategy documented, or the strategy lacks a defined timeline or measurable improvement pathway",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes improvement strategy testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The improvement strategy cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the strategy document, timeline, or governance arrangement is not in evidence",
+      },
+    },
+  },
+
+  // Criterion I3 — uk_sdr_v1_improvement_kpi_targets
+  uk_sdr_v1_improvement_kpi_targets: {
+    aligned: {
+      template:
+        "Quantified improvement KPI targets are defined for each asset, consistent with the SDR Sustainability Improvers qualifying criterion requiring measurable progress.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "Improvement KPI targets are partially defined, with {gap_summary} before unqualified Improvers compliance.",
+      defaults: {
+        gap_summary:
+          "fewer than the expected number of quantified targets, or target attribution is not fully evidenced across assets",
+      },
+    },
+    not_aligned: {
+      template:
+        "Quantified improvement KPI targets are not defined at the level required for SDR Sustainability Improvers; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no quantified targets documented, or targets are qualitative without measurable thresholds",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes KPI target testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "Quantified improvement KPI targets cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "target values, methodology, or asset-level attribution is not in evidence",
+      },
+    },
+  },
+
+  // Criterion I4 — uk_sdr_v1_progress_monitoring
+  uk_sdr_v1_progress_monitoring: {
+    aligned: {
+      template:
+        "A documented progress monitoring framework with a reporting commitment tracks asset advancement, consistent with the SDR Sustainability Improvers ongoing-disclosure obligation.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "A progress monitoring framework is documented, with {gap_summary} before unqualified Improvers compliance.",
+      defaults: {
+        gap_summary:
+          "the reporting cadence, governance, or asset coverage of monitoring is not fully evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "No credible progress monitoring framework has been documented for SDR Sustainability Improvers; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no monitoring framework documented, or no governance arrangement to operationalise progress reporting",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes progress monitoring testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The progress monitoring commitment cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the monitoring policy, reporting cadence, or governance arrangement is not in evidence",
+      },
+    },
+  },
+
+  // Criterion I5 — uk_sdr_v1_improvement_proportion_threshold
+  uk_sdr_v1_improvement_proportion_threshold: {
+    aligned: {
+      template:
+        "At least 70% of the asset base qualifies under the improvement pathway, satisfying the FCA SDR Sustainability Improvers 70% threshold.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "A measured proportion of the asset base qualifies under the improvement pathway, with {gap_summary} before the 70% Improvers threshold is met.",
+      defaults: {
+        gap_summary:
+          "the qualifying proportion sits below 70% but above 50%, or qualifying-asset attribution is partially evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "The qualifying proportion of the asset base does not meet the 70% threshold required for SDR Sustainability Improvers; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "fewer than 50% of assets qualify, or qualifying-asset attribution cannot be substantiated",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes improvement-proportion testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The improvement proportion cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "asset-level qualification status or the proportion calculation is not in evidence",
+      },
+    },
+  },
+
+  // ====================================================================
+  // UK SDR Impact — 6 criteria
+  // ====================================================================
+  // Criterion M1 — uk_sdr_v1_impact_objective
+  uk_sdr_v1_impact_objective: {
+    aligned: {
+      template:
+        "A pre-defined impact objective is named and is load-bearing to the deal thesis, consistent with the FCA SDR Sustainability Impact qualifying criterion at ESG Sourcebook 5.3.4R.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "An impact objective is named, with {gap_summary} before unqualified Impact qualification.",
+      defaults: {
+        gap_summary:
+          "the objective is documented but not clearly load-bearing to the deal thesis, or scope is partial",
+      },
+    },
+    not_aligned: {
+      template:
+        "No pre-defined impact objective has been named at the level required for SDR Sustainability Impact; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no objective documented, or the objective is generic without a defined real-world outcome",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes impact-objective testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The impact objective cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the objective statement, scope, or evidence of deal-thesis load-bearing is not in evidence",
+      },
+    },
+  },
+
+  // Criterion M2 — uk_sdr_v1_impact_measurement
+  uk_sdr_v1_impact_measurement: {
+    aligned: {
+      template:
+        "A documented theory of change and quantified impact indicators support measurement of the impact objective, consistent with the SDR Sustainability Impact qualifying criterion.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "A theory of change with impact indicators is documented, with {gap_summary} before unqualified Impact compliance.",
+      defaults: {
+        gap_summary:
+          "the theory of change is partially evidenced, or fewer than the expected number of quantified indicators are defined",
+      },
+    },
+    not_aligned: {
+      template:
+        "No credible impact measurement framework has been documented for SDR Sustainability Impact; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no theory of change documented, or no quantified indicators tied to the impact objective",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes impact measurement testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "Impact measurement cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the theory of change, indicator set, or measurement methodology is not in evidence",
+      },
+    },
+  },
+
+  // Criterion M3 — uk_sdr_v1_impact_additionality
+  uk_sdr_v1_impact_additionality: {
+    aligned: {
+      template:
+        "Substantive evidence of additionality demonstrates the manager's contribution to the impact outcome beyond a counterfactual baseline, consistent with the SDR Sustainability Impact qualifying criterion.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "Additionality is partially evidenced, with {gap_summary} before unqualified Impact compliance.",
+      defaults: {
+        gap_summary:
+          "the counterfactual baseline or the causal pathway from manager action to outcome is not fully evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "No credible evidence of additionality has been provided at the level required for SDR Sustainability Impact; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no counterfactual baseline documented, or no causal pathway from manager action to claimed impact outcome",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes additionality testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "Impact additionality cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the counterfactual baseline, contribution pathway, or attribution evidence is not in evidence",
+      },
+    },
+  },
+
+  // Criterion M4 — uk_sdr_v1_impact_proportion_threshold
+  uk_sdr_v1_impact_proportion_threshold: {
+    aligned: {
+      template:
+        "At least 70% of the asset base qualifies under the impact objective, satisfying the FCA SDR Sustainability Impact 70% threshold.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "A measured proportion of the asset base qualifies under the impact objective, with {gap_summary} before the 70% Impact threshold is met.",
+      defaults: {
+        gap_summary:
+          "the qualifying proportion sits below 70% but above 50%, or qualifying-asset attribution is partially evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "The qualifying proportion of the asset base does not meet the 70% threshold required for SDR Sustainability Impact; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "fewer than 50% of assets qualify, or qualifying-asset attribution cannot be substantiated",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes impact-proportion testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The impact proportion cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "asset-level qualification status or the proportion calculation is not in evidence",
+      },
+    },
+  },
+
+  // Criterion M5 — uk_sdr_v1_impact_reporting
+  uk_sdr_v1_impact_reporting: {
+    aligned: {
+      template:
+        "The manager commits to annual impact reporting against the named objective, consistent with the SDR Sustainability Impact ongoing-disclosure obligation.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "Annual impact reporting is committed, with {gap_summary} before unqualified Impact compliance.",
+      defaults: {
+        gap_summary:
+          "the cadence, granularity, or governance of the reporting commitment is not fully evidenced",
+      },
+    },
+    not_aligned: {
+      template:
+        "No credible annual impact reporting commitment has been made under SDR Sustainability Impact; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no reporting obligation documented, or the obligation lacks alignment with the named impact objective",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes impact reporting testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The annual impact reporting commitment cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the reporting policy, cadence, or governance arrangement is not in evidence",
+      },
+    },
+  },
+
+  // Criterion M6 — uk_sdr_v1_no_significant_harm
+  uk_sdr_v1_no_significant_harm: {
+    aligned: {
+      template:
+        "A no-significant-harm screen has been applied across the asset base, consistent with the DNSH-equivalent expectation under the SDR Sustainability Impact framework.",
+      defaults: {},
+    },
+    partially_aligned: {
+      template:
+        "A no-significant-harm screen has been applied, with {gap_summary} before unqualified Impact compliance.",
+      defaults: {
+        gap_summary:
+          "the screen covers the asset base partially, or one or more harm categories are evidenced at standard rather than investor-grade quality",
+      },
+    },
+    not_aligned: {
+      template:
+        "No credible no-significant-harm screen has been applied at the level required for SDR Sustainability Impact; {primary_gap}.",
+      defaults: {
+        primary_gap:
+          "no screen documented, or a material harm category is unaddressed across the asset base",
+      },
+    },
+    not_applicable: {
+      template:
+        "The engagement scope excludes no-significant-harm testing. This criterion is not assessed for the target label selected.",
+      defaults: {},
+    },
+    insufficient_evidence: {
+      template:
+        "The no-significant-harm screen cannot be verified from inputs supplied; {missing_inputs}.",
+      defaults: {
+        missing_inputs:
+          "the screen methodology, asset coverage, or harm-category evidence is not in evidence",
+      },
+    },
+  },
 };
 
 /**
@@ -511,6 +1092,24 @@ export const SNAPSHOT_PHRASE_CRITERION_IDS = Object.freeze([
   "sfdr_v1_si_objective_qualification",
   "sfdr_v1_si_eligibility_evidence_pack",
   "sfdr_v1_project_pai_data_provision",
+  // UK SDR Focus
+  "uk_sdr_v1_asset_sustainability_profile",
+  "uk_sdr_v1_credible_sustainability_standard",
+  "uk_sdr_v1_sustainable_proportion_threshold",
+  "uk_sdr_v1_asset_kpi_reporting",
+  // UK SDR Improvers
+  "uk_sdr_v1_baseline_sustainability_assessment",
+  "uk_sdr_v1_improvement_strategy",
+  "uk_sdr_v1_improvement_kpi_targets",
+  "uk_sdr_v1_progress_monitoring",
+  "uk_sdr_v1_improvement_proportion_threshold",
+  // UK SDR Impact
+  "uk_sdr_v1_impact_objective",
+  "uk_sdr_v1_impact_measurement",
+  "uk_sdr_v1_impact_additionality",
+  "uk_sdr_v1_impact_proportion_threshold",
+  "uk_sdr_v1_impact_reporting",
+  "uk_sdr_v1_no_significant_harm",
 ]);
 
 /**

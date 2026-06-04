@@ -42,9 +42,9 @@ function makeVerdict(criterion_id, verdict, overrides = {}) {
 }
 
 describe("SNAPSHOT_PHRASES — structural completeness", () => {
-  it("covers exactly 10 SFDR criteria", () => {
-    expect(SNAPSHOT_PHRASE_CRITERION_IDS).toHaveLength(10);
-    expect(Object.keys(SNAPSHOT_PHRASES)).toHaveLength(10);
+  it("covers 10 SFDR + 15 UK SDR criteria (25 total)", () => {
+    expect(SNAPSHOT_PHRASE_CRITERION_IDS).toHaveLength(25);
+    expect(Object.keys(SNAPSHOT_PHRASES)).toHaveLength(25);
   });
 
   it("covers exactly 5 verdict bands", () => {
@@ -223,7 +223,7 @@ describe("snapshotPhraseFor — verdict-driven resolution", () => {
   });
 
   it("falls back to band_rationale when criterion_id is unknown", () => {
-    const verdict = makeVerdict("uk_sdr_some_future_criterion", "aligned", {
+    const verdict = makeVerdict("some_future_framework_criterion", "aligned", {
       band_rationale: "Engine rationale for an unknown criterion id.",
     });
     const phrase = snapshotPhraseFor(verdict);

@@ -17,7 +17,7 @@ const AUTHORITY_LABELS = {
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { snapshotPhraseFor } from "../lib/snapshotPhrases.js";
-import { embedPBFonts } from "./reportTypography.js";
+import { embedPBFonts, applyType, TYPE, INK } from "./reportTypography.js";
 import logoUrl from "../assets/pb_cover_logo.png";
 import {
   prependFixedFootnote,
@@ -29,32 +29,41 @@ import {
 } from "./footnoteEngine.js";
 
 // Shared table style block per pb-product-design report-design.md.
-// Applied to drawSFDRSectionPage + drawPueSummaryPage.
+// Applied to drawSFDRSectionPage + drawPueSummaryPage. Reads directly from
+// the canonical TYPE / INK tokens — autotable wants plain RGB arrays and
+// string font names rather than the applyType() helper, so the mapping is
+// done inline at module load.
+//
+// jsPDF-autotable freezes the style object internally on first use, so we
+// spread INK.* arrays into mutable copies; autotable mutates `lineColor`
+// on row borders.
+function rgb(token) { return [token[0], token[1], token[2]]; }
+
 const TABLE_STYLE = {
   theme: "plain",
   headStyles: {
-    fillColor: [241, 238, 232], // #F1EEE8 surfaceTint
-    textColor: [74, 87, 96], // #4A5760 inkMuted
-    font: "PB-Sans",
-    fontStyle: "bold",
-    fontSize: 9,
+    fillColor: rgb(INK.surfaceTint),
+    textColor: rgb(INK.inkMuted),
+    font: TYPE.tableHeader.font,
+    fontStyle: TYPE.tableHeader.weight,
+    fontSize: TYPE.tableHeader.size,
     cellPadding: { top: 2.2, right: 2.5, bottom: 2.2, left: 2.5 },
     halign: "left",
-    lineColor: [216, 220, 223], // hairline below header
+    lineColor: rgb(INK.hairline),
     lineWidth: 0.5,
   },
   bodyStyles: {
-    font: "PB-Serif",
-    fontStyle: "normal",
-    fontSize: 10.5,
-    textColor: [11, 31, 42], // navy
+    font: TYPE.tableBody.font,
+    fontStyle: TYPE.tableBody.weight,
+    fontSize: TYPE.tableBody.size,
+    textColor: rgb(INK.navy),
     cellPadding: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 },
-    lineColor: [216, 220, 223],
+    lineColor: rgb(INK.hairline),
     lineWidth: 0.5,
     valign: "top",
   },
   styles: {
-    lineColor: [216, 220, 223],
+    lineColor: rgb(INK.hairline),
     lineWidth: 0.5,
     overflow: "linebreak",
   },
@@ -85,25 +94,10 @@ const PAGE_HEIGHT_MM = 297;
 const MARGIN_MM = 20;
 const CONTENT_WIDTH_MM = PAGE_WIDTH_MM - 2 * MARGIN_MM;
 
-// Brand colours
-const NAVY = [11, 31, 42];
-const TEAL = [78, 205, 164];
-const WARM_WHITE = [248, 246, 242];
-const MUTED_GREY = [128, 128, 128];
-const PASS_GREEN = [34, 139, 34];
-const FAIL_RED = [178, 34, 52];
-const PARTIAL_AMBER = [201, 138, 4];
-
-// 1.4d Phase B.2 — type scale bumped to match report-design.md spec.
-// (Phase B.1 cover writes explicit 28pt for cover-title and bypasses
-// these constants; B.5 footer writes explicit 8pt for runningHead/folio
-// likewise. These constants apply to the existing body-section render
-// paths that haven't been migrated to the full TYPE token reads.)
-const FONT_HEADLINE = 24;     // unchanged — used only in wordmark which is also being phased out
-const FONT_TITLE = 20;        // unchanged — cover writes 28pt directly
-const FONT_SECTION = 16;      // was 14 → 16pt section-head per spec
-const FONT_BODY = 10.5;       // was 10 → 10.5pt body per spec
-const FONT_FOOTNOTE = 8.5;    // was 8 → 8.5pt footnote per spec
+// Brand colours and type scale read from INK.* / TYPE.* — the canonical
+// tokens in reportTypography.js. No shadowed constants here: a font-size
+// bump in the spec must propagate to every call site, and the only way to
+// guarantee that is to make this file read-through to the token module.
 
 // Reserved vertical band at the bottom of every page for the footer (top
 // row + wrapped Article 26 disclaimer). Content rendering must stop at
@@ -182,16 +176,18 @@ export async function generateReportPDF(output, engagementMetadata, renderContra
   prependFixedFootnote(output.disclaimer);
   const meta = engagementMetadata || {};
 
-  // SFDR-only target labels skip the legacy "Frameworks Applied" / "PUE
+  // product_label-only target labels (SFDR Art 8/9, UK SDR Focus/
+  // Improvers/Impact) skip the legacy "Frameworks Applied" / "PUE
   // summary" / "Evidence Presented" pages because those sections are
   // populated from the engine's legacy ReportRenderer output, which
   // enumerates EVERY framework_result — including EU Tax 8.1, which is
-  // always loaded for SFDR labels (SFDR c6 cross-references it). For an
-  // engagement scoped to SFDR Article 8 or 9 the customer-facing PDF
-  // should not surface EU-Tax-specific narrative pages; the SFDR
-  // section pages (rendered from the RenderContract) cover the
-  // equivalent role. eu_taxonomy_aligned_8_1 keeps current behaviour.
-  const sfdrOnlyLabel = isSFDROnlyLabel(meta.target_label);
+  // always loaded as a baseline for product_label scopes. For an
+  // engagement scoped to a product_label only, the customer-facing PDF
+  // should not surface EU-Tax-specific narrative pages; the
+  // framework_findings section pages (rendered from the RenderContract)
+  // cover the equivalent role. eu_taxonomy_aligned_8_1 keeps current
+  // behaviour.
+  const productLabelOnly = isProductLabelOnlyLabel(meta.target_label);
 
   // Find sections by section_id (engine emits all five in fixed order, but
   // route by ID rather than index in case the engine ever changes order).
@@ -203,37 +199,58 @@ export async function generateReportPDF(output, engagementMetadata, renderContra
   const conclusions = findSection("conclusions");
   const residual = findSection("residual_disclosure");
 
+  // Per-page section name registry. Each section records the page on which
+  // it started; renderFooter looks up the section name for any given page
+  // by finding the largest startPage ≤ pageNumber. Section continuation
+  // pages (from doc.addPage() calls inside the body of drawSectionPage)
+  // inherit the same section name automatically.
+  /** @type {Array<{ startPage: number, name: string }>} */
+  const pageSections = [];
+  const stampSection = (name) => {
+    pageSections.push({
+      startPage: doc.internal.getCurrentPageInfo().pageNumber,
+      name,
+    });
+  };
+
   // Page 1 — cover
   drawCoverPage(doc, output, meta, logoBase64);
 
   // Pages 2-6 — five narrative sections. Each section may overflow into a
   // continuation page (handled internally by drawSectionPage).
   doc.addPage();
+  stampSection("Situation");
   drawSectionPage(doc, situation, "Situation", { showReferences: false });
 
-  if (!sfdrOnlyLabel) {
+  if (!productLabelOnly) {
     doc.addPage();
+    stampSection("Frameworks Applied");
     drawSectionPage(doc, frameworks, "Frameworks Applied", { showReferences: true });
 
     if (output.pue_summary) {
       doc.addPage();
+      stampSection("PUE Measurement Compliance");
       drawPueSummaryPage(doc, output.pue_summary);
     }
   }
 
-  // SFDR sections — render conditionally per the loaded framework set.
-  // Inserts AFTER "Frameworks Applied" (and PUE summary if present) and
-  // BEFORE "Evidence Presented" so the regulatory-regime finding pages
-  // group together in the reader's mental model.
+  // product_label section pages — render conditionally per the loaded
+  // framework set. Inserts AFTER "Frameworks Applied" (and PUE summary
+  // if present) and BEFORE "Evidence Presented" so the regulatory-regime
+  // finding pages group together in the reader's mental model.
   if (renderContract && Array.isArray(renderContract.framework_findings)) {
     for (const finding of renderContract.framework_findings) {
       doc.addPage();
+      stampSection(
+        FRAMEWORK_FINDING_HEADINGS[finding.framework] || finding.framework,
+      );
       drawSFDRSectionPage(doc, finding);
     }
   }
 
-  if (!sfdrOnlyLabel) {
+  if (!productLabelOnly) {
     doc.addPage();
+    stampSection("Evidence Presented");
     drawSectionPage(doc, evidence, "Evidence Presented", { showReferences: true });
   }
 
@@ -242,17 +259,21 @@ export async function generateReportPDF(output, engagementMetadata, renderContra
     narrative: filterConclusionsNarrative(conclusions.narrative, meta.target_label, renderContract),
   } : conclusions;
   doc.addPage();
+  stampSection("Conclusions");
   drawSectionPage(doc, filteredConclusions, "Conclusions", { showReferences: true });
 
   doc.addPage();
+  stampSection("Residual Disclosure");
   drawSectionPage(doc, residual, "Residual Disclosure", { showReferences: false });
 
   // Page 7 — evidence log
   doc.addPage();
+  stampSection("Evidence Log");
   drawEvidenceLogPage(doc, output.evidence_log || []);
 
   // Page 8 — IC Defence Pack + provenance block at bottom
   doc.addPage();
+  stampSection("IC Defence Pack");
   drawIcDefencePackPage(doc, output);
 
   // 1.4e: flush the in-flight footnote accumulator into the page-keyed
@@ -265,10 +286,35 @@ export async function generateReportPDF(output, engagementMetadata, renderContra
   const totalPages = doc.internal.getNumberOfPages();
   for (let n = 1; n <= totalPages; n++) {
     doc.setPage(n);
-    renderFooter(doc, output, n, totalPages);
+    renderFooter(doc, output, n, totalPages, {
+      // output.engagement_reference is the Airtable engagement UUID
+      // (ReportRoute injects it via engagement_reference_for), distinct
+      // from output.run_id which is the engine's internal per-render
+      // serial. The engagement UUID is what an institutional reader will
+      // cross-reference against the engagement letter.
+      engagementRef: output.engagement_reference || "",
+      sectionName: lookupSectionName(pageSections, n),
+    });
   }
 
   return doc;
+}
+
+/**
+ * Find the section name for a given page number. Returns the name of the
+ * most recently started section whose startPage ≤ pageNumber.
+ *
+ * @param {Array<{ startPage: number, name: string }>} pageSections
+ * @param {number} pageNumber
+ * @returns {string}
+ */
+function lookupSectionName(pageSections, pageNumber) {
+  let current = "";
+  for (const entry of pageSections) {
+    if (entry.startPage <= pageNumber) current = entry.name;
+    else break;
+  }
+  return current;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -306,7 +352,7 @@ function drawCoverPage(
     const logoX = centerX - logoW / 2;
     const logoY = 38;
     const bandPad = 8;
-    setFill(doc, NAVY);
+    setFill(doc, INK.navy);
     doc.rect(0, logoY - bandPad, PAGE_WIDTH_MM, logoH + 2 * bandPad, "F");
     doc.addImage(logoBase64, "PNG", logoX, logoY, logoW, logoH);
   }
@@ -317,9 +363,8 @@ function drawCoverPage(
   const methodologyLine = `Methodology ${output.methodology_version}`;
 
   // MIDDLE THIRD — project name at 110mm, target label at 130mm, methodology at 145mm.
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(28); // cover-title
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.coverTitle);
   // Wrap long project names to two lines if needed.
   const projectNameLines = doc.splitTextToSize(projectName, CONTENT_WIDTH_MM);
   let titleY = 110;
@@ -328,20 +373,17 @@ function drawCoverPage(
     titleY += 10;
   }
 
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Sans", "normal");
-  doc.setFontSize(14); // cover-subtitle
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.coverSubtitle);
   doc.text(targetLabel, centerX, titleY + 8, { align: "center" });
 
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Sans", "normal");
-  doc.setFontSize(9); // caption
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.caption);
   doc.text(methodologyLine, centerX, titleY + 18, { align: "center" });
 
   // BOTTOM THIRD — date + reference centred (wordmark now in the logo above).
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Sans", "normal");
-  doc.setFontSize(9); // caption
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.caption);
   doc.text(isoToDate(output.generated_at), centerX, 268, { align: "center" });
 
   // Reference number — short form for legibility at the cover scale.
@@ -370,22 +412,37 @@ function humaniseTargetLabel(value) {
       return "SFDR Article 8";
     case "sfdr_article_9":
       return "SFDR Article 9";
+    case "uk_sdr_focus":
+      return "UK SDR — Sustainability Focus";
+    case "uk_sdr_improvers":
+      return "UK SDR — Sustainability Improvers";
+    case "uk_sdr_impact":
+      return "UK SDR — Sustainability Impact";
     default:
       return null;
   }
 }
 
 /**
- * True when the engagement's target_label is a SFDR-only label. Used to
- * skip the legacy "Frameworks Applied" / "Evidence Presented" / PUE
- * summary sections that surface EU Tax narrative regardless of scope.
- * eu_taxonomy_aligned_8_1 keeps the legacy section rendering.
+ * True when the engagement's target_label is a product_label-only label
+ * (SFDR Article 8/9 or UK SDR Focus/Improvers/Impact). Used to skip the
+ * legacy "Frameworks Applied" / "Evidence Presented" / PUE summary
+ * sections that surface EU Tax narrative regardless of scope — for
+ * product_label-only scopes, the framework_findings pages cover the
+ * equivalent role. eu_taxonomy_aligned_8_1 keeps the legacy section
+ * rendering.
  *
  * @param {string | null | undefined} value
  * @returns {boolean}
  */
-function isSFDROnlyLabel(value) {
-  return value === "sfdr_article_8" || value === "sfdr_article_9";
+function isProductLabelOnlyLabel(value) {
+  return (
+    value === "sfdr_article_8" ||
+    value === "sfdr_article_9" ||
+    value === "uk_sdr_focus" ||
+    value === "uk_sdr_improvers" ||
+    value === "uk_sdr_impact"
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -404,29 +461,25 @@ function drawSectionPage(
 
   if (!section) {
     // Engine omitted this section — surface, don't silently skip.
-    setText(doc, NAVY);
-    doc.setFont("PB-Sans", "bold");
-    doc.setFontSize(FONT_SECTION);
+    setText(doc, INK.navy);
+    applyType(doc, TYPE.sectionHead);
     doc.text(fallbackHeading, MARGIN_MM, y);
     y += 8;
-    setText(doc, MUTED_GREY);
-    doc.setFont("PB-Serif", "normal");
-    doc.setFontSize(FONT_BODY);
+    setText(doc, INK.inkMuted);
+    applyType(doc, TYPE.body);
     doc.text("Section omitted by the engine.", MARGIN_MM, y);
     return;
   }
 
   // Heading
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_SECTION);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
   doc.text(section.heading || fallbackHeading, MARGIN_MM, y);
   y += 8;
 
   // Narrative
-  setText(doc, NAVY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_BODY);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.body);
   const narrativeLines = doc.splitTextToSize(
     section.narrative || "",
     CONTENT_WIDTH_MM,
@@ -454,23 +507,20 @@ function drawSectionPage(
       }
 
       // Framework name (bold navy)
-      setText(doc, NAVY);
-      doc.setFont("PB-Sans", "bold");
-      doc.setFontSize(FONT_BODY);
+      setText(doc, INK.navy);
+      applyType(doc, TYPE.bodyLabel);
       doc.text(ref.framework || "", MARGIN_MM, y);
       y += 5;
 
       // source_reference (italic muted)
-      setText(doc, MUTED_GREY);
-      doc.setFont("PB-Serif", "normal");
-      doc.setFontSize(FONT_FOOTNOTE);
+      setText(doc, INK.inkMuted);
+      applyType(doc, TYPE.footnote);
       doc.text(ref.source_reference || "", MARGIN_MM, y);
       y += 4;
 
       // Verbatim excerpt
-      setText(doc, NAVY);
-      doc.setFont("PB-Serif", "normal");
-      doc.setFontSize(FONT_BODY);
+      setText(doc, INK.navy);
+      applyType(doc, TYPE.body);
       doc.text(excerptLines, MARGIN_MM, y);
       y += excerptLines.length * 5 + 5;
     }
@@ -490,9 +540,8 @@ function drawPueSummaryPage(
   y += 8;
 
   // Heading
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_SECTION);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
   doc.text("PUE Measurement Compliance", MARGIN_MM, y);
   y += 8;
 
@@ -504,22 +553,20 @@ function drawPueSummaryPage(
   const declaredAuthority = pue.verdict?.authority_level;
 
   // Left header — Declared (intake)
-  setFill(doc, NAVY);
+  setFill(doc, INK.navy);
   doc.rect(leftX, y, colWidth, headerHeight, "F");
-  setText(doc, WARM_WHITE);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_BODY);
+  setText(doc, INK.warmWhite);
+  applyType(doc, TYPE.bodyLabel);
   doc.text("Declared (intake)", leftX + 3, y + 6);
   if (declaredAuthority) {
     drawAuthorityBadge(doc, leftX + colWidth - 3, y + headerHeight / 2, declaredAuthority, "right");
   }
 
   // Right header — Verdict (engine)
-  setFill(doc, NAVY);
+  setFill(doc, INK.navy);
   doc.rect(rightX, y, colWidth, headerHeight, "F");
-  setText(doc, WARM_WHITE);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_BODY);
+  setText(doc, INK.warmWhite);
+  applyType(doc, TYPE.bodyLabel);
   doc.text("Verdict (engine)", rightX + 3, y + 6);
   if (declaredAuthority) {
     drawAuthorityBadge(doc, rightX + colWidth - 3, y + headerHeight / 2, declaredAuthority, "right");
@@ -534,37 +581,33 @@ function drawPueSummaryPage(
   let rightY = y + bodyPad + 4;
 
   // Left body content
-  setText(doc, NAVY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_BODY);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.body);
   leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Methodology", humanise(pue.declared.methodology));
   leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Category", humanise(pue.declared.category));
   leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Boundary documented", boolLabel(pue.declared.boundary_documented));
   leftY = drawStatLine(doc, leftX + bodyPad, leftY, colWidth - 2 * bodyPad, "Reporting basis", humanise(pue.declared.reporting_basis));
 
   // Right body content — verdict label, gap_summary, missing_items, evidence count
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_BODY);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.bodyLabel);
   doc.text("Verdict:", rightX + bodyPad, rightY);
   setText(doc, verdictColour(pue.verdict.label));
   doc.text(humanise(pue.verdict.label), rightX + bodyPad + 18, rightY);
   rightY += 6;
 
-  setText(doc, NAVY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_BODY);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.body);
   const gapLines = doc.splitTextToSize(pue.verdict.gap_summary || "—", colWidth - 2 * bodyPad);
   doc.text(gapLines, rightX + bodyPad, rightY);
   rightY += gapLines.length * 5 + 4;
 
   if (Array.isArray(pue.verdict.missing_items) && pue.verdict.missing_items.length > 0) {
-    setText(doc, MUTED_GREY);
-    doc.setFont("PB-Sans", "bold");
-    doc.setFontSize(FONT_FOOTNOTE);
+    setText(doc, INK.inkMuted);
+    applyType(doc, TYPE.captionEmphasis);
     doc.text("Missing:", rightX + bodyPad, rightY);
     rightY += 4;
-    doc.setFont("PB-Serif", "normal");
+    applyType(doc, TYPE.footnote);
     for (const item of pue.verdict.missing_items) {
       const itemLines = doc.splitTextToSize(`• ${humanise(item)}`, colWidth - 2 * bodyPad - 2);
       doc.text(itemLines, rightX + bodyPad + 2, rightY);
@@ -573,9 +616,8 @@ function drawPueSummaryPage(
     rightY += 2;
   }
 
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_FOOTNOTE);
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.footnote);
   doc.text(
     `Evidence references: ${pue.verdict.evidence_refs_count}`,
     rightX + bodyPad,
@@ -586,8 +628,8 @@ function drawPueSummaryPage(
   // Draw the body backgrounds (after content so we know how tall they are).
   // jsPDF doesn't draw behind existing content, so we use unfilled borders.
   const bodyHeight = Math.max(leftY - bodyTopY, rightY - bodyTopY) + bodyPad;
-  setText(doc, NAVY); // no-op; clears any leftover colour
-  doc.setDrawColor(221, 213, 202); // border #DDD5CA
+  setText(doc, INK.navy); // no-op; clears any leftover colour
+  doc.setDrawColor(INK.hairline[0], INK.hairline[1], INK.hairline[2]);
   doc.setLineWidth(0.2);
   doc.rect(leftX, bodyTopY, colWidth, bodyHeight, "S");
   doc.rect(rightX, bodyTopY, colWidth, bodyHeight, "S");
@@ -601,13 +643,11 @@ function drawStatLine(
   /** @type {string} */ label,
   /** @type {string} */ value,
 ) {
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_FOOTNOTE);
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.footnote);
   doc.text(label, x, y);
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_BODY);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.bodyLabel);
   const valueLines = doc.splitTextToSize(value, width);
   doc.text(valueLines, x, y + 4);
   return y + 4 + valueLines.length * 5 + 3;
@@ -622,8 +662,7 @@ function drawAuthorityBadge(
 ) {
   const label = AUTHORITY_LABELS[level];
   if (!label) return;
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_FOOTNOTE);
+  applyType(doc, TYPE.footnote);
   const textW = doc.getTextWidth(label);
   const padX = 2;
   const padY = 1.2;
@@ -631,11 +670,11 @@ function drawAuthorityBadge(
   const h = 4.5;
   const rectX = align === "right" ? x - w : x;
   const rectY = centerY - h / 2;
-  doc.setDrawColor(248, 246, 242); // warm-white border on navy bg
+  doc.setDrawColor(INK.warmWhite[0], INK.warmWhite[1], INK.warmWhite[2]);
   doc.setLineWidth(0.2);
   doc.setFillColor(248, 246, 242);
   doc.roundedRect(rectX, rectY, w, h, 1, 1, "FD");
-  setText(doc, NAVY);
+  setText(doc, INK.navy);
   doc.text(label, rectX + padX, rectY + h - padY);
 }
 
@@ -660,6 +699,9 @@ function humanise(/** @type {string | null | undefined} */ value) {
 const FRAMEWORK_FINDING_HEADINGS = {
   sfdr_art8: "SFDR Article 8 — Promotion of Environmental or Social Characteristics",
   sfdr_art9: "SFDR Article 9 — Sustainable Investment Objective",
+  uk_sdr_focus: "UK SDR Sustainability Focus — per-criterion findings",
+  uk_sdr_improvers: "UK SDR Sustainability Improvers — per-criterion findings",
+  uk_sdr_impact: "UK SDR Sustainability Impact — per-criterion findings",
 };
 
 // Criteria 2, 3, 5, 7 read entity-axis inputs. When these resolve to
@@ -678,16 +720,16 @@ const ENTITY_AXIS_CRITERIA = new Set([
 function verdictDisplay(verdict) {
   switch (verdict) {
     case "aligned":
-      return { label: "Aligned", symbol: "●", rgb: PASS_GREEN };
+      return { label: "Aligned", symbol: "●", rgb: INK.pass };
     case "partially_aligned":
-      return { label: "Conditional", symbol: "◐", rgb: PARTIAL_AMBER };
+      return { label: "Conditional", symbol: "◐", rgb: INK.partial };
     case "not_aligned":
-      return { label: "Not aligned", symbol: "○", rgb: FAIL_RED };
+      return { label: "Not aligned", symbol: "○", rgb: INK.fail };
     case "not_applicable":
-      return { label: "N/A", symbol: "—", rgb: MUTED_GREY };
+      return { label: "N/A", symbol: "—", rgb: INK.inkMuted };
     case "insufficient_evidence":
     default:
-      return { label: "Insufficient", symbol: "⊘", rgb: MUTED_GREY };
+      return { label: "Insufficient", symbol: "⊘", rgb: INK.inkMuted };
   }
 }
 
@@ -703,9 +745,8 @@ function drawSFDRSectionPage(
   let y = MARGIN_MM;
 
   // Section heading
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_SECTION);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
   const heading = FRAMEWORK_FINDING_HEADINGS[finding.framework] || finding.framework;
   const wrappedHeading = doc.splitTextToSize(heading, CONTENT_WIDTH_MM);
   doc.text(wrappedHeading, MARGIN_MM, y);
@@ -713,9 +754,8 @@ function drawSFDRSectionPage(
 
   // Sub-heading (criterion count + methodology line)
   const criteria = finding.criteria || [];
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_FOOTNOTE);
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.footnote);
   doc.text(
     `${criteria.length} criterion${criteria.length === 1 ? "" : "a"} assessed under methodology v3.5.`,
     MARGIN_MM,
@@ -744,7 +784,7 @@ function drawSFDRSectionPage(
         styles: { textColor: vd.rgb, fontStyle: "bold" },
       },
       rationale,
-      { content: String(evCount), styles: { halign: "right", textColor: [74, 87, 96] } },
+      { content: String(evCount), styles: { halign: "right", textColor: rgb(INK.inkMuted) } },
     ]);
 
     const isEntityAxis =
@@ -758,12 +798,12 @@ function drawSFDRSectionPage(
           colSpan: 4,
           styles: {
             fontSize: 7,
-            font: "PB-Sans",
+            font: TYPE.runningHead.font,
             fontStyle: "normal",
-            textColor: [74, 87, 96],
+            textColor: rgb(INK.inkMuted),
             cellPadding: { top: 0, bottom: 3, left: 6, right: 2.5 },
             lineWidth: { top: 0, right: 0, bottom: 0.5, left: 0 },
-            lineColor: [216, 220, 223],
+            lineColor: rgb(INK.hairline),
           },
         },
       ]);
@@ -802,16 +842,14 @@ function drawEvidenceLogPage(
   y = drawWordmark(doc, y);
   y += 8;
 
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_SECTION);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
   doc.text("Evidence Log", MARGIN_MM, y);
   y += 8;
 
   if (!Array.isArray(evidenceLog) || evidenceLog.length === 0) {
-    setText(doc, MUTED_GREY);
-    doc.setFont("PB-Serif", "normal");
-    doc.setFontSize(FONT_BODY);
+    setText(doc, INK.inkMuted);
+    applyType(doc, TYPE.body);
     doc.text("No evidence documents on file.", MARGIN_MM, y);
     return;
   }
@@ -826,16 +864,14 @@ function drawEvidenceLogPage(
     }
 
     // document_id (bold)
-    setText(doc, NAVY);
-    doc.setFont("PB-Sans", "bold");
-    doc.setFontSize(FONT_BODY);
+    setText(doc, INK.navy);
+    applyType(doc, TYPE.bodyLabel);
     doc.text(coalesce(entry.document_id), MARGIN_MM, y);
     y += 5;
 
     // sha256 (truncated, muted)
-    setText(doc, MUTED_GREY);
-    doc.setFont("PB-Serif", "normal");
-    doc.setFontSize(FONT_FOOTNOTE);
+    setText(doc, INK.inkMuted);
+    applyType(doc, TYPE.footnote);
     const shaTrunc = truncate12(entry.document_sha256);
     doc.text(`sha256: ${shaTrunc}`, MARGIN_MM, y);
     y += 4;
@@ -867,27 +903,24 @@ function drawIcDefencePackPage(
   y += 8;
 
   // Heading
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_SECTION);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
   doc.text("IC Defence Pack — Q&A", MARGIN_MM, y);
   y += 8;
 
   const pack = output.ic_defence_pack || { pack_version: "", questions: [] };
 
   // Pack version subheading
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_FOOTNOTE);
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.footnote);
   doc.text(`Pack version: ${coalesce(pack.pack_version)}`, MARGIN_MM, y);
   y += 8;
 
   const questions = Array.isArray(pack.questions) ? pack.questions : [];
 
   if (questions.length === 0) {
-    setText(doc, MUTED_GREY);
-    doc.setFont("PB-Serif", "normal");
-    doc.setFontSize(FONT_BODY);
+    setText(doc, INK.inkMuted);
+    applyType(doc, TYPE.body);
     const placeholder =
       "IC Defence Pack — Q&A library in development. See engine repo for status.";
     const lines = doc.splitTextToSize(placeholder, CONTENT_WIDTH_MM);
@@ -915,31 +948,30 @@ function drawIcDefencePackPage(
       }
 
       // q_id + ic_voice tag
-      setText(doc, NAVY);
-      doc.setFont("PB-Sans", "bold");
-      doc.setFontSize(FONT_BODY);
+      setText(doc, INK.navy);
+      applyType(doc, TYPE.bodyLabel);
       const voiceTag = (q.ic_voice || "").toUpperCase();
       doc.text(`${coalesce(q.q_id)}  [${voiceTag}]`, MARGIN_MM, y);
       y += 5;
 
       // Question
-      doc.setFont("PB-Serif", "normal");
+      applyType(doc, TYPE.body);
       doc.text(questionLines, MARGIN_MM, y);
       y += questionLines.length * 5 + 3;
 
       // Answer (indented)
-      setText(doc, MUTED_GREY);
-      doc.setFont("PB-Sans", "bold");
+      setText(doc, INK.inkMuted);
+      applyType(doc, TYPE.bodyLabel);
       doc.text("Answer:", MARGIN_MM, y);
       y += 4;
-      setText(doc, NAVY);
-      doc.setFont("PB-Serif", "normal");
+      setText(doc, INK.navy);
+      applyType(doc, TYPE.body);
       doc.text(answerLines, MARGIN_MM + 6, y);
       y += answerLines.length * 5 + 3;
 
       // Evidence refs + template ref (muted)
-      setText(doc, MUTED_GREY);
-      doc.setFontSize(FONT_FOOTNOTE);
+      setText(doc, INK.inkMuted);
+      applyType(doc, TYPE.footnote);
       const evRefs = Array.isArray(q.evidence_refs) ? q.evidence_refs : [];
       const evRefsLabel = evRefs.length > 0 ? evRefs.join(", ") : "—";
       doc.text(`Evidence: ${evRefsLabel}`, MARGIN_MM, y);
@@ -961,15 +993,13 @@ function drawIcDefencePackPage(
     y += 6;
   }
 
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_SECTION);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
   doc.text("Provenance", MARGIN_MM, y);
   y += 6;
 
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_FOOTNOTE);
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.footnote);
   doc.text(`Methodology version: ${output.methodology_version}`, MARGIN_MM, y);
   y += 4;
   doc.text(`Engine commit: ${output.engine_commit_sha}`, MARGIN_MM, y);
@@ -986,6 +1016,7 @@ function renderFooter(
   /** @type {ReportOutput} */ output,
   /** @type {number} */ pageNum,
   /** @type {number} */ totalPages,
+  /** @type {{ engagementRef: string, sectionName: string }} */ furniture,
 ) {
   // 1.4d Phase B.5 — running header (top) + folio (bottom).
   //
@@ -1012,37 +1043,39 @@ function renderFooter(
   });
 
   // RUNNING HEADER — top of page, baseline at 14mm.
-  // Left: project name (uppercase, tracked); right: methodology version.
-  // (Section name would go right, but the existing layout doesn't track
-  // section context through to renderFooter — keeping methodology there
-  // until a future commit threads section context. Methodology is the
-  // most institutionally-load-bearing piece of identifying chrome.)
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Sans", "normal");
-  doc.setFontSize(8);
-  const projectId = String(output.run_id || "PERENNITY BRIDGE REPORT")
+  // Left: engagement reference UUID (uppercase). This is the
+  // engagement.run_id surfaced via ReportRoute.engagement_reference_for —
+  // the audit-bearing Airtable record key, NOT the engine's internal
+  // per-render serial (output.run_id). A reader cross-referencing the
+  // PDF to an Airtable record uses this value.
+  // Right: section name (e.g. "Frameworks Applied", "UK SDR Sustainability
+  // Focus — per-criterion findings"). Methodology version is shown in
+  // the folio band below — no need to duplicate it here.
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.runningHead);
+  const refTag = String(furniture.engagementRef || "PERENNITY BRIDGE REPORT")
     .toUpperCase();
   // Truncate to 40 chars for header — full UUID is on the cover.
-  const projectIdTrunc = projectId.length > 40
-    ? projectId.slice(0, 40) + "…"
-    : projectId;
-  doc.text(projectIdTrunc, MARGIN_MM, 14);
-  doc.text(
-    `METHODOLOGY ${(output.methodology_version || "").toUpperCase()}`,
-    PAGE_WIDTH_MM - MARGIN_MM,
-    14,
-    { align: "right" },
-  );
+  const refTagTrunc = refTag.length > 40
+    ? refTag.slice(0, 40) + "…"
+    : refTag;
+  doc.text(refTagTrunc, MARGIN_MM, 14);
+  if (furniture.sectionName) {
+    // Truncate long section names so they don't collide with the left tag.
+    const sectionTrunc = furniture.sectionName.length > 60
+      ? furniture.sectionName.slice(0, 60) + "…"
+      : furniture.sectionName;
+    doc.text(sectionTrunc, PAGE_WIDTH_MM - MARGIN_MM, 14, { align: "right" });
+  }
   // Hairline rule below the running header.
-  doc.setDrawColor(216, 220, 223); // #D8DCDF
+  doc.setDrawColor(INK.hairline[0], INK.hairline[1], INK.hairline[2]);
   doc.setLineWidth(0.2);
   doc.line(MARGIN_MM, 16, PAGE_WIDTH_MM - MARGIN_MM, 16);
 
   // FOLIO — bottom of page.
   // Left: "Perennity Bridge | Methodology vX.Y"; right: "Page N of M".
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Sans", "normal");
-  doc.setFontSize(8);
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.folio);
   doc.text(
     `Perennity Bridge  |  Methodology ${output.methodology_version}`,
     MARGIN_MM,
@@ -1067,29 +1100,27 @@ function renderFooter(
 /* -------------------------------------------------------------------------- */
 
 function drawWordmark(/** @type {jsPDF} */ doc, /** @type {number} */ y) {
-  setText(doc, NAVY);
-  doc.setFont("PB-Sans", "bold");
-  doc.setFontSize(FONT_SECTION);
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
   doc.text("PERENNITY BRIDGE", MARGIN_MM, y);
-  setText(doc, MUTED_GREY);
-  doc.setFont("PB-Serif", "normal");
-  doc.setFontSize(FONT_FOOTNOTE);
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.footnote);
   doc.text("Capital Readiness Platform", MARGIN_MM, y + 4);
   return y + 8;
 }
 
-function setText(/** @type {jsPDF} */ doc, /** @type {number[]} */ rgb) {
-  doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+function setText(/** @type {jsPDF} */ doc, /** @type {readonly number[]} */ colour) {
+  doc.setTextColor(colour[0], colour[1], colour[2]);
 }
 
-function setFill(/** @type {jsPDF} */ doc, /** @type {number[]} */ rgb) {
-  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+function setFill(/** @type {jsPDF} */ doc, /** @type {readonly number[]} */ colour) {
+  doc.setFillColor(colour[0], colour[1], colour[2]);
 }
 
 function verdictColour(/** @type {string} */ verdict) {
-  if (verdict === "pass") return PASS_GREEN;
-  if (verdict === "fail") return FAIL_RED;
-  return PARTIAL_AMBER;
+  if (verdict === "pass") return INK.pass;
+  if (verdict === "fail") return INK.fail;
+  return INK.partial;
 }
 
 function requireField(
@@ -1134,14 +1165,15 @@ function isoToDate(value) {
 }
 
 /**
- * Compute an indicative score from SFDR criterion verdicts. The engine
- * hardcodes indicative_score=0 for product_label frameworks (calibration
- * pending), so we derive a percentage here from the criterion-level verdicts.
+ * Compute an indicative score from product_label criterion verdicts. The
+ * engine hardcodes indicative_score=0 for product_label frameworks (SFDR
+ * Art 8/9, UK SDR Focus/Improvers/Impact — calibration pending), so we
+ * derive a percentage here from the criterion-level verdicts.
  *
  * @param {CriterionVerdict[]} criteria
  * @returns {number} 0–100
  */
-function computeSFDRScore(criteria) {
+function computeProductLabelScore(criteria) {
   const scored = criteria.filter((c) => c.verdict !== "not_applicable");
   if (scored.length === 0) return 0;
   const points = scored.reduce((sum, c) => {
@@ -1165,11 +1197,13 @@ function computeSFDRScore(criteria) {
 function filterConclusionsNarrative(narrative, targetLabel, renderContract) {
   if (!narrative || !targetLabel) return narrative || "";
 
-  const isSFDR = targetLabel === "sfdr_article_8" || targetLabel === "sfdr_article_9";
-
-  if (isSFDR && renderContract && Array.isArray(renderContract.framework_findings)) {
+  if (
+    isProductLabelOnlyLabel(targetLabel) &&
+    renderContract &&
+    Array.isArray(renderContract.framework_findings)
+  ) {
     const lines = renderContract.framework_findings.map((f) => {
-      const score = computeSFDRScore(f.criteria || []);
+      const score = computeProductLabelScore(f.criteria || []);
       const heading = FRAMEWORK_FINDING_HEADINGS[f.framework] || f.framework;
       const verdicts = (f.criteria || []).map((c) => c.verdict);
       const hasNotAligned = verdicts.includes("not_aligned");
@@ -1206,5 +1240,3 @@ async function loadLogoBase64() {
   return btoa(binary);
 }
 
-// TEAL still reserved for future use (IC Defence Pack verdict pills).
-void TEAL;

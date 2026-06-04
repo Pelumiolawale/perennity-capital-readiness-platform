@@ -126,7 +126,14 @@ export const TYPE = Object.freeze({
   subHead: Object.freeze({ font: PB_SANS, weight: "bold", size: 12, leading: 18 }),
   body: Object.freeze({ font: PB_SERIF, weight: "normal", size: 10.5, leading: 14 }),
   bodyEmphasis: Object.freeze({ font: PB_SERIF, weight: "bold", size: 10.5, leading: 14 }),
+  // Sans-serif body-sized label — used for inline column headers, list-row
+  // titles and "Verdict:" / "Answer:" prefix labels where the surrounding
+  // body is serif but the label wants sans emphasis at body register.
+  bodyLabel: Object.freeze({ font: PB_SANS, weight: "bold", size: 10.5, leading: 14 }),
   caption: Object.freeze({ font: PB_SANS, weight: "normal", size: 9, leading: 12 }),
+  // Sans-serif label sized to sit beside footnote-register body — used for
+  // "Missing:" callouts and similar tight metadata pills inside table cells.
+  captionEmphasis: Object.freeze({ font: PB_SANS, weight: "bold", size: 8.5, leading: 11 }),
   footnote: Object.freeze({ font: PB_SERIF, weight: "normal", size: 8.5, leading: 11 }),
   runningHead: Object.freeze({ font: PB_SANS, weight: "normal", size: 8, leading: 10 }),
   folio: Object.freeze({ font: PB_SANS, weight: "normal", size: 8, leading: 10 }),
