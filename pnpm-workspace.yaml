@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - esbuild
+  - core-js
+allowBuilds:
+  "@perennity/engine@https://codeload.github.com/Pelumiolawale/Perennity_regulatory_frameworks/tar.gz/e8d149494f328210100254faa6bf30317431d769": true
+  core-js: true
+  esbuild: true
