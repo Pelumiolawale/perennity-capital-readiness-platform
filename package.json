@@ -12,7 +12,7 @@
     "wiring:day2": "node scripts/day2-wiring-proof.mjs"
   },
   "dependencies": {
-    "@perennity/engine": "github:Pelumiolawale/Perennity_regulatory_frameworks#d54e38a",
+    "@perennity/engine": "github:Pelumiolawale/Perennity_regulatory_frameworks#6fcf87a",
     "@tailwindcss/postcss": "^4.2.1",
     "@vercel/postgres": "^0.10.0",
     "html2canvas": "^1.4.1",
