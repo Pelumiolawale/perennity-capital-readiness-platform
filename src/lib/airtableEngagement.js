@@ -16,7 +16,9 @@ const UUID_V4_RE =
 // Field IDs from the Engagements table in base appasxX7eC3QsmxeM.
 // We request `returnFieldsByFieldId=true` so renames in the Airtable UI
 // don't silently break the parser — field IDs are immutable.
-const FID = {
+// Exported so the server-side lister can read the same immutable field IDs
+// rather than keeping a second copy that drifts. See listEngagements.js.
+export const FID = {
   ENGAGEMENT_REF: "fldiwINotrRmo7EQ3",
   STATUS: "fldX4ynEolKL4BnKX",
   ISSUED_AT: "fldHMab6pBtJ25i0R",
@@ -306,21 +308,27 @@ async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
  * catches throws and renders the opaque entitlement-error UI.
  *
  * @param {string} engagementReference
+ * @param {{pat?: string, baseId?: string, tableId?: string}} [config]
+ *   Optional explicit credentials. Omit in the browser — the VITE_* reads below
+ *   are what Vite statically replaces at build time, and they stay the default
+ *   path. Supply it from a Node context (serverless function), where
+ *   `import.meta.env` does not exist; `??` short-circuits so the VITE_ reads are
+ *   never evaluated when config is given. See listEngagements.js.
  * @returns {Promise<
  *   | { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired" }
  *   | { ok: true, engagement: object }
  * >}
  */
-export async function fetchEngagement(engagementReference) {
+export async function fetchEngagement(engagementReference, config) {
   // 1. Format validation — never call Airtable on a malformed reference.
   if (!engagementReference || !UUID_V4_RE.test(engagementReference)) {
     return { ok: false, reason: "invalid_format" };
   }
 
   // 2. Env preconditions — misconfiguration, throw loudly.
-  const pat = import.meta.env.VITE_AIRTABLE_PAT;
-  const baseId = import.meta.env.VITE_AIRTABLE_BASE_ID;
-  const tableId = import.meta.env.VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID;
+  const pat = config?.pat ?? import.meta.env.VITE_AIRTABLE_PAT;
+  const baseId = config?.baseId ?? import.meta.env.VITE_AIRTABLE_BASE_ID;
+  const tableId = config?.tableId ?? import.meta.env.VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID;
   if (!pat || !baseId || !tableId) {
     const missing = [
       ["VITE_AIRTABLE_PAT", pat],

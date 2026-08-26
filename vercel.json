@@ -1,15 +1,19 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
   "outputDirectory": "dist",
   "framework": "vite",
-  "routes": [
+  "rewrites": [
     {
-      "handle": "filesystem"
-    },
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "crons": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "path": "/api/cron/benchmark-sync",
+      "schedule": "0 3 * * *"
     }
   ]
 }

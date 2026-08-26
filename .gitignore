@@ -10,3 +10,7 @@ src/regulations/proprietary/
 # preview launch config, tool permissions). Never commit.
 .claude/
 .vercel
+
+# Stray pnpm lockfile — this project uses npm (package-lock.json + `npm ci`).
+# A committed pnpm-lock.yaml makes Vercel switch package managers and fail.
+pnpm-lock.yaml
