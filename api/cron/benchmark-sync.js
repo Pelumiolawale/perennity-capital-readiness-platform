@@ -85,7 +85,19 @@ export async function runBenchmarkSync(deps = {}) {
   const salt = resolveBenchmarkSalt({ env });
   if (salt.salt === null) {
     log(`[benchmark-sync] ${salt.reason}`);
-    return { skipped: true, reason: salt.reason, processed: 0, written: 0, failed: 0 };
+    // Same shape as the completed-sweep summary below, so a consumer never has
+    // to branch on which path produced it.
+    return {
+      skipped: true,
+      reason: salt.reason,
+      listed: 0,
+      processed: 0,
+      emitted: 0,
+      inserted: 0,
+      duplicates: 0,
+      ineligible: 0,
+      failed: 0,
+    };
   }
 
   const airtable = airtableConfigFromEnv(env);
@@ -96,7 +108,7 @@ export async function runBenchmarkSync(deps = {}) {
     new PostgresStorageAdapter({ query: (text, values) => sql.query(text, values) });
 
   let processed = 0;
-  let written = 0;
+  let emitted = 0;
   let failed = 0;
   let ineligible = 0;
 
@@ -114,7 +126,7 @@ export async function runBenchmarkSync(deps = {}) {
         env,
         benchmarkLogger: log,
       });
-      if (result.benchmarkEmit?.emitted) written += 1;
+      if (result.benchmarkEmit?.emitted) emitted += 1;
     } catch (err) {
       // One malformed engagement must not abort the sweep. The whole point of a
       // nightly job is that it keeps going; a single bad row should cost one
@@ -128,7 +140,32 @@ export async function runBenchmarkSync(deps = {}) {
     }
   }
 
-  const summary = { skipped: false, listed: references.length, processed, written, ineligible, failed };
+  // Report ACTUAL inserts, not attempts.
+  //
+  // `emitted` counts appends that didn't throw. Because the INSERT carries
+  // ON CONFLICT DO NOTHING, that number is identical on a first run and on a
+  // re-run of the same data — it cannot tell you whether deduplication works.
+  // The adapter reads the driver's rowCount, so `inserted` and `duplicates`
+  // can. A sweep over unchanged engagements should show inserted:0.
+  //
+  // `null` where the adapter cannot report (e.g. an injected test double) —
+  // never a fabricated zero.
+  const inserted =
+    typeof storageAdapter.insertedCount === "number" ? storageAdapter.insertedCount : null;
+  const duplicates =
+    typeof storageAdapter.duplicateCount === "number" ? storageAdapter.duplicateCount : null;
+
+  const summary = {
+    skipped: false,
+    listed: references.length,
+    processed,
+    emitted,
+    inserted,
+    duplicates,
+    ineligible,
+    failed,
+    ...(storageAdapter.rowCountUnknown ? { rowCountUnknown: true } : {}),
+  };
   log(`[benchmark-sync] ${JSON.stringify(summary)}`);
   return summary;
 }

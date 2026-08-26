@@ -116,7 +116,7 @@ describe("fail safe", () => {
     );
     expect(adapter.records).toHaveLength(0);
     expect(result.skipped).toBe(true);
-    expect(result.written).toBe(0);
+    expect(result.emitted).toBe(0);
   });
 
   it("writes NOTHING when the salt is too weak", async () => {
@@ -147,7 +147,7 @@ describe("sweep", () => {
     const adapter = collector();
     const result = await runBenchmarkSync(deps({ storageAdapter: adapter }));
     expect(adapter.records).toHaveLength(2);
-    expect(result.written).toBe(2);
+    expect(result.emitted).toBe(2);
     expect(result.processed).toBe(2);
     expect(result.failed).toBe(0);
   });
@@ -179,13 +179,13 @@ describe("sweep", () => {
       }),
     );
     expect(result.failed).toBe(1);
-    expect(result.written).toBe(2);
+    expect(result.emitted).toBe(2);
     expect(adapter.records).toHaveLength(2);
   });
 
   it("handles an empty engagement list without error", async () => {
     const result = await runBenchmarkSync(deps({ listImpl: async () => [] }));
-    expect(result.written).toBe(0);
+    expect(result.emitted).toBe(0);
     expect(result.failed).toBe(0);
   });
 });
@@ -249,5 +249,69 @@ describe("buildRunInput", () => {
     const input = buildRunInput(engagement("ref-9").engagement);
     expect(input.project_id).toBe("ref-9");
     expect(input.facility_type).toBe("hyperscale");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Insert reporting — the signal that tells you deduplication is working
+// ---------------------------------------------------------------------------
+
+describe("insert reporting", () => {
+  /** Stands in for PostgresStorageAdapter, including its accounting surface. */
+  function countingAdapter(rowCounts) {
+    let i = 0;
+    return {
+      name: "counting",
+      attemptedCount: 0,
+      insertedCount: 0,
+      get duplicateCount() {
+        return this.attemptedCount - this.insertedCount;
+      },
+      rowCountUnknown: false,
+      async append() {
+        this.attemptedCount += 1;
+        this.insertedCount += rowCounts[i++] ?? 0;
+      },
+    };
+  }
+
+  it("a first run reports rows actually inserted", async () => {
+    const adapter = countingAdapter([1, 1]);
+    const result = await runBenchmarkSync(deps({ storageAdapter: adapter }));
+    expect(result.emitted).toBe(2);
+    expect(result.inserted).toBe(2);
+    expect(result.duplicates).toBe(0);
+  });
+
+  it("a RE-RUN of unchanged data reports inserted:0 — the whole point", async () => {
+    // Driver reports 0 rows affected: both records already exist.
+    const adapter = countingAdapter([0, 0]);
+    const result = await runBenchmarkSync(deps({ storageAdapter: adapter }));
+    // Attempts still happened and did not error...
+    expect(result.emitted).toBe(2);
+    // ...but nothing new was written, and the summary now says so.
+    expect(result.inserted).toBe(0);
+    expect(result.duplicates).toBe(2);
+  });
+
+  it("a partial re-run distinguishes new rows from duplicates", async () => {
+    const adapter = countingAdapter([0, 1]);
+    const result = await runBenchmarkSync(deps({ storageAdapter: adapter }));
+    expect(result.inserted).toBe(1);
+    expect(result.duplicates).toBe(1);
+  });
+
+  it("reports null rather than a fabricated zero when the adapter cannot count", async () => {
+    // The plain collector used elsewhere has no accounting surface.
+    const result = await runBenchmarkSync(deps());
+    expect(result.inserted).toBeNull();
+    expect(result.duplicates).toBeNull();
+  });
+
+  it("surfaces rowCountUnknown when the driver reported no rowCount", async () => {
+    const adapter = countingAdapter([0]);
+    adapter.rowCountUnknown = true;
+    const result = await runBenchmarkSync(deps({ storageAdapter: adapter }));
+    expect(result.rowCountUnknown).toBe(true);
   });
 });
