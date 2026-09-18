@@ -73,9 +73,16 @@ function assertNoExposedSecrets(mode) {
 
 const osShimPath = resolve(__dirname, 'src/lib/os-shim.js')
 
-export default defineConfig(({ mode }) => {
+// Production builds drop console.log / debug / info calls (BUG-07: a lead
+// form payload was logged to every visitor's console). warn and error stay so
+// real failures can still be diagnosed; none of them print form data. Dev
+// keeps all logging.
+export const PROD_PURE_CONSOLE = ['console.log', 'console.debug', 'console.info']
+
+export default defineConfig(({ mode, command }) => {
   assertNoExposedSecrets(mode)
   return {
+    esbuild: command === 'build' ? { pure: PROD_PURE_CONSOLE } : {},
     plugins: [react()],
     resolve: {
       alias: {
