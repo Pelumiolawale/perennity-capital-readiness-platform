@@ -2,12 +2,14 @@
 // Entitlement client for the gated /assessment/report route.
 // Zero side effects at import time — all work happens inside fetchEngagement.
 //
-// Reads three VITE_* env vars at call time. Note that VITE_ prefix exposes
-// these to the production bundle; the PAT is therefore visible to anyone
-// who views source. This is acceptable for the Phase 1 entitlement model
-// per CLAUDE.md — Dolapo issues engagement references manually and the
-// table is narrowly scoped. A serverless proxy is the right move when the
-// blast radius justifies it.
+// SERVER-SIDE ONLY for fetching (Sep 2026). The browser calls
+// api/engagement.js (via src/lib/engagementApi.js), which calls
+// fetchEngagement here with explicit config from airtableConfigFromEnv().
+// The VITE_* fallback reads below are kept for back-compat but resolve to
+// undefined in production: the PAT previously shipped in the public bundle
+// through VITE_AIRTABLE_PAT, and vite.config.js now refuses to build if that
+// variable is set. The FID / CHILD_FIDS maps are still imported by browser
+// code (entity adapters); they are field IDs, not secrets.
 
 // UUID v4 strict format — variant bit forced to one of 8/9/a/b.
 const UUID_V4_RE =
