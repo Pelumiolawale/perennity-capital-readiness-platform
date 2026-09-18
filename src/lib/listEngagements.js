@@ -3,7 +3,8 @@
  * Server-side engagement lister — the list sibling of `fetchEngagement`.
  *
  * Used by the nightly benchmark sweep (api/cron/benchmark-sync.js). Runs ONLY in
- * a Node context; never imported by the browser bundle.
+ * a Node context; never imported by the browser bundle. `airtableConfigFromEnv`
+ * below is also the credential source for api/engagement.js and api/leads.js.
  *
  * ============================================================================
  * WHY THIS RETURNS REFERENCES RATHER THAN PARSED ENGAGEMENTS
@@ -38,23 +39,27 @@ const MAX_PAGES = 100;
 /**
  * Read Airtable credentials from the process environment.
  *
- * Reads the VITE_-prefixed names deliberately: those variables already exist in
- * Vercel for the browser build, and a serverless function can read any variable
- * from `process.env` regardless of prefix. The prefix only governs what Vite
- * inlines into the client bundle. Reusing them avoids asking for duplicate
- * secrets that would then need keeping in sync.
+ * Prefers the unprefixed AIRTABLE_* names. The PAT must NEVER carry a VITE_
+ * prefix: Vite inlines every VITE_* variable into the client bundle, which is
+ * how the token leaked (Sep 2026). vite.config.js now refuses to build if
+ * VITE_AIRTABLE_PAT is set. The VITE_* names remain as a fallback for the
+ * non-secret base and table IDs so existing deployments keep working.
+ *
+ * Shared by every serverless function that talks to Airtable (the benchmark
+ * cron, api/engagement.js, api/leads.js).
  *
  * @param {NodeJS.ProcessEnv} [env]
  * @returns {AirtableConfig}
  */
 export function airtableConfigFromEnv(env = process.env) {
-  const pat = env.VITE_AIRTABLE_PAT;
-  const baseId = env.VITE_AIRTABLE_BASE_ID;
-  const tableId = env.VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID;
+  const pat = env.AIRTABLE_PAT ?? env.VITE_AIRTABLE_PAT;
+  const baseId = env.AIRTABLE_BASE_ID ?? env.VITE_AIRTABLE_BASE_ID;
+  const tableId =
+    env.AIRTABLE_ENGAGEMENTS_TABLE_ID ?? env.VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID;
   const missing = [
-    ["VITE_AIRTABLE_PAT", pat],
-    ["VITE_AIRTABLE_BASE_ID", baseId],
-    ["VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID", tableId],
+    ["AIRTABLE_PAT", pat],
+    ["AIRTABLE_BASE_ID", baseId],
+    ["AIRTABLE_ENGAGEMENTS_TABLE_ID", tableId],
   ]
     .filter(([, v]) => !v)
     .map(([k]) => k);

@@ -1,35 +1,40 @@
 // Airtable client extracted from src/App.jsx (originally lines 19–57).
-// One wrapper for both the legacy route (/) and the snapshot/report flows
-// that write to Airtable. Reads the same VITE_AIRTABLE_PAT as
-// src/lib/airtableEngagement.js so a single credential covers both reads
-// and writes; the PAT must carry data.records:write scope on the base for
-// writes to succeed.
+//
+// Sep 2026: this no longer talks to Airtable directly. It used to read
+// VITE_AIRTABLE_PAT, which Vite inlines into the public bundle, so anyone could
+// lift a read/write token for the whole base. Writes now go through the
+// api/leads.js serverless function, which holds the token server-side
+// (AIRTABLE_PAT) and only ever writes to the Leads table.
+//
+// The (tableName, fields) signature is kept so callers and their tests are
+// unchanged. The payload is never logged: it holds personal data.
 
-const AIRTABLE_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID;
-const AIRTABLE_PAT = import.meta.env.VITE_AIRTABLE_PAT;
+const ENDPOINTS = {
+  Leads: "/api/leads",
+};
 
 export async function sendToAirtable(tableName, fields) {
-  if (!AIRTABLE_BASE_ID || !AIRTABLE_PAT) {
-    console.error("❌ Airtable credentials not configured. Set VITE_AIRTABLE_BASE_ID and VITE_AIRTABLE_PAT in .env.local (local) or the Vercel project env (prod), then restart / redeploy.");
-    console.log("BASE_ID present:", !!AIRTABLE_BASE_ID, "PAT present:", !!AIRTABLE_PAT);
+  const endpoint = ENDPOINTS[tableName];
+  if (!endpoint) {
+    console.error(`❌ No server endpoint for Airtable table "${tableName}".`);
     return false;
   }
-  console.log(`📤 Sending to Airtable table "${tableName}":`, fields);
   try {
-    const res = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`, {
+    const res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Authorization": `Bearer ${AIRTABLE_PAT}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ fields }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
     });
     if (!res.ok) {
-      const error = await res.json();
-      console.error("❌ Airtable error:", error);
+      console.error(`❌ Airtable write via ${endpoint} failed: ${res.status}`);
       return false;
     }
-    console.log(`✅ Successfully sent to Airtable table "${tableName}"`);
     return true;
   } catch (err) {
-    console.error("❌ Airtable send failed:", err);
+    console.error(
+      `❌ Airtable write via ${endpoint} failed:`,
+      err instanceof Error ? err.message : String(err),
+    );
     return false;
   }
 }

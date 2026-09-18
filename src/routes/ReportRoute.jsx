@@ -3,7 +3,8 @@
 //
 // Flow:
 //   1. Read ?ref=<uuid v4> from the URL.
-//   2. fetchEngagement(ref) — entitlement check against Airtable.
+//   2. fetchEngagementFromApi(ref) — entitlement check, run server-side by
+//      api/engagement.js so no Airtable token ships in the bundle.
 //   3. If valid → DeterministicEngine.run() → ReportRenderer.render() →
 //      dump the ReportOutput as a <pre> JSON block. (Commit 3 replaces this
 //      with the PDF generator.)
@@ -24,7 +25,7 @@ import {
   computeKnowledgeBaseHash,
   buildRenderContract,
 } from "@perennity/engine";
-import { fetchEngagement } from "../lib/airtableEngagement.js";
+import { fetchEngagementFromApi } from "../lib/engagementApi.js";
 import { frameworksForLabel } from "../lib/engineClient.js";
 import { buildSFDRInputs } from "../lib/sfdrInputAdapter.js";
 import { buildUKSDRInputs } from "../lib/ukSDRInputAdapter.js";
@@ -85,7 +86,7 @@ export default function ReportRoute() {
       // Entitlement check.
       let entitlement;
       try {
-        entitlement = await fetchEngagement(ref);
+        entitlement = await fetchEngagementFromApi(ref);
       } catch (err) {
         if (cancelled) return;
         console.warn(

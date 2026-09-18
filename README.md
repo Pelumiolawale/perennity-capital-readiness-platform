@@ -7,10 +7,17 @@ Methodology v3.1 (April 2026).
 
 ```bash
 npm install
-npm run dev     # vite dev server on :5173
+vercel dev      # vite + the /api functions (needs `vercel link` once)
+npm run dev     # vite only on :5173 — /api calls (report, lead form) will fail
 npm test        # vitest
 npx vite build  # production build to dist/
 ```
+
+Airtable credentials live in `.env.local` as `AIRTABLE_PAT`,
+`AIRTABLE_BASE_ID` and `AIRTABLE_ENGAGEMENTS_TABLE_ID` (see `.env.example`).
+They are read only by the serverless functions in `api/`; the browser never
+talks to Airtable directly. Never prefix a secret with `VITE_`: the build
+fails if you do, because Vite would inline it into the public bundle.
 
 ## Important caveats
 
