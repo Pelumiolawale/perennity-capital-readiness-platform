@@ -147,6 +147,23 @@ export const FID = {
   C6_BREAKDOWN_CIRCULAR_ECONOMY_PCT: "fld9Ej88PRbdHpxGZ",
   C6_BREAKDOWN_POLLUTION_PCT: "fldmkpuBW5Hhoh1cG",
   C6_BREAKDOWN_BIODIVERSITY_PCT: "fldua2rh4wkqk3JZh",
+
+  // ── BUG-01 (Sep 2026) — c2 tri-state single-selects (Yes / No / Unknown)
+  // A checkbox can't tell "No" from "not answered", so a half-filled c2 row
+  // scored false fails. These single-selects supersede the C2_* checkboxes
+  // above; the checkboxes stay as a fallback (ticked = Yes, unticked =
+  // unknown). Migrated 18 Sep 2026: ticked → Yes, unticked left blank.
+  C2_TERMS_OF_REFERENCE_DOCUMENTED_TRI: "fldEyhNIThlbB4I2G",
+  C2_CEO_CHAIR_SEPARATED_TRI: "fldKet7AlpF1Tfwfd",
+  C2_LEAD_INDEPENDENT_DIRECTOR_DESIGNATED_TRI: "fld7amd191pUsqv2I",
+  C2_EXECUTIVE_COMMITTEE_PUBLISHED_TRI: "fldKJdixJ5jmEAcRx",
+  C2_UNGP_ALIGNED_POLICY_PUBLISHED_TRI: "fldhcrC3nBtyBxARu",
+  C2_GRIEVANCE_MECHANISM_DOCUMENTED_TRI: "fldFgwYltnGbCNCy9",
+  C2_LABOUR_LAW_COMPLIANCE_ATTESTED_TRI: "fldp3FLhBjp8zUT9K",
+  C2_REMUNERATION_POLICY_PUBLISHED_TRI: "fldkFOwp0xa582adT",
+  C2_CEO_TO_MEDIAN_RATIO_DISCLOSED_TRI: "fldD9c8w5vDNXgtmi",
+  C2_ESG_LINKED_VARIABLE_PAY_TRI: "fldUyZSyGFiS9OOw1",
+  C2_TAX_POLICY_PUBLISHED_TRI: "fld0BctdyUmTPIqj0",
 };
 
 // Child table IDs (PR A2 + A4). Each engagement record can have N linked
@@ -227,6 +244,23 @@ function optionalKey(key, value) {
 function coerceCheckbox(value) {
   if (value === true) return true;
   return undefined;
+}
+
+// c2 tri-state (BUG-01). The Yes / No / Unknown single-select wins when it
+// holds a definite answer; otherwise fall back to the legacy checkbox via
+// coerceCheckbox (ticked → true, unticked → undefined). Returns undefined
+// for "not known", which entityInputAdapter turns into insufficient_evidence
+// for that governance domain instead of a false fail.
+export function triState(selectRaw, legacyCheckbox) {
+  const v =
+    typeof selectRaw === "string"
+      ? selectRaw
+      : selectRaw && typeof selectRaw === "object" && typeof selectRaw.name === "string"
+        ? selectRaw.name
+        : undefined;
+  if (v === "Yes") return true;
+  if (v === "No") return false;
+  return coerceCheckbox(legacyCheckbox);
 }
 
 function parseEvidenceDocuments(raw) {
@@ -573,20 +607,22 @@ export async function fetchEngagement(engagementReference, config) {
     uk_sdr_impact_plan,
     // PR A1 — c2/c3/c7 discrete entity scalars (raw cell values; adapter
     // composes the EntityInput shape from these).
+    // c2 booleans are tri-state (true / false / undefined = not known), see
+    // triState() and BUG-01.
     c2_independent_ned_count: fields[FID.C2_INDEPENDENT_NED_COUNT] ?? undefined,
-    c2_terms_of_reference_documented: Boolean(fields[FID.C2_TERMS_OF_REFERENCE_DOCUMENTED]),
-    c2_ceo_chair_separated: Boolean(fields[FID.C2_CEO_CHAIR_SEPARATED]),
-    c2_lead_independent_director_designated: Boolean(fields[FID.C2_LEAD_INDEPENDENT_DIRECTOR_DESIGNATED]),
-    c2_executive_committee_published: Boolean(fields[FID.C2_EXECUTIVE_COMMITTEE_PUBLISHED]),
+    c2_terms_of_reference_documented: triState(fields[FID.C2_TERMS_OF_REFERENCE_DOCUMENTED_TRI], fields[FID.C2_TERMS_OF_REFERENCE_DOCUMENTED]),
+    c2_ceo_chair_separated: triState(fields[FID.C2_CEO_CHAIR_SEPARATED_TRI], fields[FID.C2_CEO_CHAIR_SEPARATED]),
+    c2_lead_independent_director_designated: triState(fields[FID.C2_LEAD_INDEPENDENT_DIRECTOR_DESIGNATED_TRI], fields[FID.C2_LEAD_INDEPENDENT_DIRECTOR_DESIGNATED]),
+    c2_executive_committee_published: triState(fields[FID.C2_EXECUTIVE_COMMITTEE_PUBLISHED_TRI], fields[FID.C2_EXECUTIVE_COMMITTEE_PUBLISHED]),
     c2_ungc_violations_5yr_count: fields[FID.C2_UNGC_VIOLATIONS_5YR_COUNT] ?? undefined,
-    c2_ungp_aligned_policy_published: Boolean(fields[FID.C2_UNGP_ALIGNED_POLICY_PUBLISHED]),
-    c2_grievance_mechanism_documented: Boolean(fields[FID.C2_GRIEVANCE_MECHANISM_DOCUMENTED]),
-    c2_labour_law_compliance_attested: Boolean(fields[FID.C2_LABOUR_LAW_COMPLIANCE_ATTESTED]),
-    c2_remuneration_policy_published: Boolean(fields[FID.C2_REMUNERATION_POLICY_PUBLISHED]),
-    c2_ceo_to_median_ratio_disclosed: Boolean(fields[FID.C2_CEO_TO_MEDIAN_RATIO_DISCLOSED]),
+    c2_ungp_aligned_policy_published: triState(fields[FID.C2_UNGP_ALIGNED_POLICY_PUBLISHED_TRI], fields[FID.C2_UNGP_ALIGNED_POLICY_PUBLISHED]),
+    c2_grievance_mechanism_documented: triState(fields[FID.C2_GRIEVANCE_MECHANISM_DOCUMENTED_TRI], fields[FID.C2_GRIEVANCE_MECHANISM_DOCUMENTED]),
+    c2_labour_law_compliance_attested: triState(fields[FID.C2_LABOUR_LAW_COMPLIANCE_ATTESTED_TRI], fields[FID.C2_LABOUR_LAW_COMPLIANCE_ATTESTED]),
+    c2_remuneration_policy_published: triState(fields[FID.C2_REMUNERATION_POLICY_PUBLISHED_TRI], fields[FID.C2_REMUNERATION_POLICY_PUBLISHED]),
+    c2_ceo_to_median_ratio_disclosed: triState(fields[FID.C2_CEO_TO_MEDIAN_RATIO_DISCLOSED_TRI], fields[FID.C2_CEO_TO_MEDIAN_RATIO_DISCLOSED]),
     c2_ceo_to_median_ratio_value: fields[FID.C2_CEO_TO_MEDIAN_RATIO_VALUE] ?? undefined,
-    c2_esg_linked_variable_pay: Boolean(fields[FID.C2_ESG_LINKED_VARIABLE_PAY]),
-    c2_tax_policy_published: Boolean(fields[FID.C2_TAX_POLICY_PUBLISHED]),
+    c2_esg_linked_variable_pay: triState(fields[FID.C2_ESG_LINKED_VARIABLE_PAY_TRI], fields[FID.C2_ESG_LINKED_VARIABLE_PAY]),
+    c2_tax_policy_published: triState(fields[FID.C2_TAX_POLICY_PUBLISHED_TRI], fields[FID.C2_TAX_POLICY_PUBLISHED]),
     c2_tax_jurisdictions_used: fields[FID.C2_TAX_JURISDICTIONS_USED] ?? undefined,
     c2_cbcr_jurisdiction_count: fields[FID.C2_CBCR_JURISDICTION_COUNT] ?? undefined,
     c2_unresolved_tax_disputes_eur_max: fields[FID.C2_UNRESOLVED_TAX_DISPUTES_EUR_MAX] ?? undefined,

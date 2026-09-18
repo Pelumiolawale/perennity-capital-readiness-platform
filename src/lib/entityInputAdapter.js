@@ -89,62 +89,80 @@ function resolveEntityIdentity(engagement) {
  * Compose the engine's EntityGovernance shape from discrete c2_* columns.
  * Returns undefined when NONE of the c2_* fields are populated (signals
  * "no entity governance data" to the caller; engine returns
- * insufficient_evidence on c2). Returns partial sub-shape when some
- * domains are populated — engine will surface per-domain partial verdicts.
+ * insufficient_evidence on c2).
+ *
+ * BUG-01 (Sep 2026): each of the four domains is emitted ONLY when every
+ * input the engine needs for it is known. c2 booleans arrive tri-state from
+ * airtableEngagement.js (true / false / undefined = not known); numbers are
+ * undefined when the cell is blank. Previously blanks were coerced to
+ * false / 0, so a half-filled row produced a false not_aligned (and a blank
+ * UNGC-violations or tax-disputes count read as a clean 0). An incomplete
+ * domain is now left out and the engine reports insufficient_evidence for
+ * it, even if a known answer would already fail the domain: scoring stays
+ * in the engine. When some c2 data exists but no domain is complete, an
+ * empty object is returned so the engine names all four domains.
  */
 function buildGovernanceFromDiscrete(engagement) {
-  const anyC2 =
-    engagement.c2_independent_ned_count !== undefined ||
-    engagement.c2_terms_of_reference_documented ||
-    engagement.c2_ceo_chair_separated ||
-    engagement.c2_lead_independent_director_designated ||
-    engagement.c2_executive_committee_published ||
-    engagement.c2_ungc_violations_5yr_count !== undefined ||
-    engagement.c2_ungp_aligned_policy_published ||
-    engagement.c2_grievance_mechanism_documented ||
-    engagement.c2_labour_law_compliance_attested ||
-    engagement.c2_remuneration_policy_published ||
-    engagement.c2_ceo_to_median_ratio_disclosed ||
-    engagement.c2_ceo_to_median_ratio_value !== undefined ||
-    engagement.c2_esg_linked_variable_pay ||
-    engagement.c2_tax_policy_published ||
-    engagement.c2_tax_jurisdictions_used ||
-    engagement.c2_cbcr_jurisdiction_count !== undefined ||
-    engagement.c2_unresolved_tax_disputes_eur_max !== undefined;
-  if (!anyC2) return undefined;
+  const known = (v) => v !== undefined && v !== null;
 
   const jurisdictionsRaw = engagement.c2_tax_jurisdictions_used;
   const jurisdictions_used = typeof jurisdictionsRaw === "string"
     ? jurisdictionsRaw.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
     : [];
 
-  return {
-    board_structure: {
-      independent_ned_count: engagement.c2_independent_ned_count ?? 0,
-      terms_of_reference_documented: Boolean(engagement.c2_terms_of_reference_documented),
-      ceo_chair_separated: Boolean(engagement.c2_ceo_chair_separated),
-      lead_independent_director_designated: Boolean(engagement.c2_lead_independent_director_designated),
-      executive_committee_published: Boolean(engagement.c2_executive_committee_published),
-    },
-    employee_relations: {
-      ungc_violations_5yr_count: engagement.c2_ungc_violations_5yr_count ?? 0,
-      ungp_aligned_policy_published: Boolean(engagement.c2_ungp_aligned_policy_published),
-      grievance_mechanism_documented: Boolean(engagement.c2_grievance_mechanism_documented),
-      labour_law_compliance_attested: Boolean(engagement.c2_labour_law_compliance_attested),
-    },
-    remuneration: {
-      policy_published: Boolean(engagement.c2_remuneration_policy_published),
-      ceo_to_median_ratio_disclosed: Boolean(engagement.c2_ceo_to_median_ratio_disclosed),
-      ceo_to_median_ratio_value: engagement.c2_ceo_to_median_ratio_value,
-      esg_linked_variable_pay: Boolean(engagement.c2_esg_linked_variable_pay),
-    },
-    tax_compliance: {
-      tax_policy_published: Boolean(engagement.c2_tax_policy_published),
-      jurisdictions_used,
-      cbcr_jurisdiction_count: engagement.c2_cbcr_jurisdiction_count ?? 0,
-      unresolved_tax_disputes_eur_max: engagement.c2_unresolved_tax_disputes_eur_max ?? 0,
-    },
+  const board = {
+    independent_ned_count: engagement.c2_independent_ned_count,
+    terms_of_reference_documented: engagement.c2_terms_of_reference_documented,
+    ceo_chair_separated: engagement.c2_ceo_chair_separated,
+    lead_independent_director_designated: engagement.c2_lead_independent_director_designated,
+    executive_committee_published: engagement.c2_executive_committee_published,
   };
+  const employees = {
+    ungc_violations_5yr_count: engagement.c2_ungc_violations_5yr_count,
+    ungp_aligned_policy_published: engagement.c2_ungp_aligned_policy_published,
+    grievance_mechanism_documented: engagement.c2_grievance_mechanism_documented,
+    labour_law_compliance_attested: engagement.c2_labour_law_compliance_attested,
+  };
+  const remunerationRequired = {
+    policy_published: engagement.c2_remuneration_policy_published,
+    ceo_to_median_ratio_disclosed: engagement.c2_ceo_to_median_ratio_disclosed,
+    esg_linked_variable_pay: engagement.c2_esg_linked_variable_pay,
+  };
+  const taxRequired = {
+    tax_policy_published: engagement.c2_tax_policy_published,
+    cbcr_jurisdiction_count: engagement.c2_cbcr_jurisdiction_count,
+    unresolved_tax_disputes_eur_max: engagement.c2_unresolved_tax_disputes_eur_max,
+  };
+
+  const anyC2 =
+    [board, employees, remunerationRequired, taxRequired].some((d) =>
+      Object.values(d).some(known),
+    ) ||
+    known(engagement.c2_ceo_to_median_ratio_value) ||
+    jurisdictions_used.length > 0;
+  if (!anyC2) return undefined;
+
+  const complete = (d) => Object.values(d).every(known);
+
+  /** @type {Record<string, object>} */
+  const governance = {};
+  if (complete(board)) governance.board_structure = board;
+  if (complete(employees)) governance.employee_relations = employees;
+  if (complete(remunerationRequired)) {
+    governance.remuneration = {
+      ...remunerationRequired,
+      ceo_to_median_ratio_value: engagement.c2_ceo_to_median_ratio_value,
+    };
+  }
+  if (complete(taxRequired) && jurisdictions_used.length > 0) {
+    governance.tax_compliance = {
+      tax_policy_published: taxRequired.tax_policy_published,
+      jurisdictions_used,
+      cbcr_jurisdiction_count: taxRequired.cbcr_jurisdiction_count,
+      unresolved_tax_disputes_eur_max: taxRequired.unresolved_tax_disputes_eur_max,
+    };
+  }
+  return governance;
 }
 
 /**
