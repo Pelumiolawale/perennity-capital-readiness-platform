@@ -378,10 +378,21 @@ export const KNOWN_GAPS = [
     why:
       'Has TWO options named "pue" and one with an empty name. Scoring dedupes ' +
       "through a Set so no verdict is corrupted, but an operator can tick the second " +
-      "'pue' believing it a fourth KPI and score 3/4. Not fixed here: deleting a " +
-      "select option strips it from every record using it, and the data API returns " +
-      "option names rather than ids, so the two are indistinguishable from outside " +
-      "the Airtable UI. Must be merged by hand in the editor, which shows usage.",
+      "'pue' believing it a fourth KPI and score 3/4. Still open: the REST API cannot " +
+      "edit select choices, so the merge has to happen in the Airtable editor. " +
+      "\n\n" +
+      "What has been resolved is which one to delete. An earlier version of this note " +
+      "said the duplicates were 'indistinguishable from outside the Airtable UI' " +
+      "because the data API returns option names rather than ids. That is true of the " +
+      "data API but not of filterByFormula against choice ids, which settles it: on " +
+      "20 Sep 2026 the BLUE 'pue' (selH8zFMULcht5lGB) was on 0 records, the empty-named " +
+      "option (selBO9adKfhjW5641) on 0, and the YELLOW 'pue' (selLUzgvuE0ub27HG) on 7. " +
+      "So both strays are unused and the merge is free. " +
+      "\n\n" +
+      "The trap is that the surviving option is the SECOND 'pue' in the list. Deleting " +
+      "the duplicate by position would strip pue from 7 live engagements and move their " +
+      "UK SDR verdicts, because deleting a select option removes it from every record " +
+      "using it. The field's own Airtable description now carries these ids.",
   },
 ];
 
