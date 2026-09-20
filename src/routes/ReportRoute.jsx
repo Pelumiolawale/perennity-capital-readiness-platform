@@ -27,7 +27,10 @@ import {
 } from "@perennity/engine";
 import { fetchEngagementFromApi } from "../lib/engagementApi.js";
 import { frameworksForLabel } from "../lib/engineClient.js";
-import { buildSFDRInputs } from "../lib/sfdrInputAdapter.js";
+import {
+  buildSFDRInputs,
+  c6ClaimIncompleteWarning,
+} from "../lib/sfdrInputAdapter.js";
 import { buildUKSDRInputs } from "../lib/ukSDRInputAdapter.js";
 import { buildEntityInputs } from "../lib/entityInputAdapter.js";
 import {
@@ -301,10 +304,26 @@ export default function ReportRoute() {
 
   return (
     <div className="max-w-2xl mx-auto my-10 px-8 font-sans text-[#0B1F2A]">
+      {/* Input warnings. These are operator-facing: each one means a cell in
+          Airtable was blank or unreadable and a criterion is reporting less
+          than it could. The v3.2 banner was built but never rendered, and the
+          c6 one is new with ITEM-05. */}
       {engagement?.ecocc_parse_warning && (
         <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
           <strong>ECoCC Practices JSON parse warning:</strong>{" "}
           {engagement.ecocc_parse_warning}
+        </div>
+      )}
+      {engagement?.v32_parse_warning && (
+        <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
+          <strong>v3.2 Data Points (JSON) parse warning:</strong>{" "}
+          {engagement.v32_parse_warning}
+        </div>
+      )}
+      {c6ClaimIncompleteWarning(engagement) && (
+        <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
+          <strong>Taxonomy claim incomplete:</strong>{" "}
+          {c6ClaimIncompleteWarning(engagement)}
         </div>
       )}
 
