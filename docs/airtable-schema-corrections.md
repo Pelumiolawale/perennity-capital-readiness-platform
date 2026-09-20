@@ -4,8 +4,8 @@ Changes to the **Airtable base itself** (`appasxX7eC3QsmxeM`), not to the repo. 
 here because nothing in the codebase would otherwise show them, and because two of them
 document defects worth remembering rather than just fixing.
 
-Sixteen description edits were applied and verified by reading the schema back. One item
-remains, and it needs a human in the Airtable editor — see the last section.
+Seventeen description edits and one option merge were applied, each verified by reading
+the schema back afterwards. Nothing on the base is outstanding.
 
 None of these edits changes a verdict by itself. They matter because each one was an
 instruction an operator follows, and following it produced a wrong engagement — which
@@ -71,34 +71,48 @@ not answered, and the domain returns insufficient evidence. Both now say so.
 
 ---
 
-## Still outstanding — `uk_sdr_kpis_committed`, needs the Airtable editor
+## 5. `uk_sdr_kpis_committed` — the duplicate `pue` option ✅
 
-The REST API cannot edit select choices, so this one cannot be scripted. It is the last
-schema defect on the base.
+Done in the Airtable field editor, since the REST API cannot edit select choices.
 
-The field has six options: the four real KPIs, a **second** option also named `pue`, and one
-with an **empty name**. Scoring dedupes through a Set so no verdict is corrupted today, but
-an operator can tick the second `pue` believing it a fourth KPI and score 3/4.
+The field carried six options: the four real KPIs, a **second** option also named `pue`,
+and one with an **empty name**. Scoring dedupes through a Set so no verdict was ever
+corrupted, but an operator could tick the second `pue` believing it a fourth KPI and score
+3/4.
 
-Earlier notes said the duplicates were indistinguishable from outside the Airtable UI,
-because the data API returns option names rather than IDs. That is true of the data API but
-not of filtering by choice ID, which settles it. Checked 20 Sep 2026:
+This had sat open because earlier notes recorded the two `pue` options as
+indistinguishable from outside the Airtable UI — true of the data API, which returns option
+names rather than IDs, but not of filtering by choice ID. That settled it:
 
 | Option | Choice ID | Records | Action |
 |---|---|---|---|
-| `pue` (blue) | `selH8zFMULcht5lGB` | 0 | **delete** |
-| *(empty name)* (orange) | `selBO9adKfhjW5641` | 0 | **delete** |
-| `pue` (yellow) | `selLUzgvuE0ub27HG` | 7 | **keep** |
+| `pue` (blue) | `selH8zFMULcht5lGB` | 0 | deleted |
+| *(empty name)* (orange) | `selBO9adKfhjW5641` | 0 | deleted |
+| `pue` (yellow) | `selLUzgvuE0ub27HG` | 7 | kept |
 
-Both strays are unused, so the merge costs nothing.
+Verified after the edit: four options remain, and the surviving `pue` still holds its 7
+records. Nothing was lost.
 
-**The trap:** the surviving option is the *second* `pue` in the list. Deleting the duplicate
-by position — the intuitive move — strips `pue` from 7 live engagements and moves their UK
-SDR verdicts, because deleting a select option removes it from every record using it. Delete
-by colour as above, and re-run the counts first if time has passed.
+**Worth remembering if this shape recurs.** The option that mattered was the *second*
+duplicate, not the first. Deleting by position — the intuitive move, and what the old note
+would have led someone to do — would have stripped `pue` from 7 live engagements and moved
+their UK SDR verdicts, because deleting a select option removes it from every record using
+it. The general lesson is the one in CLAUDE.md: identity over position, including when the
+identities are invisible in the tool you happen to be looking through.
 
-The field's own Airtable description now carries this table, so whoever does the merge sees
-it without needing this file.
+---
+
+## One thing this surfaced, which is data entry rather than schema
+
+The `SFDR Project PAI Data` table holds 20 rows: two engagements × ten PAIs, and those ten
+are the **old** list — PAI 4 present, PAIs 3 and 6 absent. So both engagements that have
+project PAI data today were populated against the instruction corrected in item 1, and
+currently score c10 at 9/11, which caps them at `partially_aligned`.
+
+Fixing that is not a schema change. Each of the two engagements needs a PAI 3 row and a
+PAI 6 row added, with a value and a methodology reference; the existing PAI 4 rows are
+inert and can be left or deleted. Until then c10 cannot reach `aligned` on either, for the
+reason the old description created rather than anything about the projects.
 
 ---
 
