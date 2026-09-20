@@ -108,6 +108,7 @@ export const TRI_STATE_FIELDS = [
   ["fldUyZSyGFiS9OOw1", "c2 ESG-linked variable pay (Y/N/?)"],
   ["fld0BctdyUmTPIqj0", "c2 Tax policy published (Y/N/?)"],
   ["fldkrdg8HKAB8jAUf", "Climate Risk Completed (Y/N/?)"],
+  ["fldvvZGYaSK7ZX73W", "c9 Material qualifications present (Y/N/?)"],
 ];
 
 /** @type {FieldContract[]} */

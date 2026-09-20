@@ -138,6 +138,13 @@ export const FID = {
   C7_SPECIFIES_ASSURANCE: "fldn3fXTvGl8gciFm",
   C7_REPORTING_NAMED_STANDARD: "fldJSLW9dBx0YM4ZC",
 
+  // c9 evidence pack + c10 PAI recency. Added 20 Sep 2026 to replace values
+  // the SFDR adapter used to hardcode — see sfdrInputAdapter.js.
+  C9_OPERATIONAL_DOC_AGE_MONTHS: "fldmRavTL1YuUsgCc",
+  C9_DESIGN_STAGE_DOC_AGE_MONTHS: "fldTt5bfkLvjFYBUv",
+  C9_MATERIAL_QUALIFICATIONS_TRI: "fldvvZGYaSK7ZX73W",
+  C10_DATA_RECENCY_MONTHS: "fldgOY3Zetsd7OysA",
+
   // ── PR A3 — discrete c6 Taxonomy claim scalars ──────────────────────
   C6_TAXONOMY_CLAIM_MADE: "fldZof3buzHeCIMJC",
   C6_CLAIMED_PERCENTAGE: "fld9bOCmePEWMBGvA",
@@ -1168,6 +1175,12 @@ export async function fetchEngagement(engagementReference, config) {
     c2_tax_jurisdictions_used: fields[FID.C2_TAX_JURISDICTIONS_USED] ?? undefined,
     c2_cbcr_jurisdiction_count: fields[FID.C2_CBCR_JURISDICTION_COUNT] ?? undefined,
     c2_unresolved_tax_disputes_eur_max: fields[FID.C2_UNRESOLVED_TAX_DISPUTES_EUR_MAX] ?? undefined,
+    // c9 / c10 evidence-pack scalars. undefined when the cell is blank, which
+    // is the whole point: see sfdrInputAdapter.js for what these replaced.
+    c9_operational_doc_age_months: fields[FID.C9_OPERATIONAL_DOC_AGE_MONTHS] ?? undefined,
+    c9_design_stage_doc_age_months: fields[FID.C9_DESIGN_STAGE_DOC_AGE_MONTHS] ?? undefined,
+    c9_material_qualifications_present: triState(fields[FID.C9_MATERIAL_QUALIFICATIONS_TRI], undefined),
+    c10_data_recency_months: fields[FID.C10_DATA_RECENCY_MONTHS] ?? undefined,
     c3_statement_url: fields[FID.C3_STATEMENT_URL] ?? undefined,
     c3_statement_published_date: fields[FID.C3_STATEMENT_PUBLISHED_DATE] ?? undefined,
     c3_art_4_explicit_reference: Boolean(fields[FID.C3_ART_4_EXPLICIT_REFERENCE]),

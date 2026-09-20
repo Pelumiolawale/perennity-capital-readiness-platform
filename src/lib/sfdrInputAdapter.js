@@ -1,6 +1,6 @@
 // @ts-check
 // Paid-flow only — see CLAUDE.md. Do not import from /assessment/snapshot or any free-tier component.
-import { CHILD_FIDS } from "./airtableEngagement.js";
+import { CHILD_FIDS, omitBlanks } from "./airtableEngagement.js";
 //
 // SFDR Input Adapter — maps Airtable engagement SFDR fields onto the v3.5
 // engine input shape (ProjectSFDRInputs / ProjectArt9Inputs).
@@ -388,10 +388,18 @@ export function buildSFDRInputs(engagement) {
     engagement.sfdr_dominance_test
   ) {
     const siObjective = {};
-    if (engagement.sfdr_si_objective || engagement.sfdr_si_objective_category) {
+    // Only when the objective has actually been NAMED. This used to fire on
+    // the category alone and fill the name with the string "Sustainable
+    // investment objective", which the engine then quotes back verbatim into
+    // the c8 rationale — so a report could carry a named SI objective in
+    // quotation marks that no one at the developer had ever written. SFDR
+    // Article 9 turns on a named objective, so an unnamed one is not a
+    // shortfall in our rendering, it is a shortfall in the evidence, and c8
+    // returns insufficient_evidence accordingly.
+    if (engagement.sfdr_si_objective) {
       const categoryMap = mapSICategory(engagement.sfdr_si_objective_category);
       siObjective.objective = {
-        name: engagement.sfdr_si_objective || "Sustainable investment objective",
+        name: engagement.sfdr_si_objective,
         category: categoryMap.category,
         taxonomy_mapping: categoryMap.taxonomy_mapping,
         social_taxonomy_mapping: categoryMap.social_taxonomy_mapping,
@@ -427,27 +435,45 @@ export function buildSFDRInputs(engagement) {
   // PR A4: prefer the SFDR Project PAI Data child table. Falls back to the
   // legacy sfdr_pai_data JSON blob.
   if (paiDataRows.length > 0) {
-    art9.pai_data = {
+    art9.pai_data = omitBlanks({
       per_pai: buildPerPaiRecordFromChildRows(paiDataRows),
-      data_recency_months: 6,
-    };
+      data_recency_months: engagement.c10_data_recency_months,
+    });
     hasArt9 = true;
   } else if (engagement.sfdr_pai_data) {
     const paiRows = tryParseJSON(engagement.sfdr_pai_data, []);
-    art9.pai_data = {
+    art9.pai_data = omitBlanks({
       per_pai: buildPerPaiRecord(paiRows),
-      data_recency_months: 6,
-    };
+      data_recency_months: engagement.c10_data_recency_months,
+    });
     hasArt9 = true;
   }
 
   // c9 — evidence_pack
+  //
+  // Every value here used to be a constant. `operational_doc_age_months: 6`
+  // and `material_qualifications_present: false` were written for every
+  // engagement, on no evidence, and both reach a verdict:
+  //
+  //   - The engine's recency gate needs at least one doc-age value PRESENT
+  //     and within its threshold. Hardcoding 6 meant the gate passed on every
+  //     engagement, always, from a number nobody had supplied.
+  //   - Tier 2 (limited_big4) counts as strong assurance only when there are
+  //     no material qualifications. Hardcoding false meant a Tier 2 pack that
+  //     DID carry qualifications was scored as though it did not — and the
+  //     report printed "no material qualifications" beside the tier.
+  //
+  // They are now read from Airtable and omitted when blank. Omitting is not
+  // neutral for the doc ages, and deliberately so: an evidence pack whose age
+  // nobody has established cannot satisfy a recency gate. That is the honest
+  // answer, and it is the one the engine gives when the key is absent.
   if (engagement.sfdr_assurance_tier) {
-    art9.evidence_pack = {
+    art9.evidence_pack = omitBlanks({
       assurance_tier: engagement.sfdr_assurance_tier,
-      material_qualifications_present: false,
-      operational_doc_age_months: 6,
-    };
+      material_qualifications_present: engagement.c9_material_qualifications_present,
+      operational_doc_age_months: engagement.c9_operational_doc_age_months,
+      design_stage_doc_age_months: engagement.c9_design_stage_doc_age_months,
+    });
     hasArt9 = true;
   }
 

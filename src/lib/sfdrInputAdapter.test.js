@@ -52,13 +52,44 @@ describe("buildSFDRInputs — single-field populate", () => {
     const result = buildSFDRInputs({
       sfdr_assurance_tier: "limited_big4",
     });
+    // The tier, and nothing else. This used to also assert
+    // material_qualifications_present: false and operational_doc_age_months: 6
+    // — two constants written on no evidence, both of which reach a verdict.
+    // An engagement that supplies only a tier has supplied only a tier.
     expect(result.art9.evidence_pack).toEqual({
       assurance_tier: "limited_big4",
-      material_qualifications_present: false,
-      operational_doc_age_months: 6,
     });
     expect(result.art9.si_objective).toBeUndefined();
     expect(result.art9.pai_data).toBeUndefined();
+  });
+
+  it("carries the c9 evidence-pack scalars through when they ARE supplied", () => {
+    const result = buildSFDRInputs({
+      sfdr_assurance_tier: "limited_big4",
+      c9_material_qualifications_present: false,
+      c9_operational_doc_age_months: 9,
+      c9_design_stage_doc_age_months: 20,
+    });
+    expect(result.art9.evidence_pack).toEqual({
+      assurance_tier: "limited_big4",
+      material_qualifications_present: false,
+      operational_doc_age_months: 9,
+      design_stage_doc_age_months: 20,
+    });
+  });
+
+  it("keeps a material-qualifications answer of false, and drops an absent one", () => {
+    // false is an answer here — "the assurance report was read and carried no
+    // qualifications" — and must survive omitBlanks, which strips only
+    // undefined, null and "". Absent is a different claim and is dropped.
+    const answered = buildSFDRInputs({
+      sfdr_assurance_tier: "reasonable_big4",
+      c9_material_qualifications_present: false,
+    });
+    expect(answered.art9.evidence_pack.material_qualifications_present).toBe(false);
+
+    const unanswered = buildSFDRInputs({ sfdr_assurance_tier: "reasonable_big4" });
+    expect("material_qualifications_present" in unanswered.art9.evidence_pack).toBe(false);
   });
 });
 
@@ -162,7 +193,10 @@ describe("buildSFDRInputs — PAI data", () => {
       value: 35,
       unit: "% women on board",
     });
-    expect(result.art9.pai_data.data_recency_months).toBe(6);
+    // No recency claim unless the operator supplied one. This used to assert
+    // 6, hardcoded, which submitted a twenty-month-old dataset to the engine
+    // as a six-month-old one.
+    expect("data_recency_months" in result.art9.pai_data).toBe(false);
   });
 
   it("skips rows with missing pai_number or value; coerces numeric strings to numbers", () => {

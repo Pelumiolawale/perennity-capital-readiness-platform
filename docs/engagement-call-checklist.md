@@ -219,6 +219,29 @@ For aligned: all three dominance booleans true, plus quantified indicators (curr
 | Question | Airtable column |
 |---|---|
 | "What's the assurance tier of the evidence pack?" | `SFDR Assurance Tier` (single-select: `reasonable_big4` / `limited_big4` / `limited_partial` / `management_only`) |
+| "Did the assurance engagement carry any material qualifications?" | `c9 Material qualifications present (Y/N/?)` |
+| "How old is the operational documentation in the pack, in months?" | `c9 Operational doc age (months)` |
+| "…or, for a pre-operational project, the design-stage documentation?" | `c9 Design stage doc age (months)` |
+
+> **The three rows above are new (20 Sep 2026) and two of them decide the verdict.**
+>
+> The app used to send the engine a hardcoded `operational_doc_age_months: 6` and
+> `material_qualifications_present: false` for every engagement, on no evidence. Both are
+> now read from Airtable and omitted when blank, so they have to be asked.
+>
+> **Doc age.** The engine's recency gate needs at least one of the two ages to be
+> *present* and within its threshold — 12 months for operational, 24 for design-stage.
+> Leaving both blank means c9 cannot reach aligned. That is the intended answer for an
+> evidence pack whose age nobody has established, not a bug: ask the question rather than
+> working around it. Fill whichever matches the project's stage; if you fill both, both
+> must clear their own threshold.
+>
+> **Material qualifications.** This decides Tier 2. A `limited_big4` pack counts as strong
+> assurance only when there are no material qualifications, so a `Yes` here drops it.
+> Tier 1 (`reasonable_big4`) is strong regardless. Blank or `Unknown` is not treated as a
+> qualification, but nothing is asserted in the report either — the old hardcoded `false`
+> printed "no material qualifications" beside the tier on no evidence. Use `No` only once
+> the assurance report has actually been read.
 
 For aligned (under the v3.5 four-tier hierarchy): Tier 1 (`reasonable_big4`) OR Tier 2
 (`limited_big4`) with no material qualifications — **and c2, c4 and c8 must NOT be
@@ -234,6 +257,13 @@ cascade).
 | Question | Child table |
 |---|---|
 | "For each of the 11 material PAIs (1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13): value? unit? methodology reference? verifier identity? assurance status?" | Create **11** rows in "**SFDR Project PAI Data**" — the same 11 as c3 |
+| "How old is the PAI dataset, in months?" | `c10 Data recency (months)` — new 20 Sep 2026 |
+
+> `c10 Data recency (months)` replaced another hardcoded 6. Unlike the c9 ages, leaving it
+> blank does not block aligned — the engine reads an absent value as no recency concern.
+> What the hardcoded 6 did was hide a stale dataset: PAI data twenty months old was
+> submitted as six months old and cleared a gate it should have failed. Aligned needs
+> ≤12 months; 12–18 caps at partial; >18 fails.
 
 > **Corrected 20 Sep 2026 — this was wrong in a way that made c10 unwinnable.**
 >
