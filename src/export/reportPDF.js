@@ -135,7 +135,12 @@ const FOOTER_BAND_HEIGHT_MM = 22;
  * @param {RenderContract | null | undefined} [renderContract] Optional v3.5 SFDR contract.
  * @returns {Promise<jsPDF>}
  */
-export async function generateReportPDF(output, engagementMetadata, renderContract) {
+export async function generateReportPDF(
+  output,
+  engagementMetadata,
+  renderContract,
+  frameworkVerdicts,
+) {
   // Defensive field checks — ReportOutput is not gated by a closed
   // allowlist (unlike SnapshotOutput), but we still fail loudly on missing
   // fields rather than producing a garbled audit-bearing artifact.
@@ -256,7 +261,12 @@ export async function generateReportPDF(output, engagementMetadata, renderContra
 
   const filteredConclusions = conclusions ? {
     ...conclusions,
-    narrative: filterConclusionsNarrative(conclusions.narrative, meta.target_label, renderContract),
+    narrative: filterConclusionsNarrative(
+      conclusions.narrative,
+      meta.target_label,
+      renderContract,
+      frameworkVerdicts,
+    ),
   } : conclusions;
   doc.addPage();
   stampSection("Conclusions");
@@ -746,6 +756,21 @@ const FRAMEWORK_FINDING_HEADINGS = {
   uk_sdr_focus: "UK SDR Sustainability Focus — per-criterion findings",
   uk_sdr_improvers: "UK SDR Sustainability Improvers — per-criterion findings",
   uk_sdr_impact: "UK SDR Sustainability Impact — per-criterion findings",
+};
+
+// RenderContract keys its framework_findings with the five values above; the
+// engine's own framework_results key the same frameworks by activity_id. This
+// is the join between them, and it is the only place the app has to know both.
+// buildRenderContract's ART8_FRAMEWORK_ID / UK_SDR_*_FRAMEWORK_ID constants
+// are the source; a test asserts this map covers every heading key, so a
+// framework added to one and not the other fails rather than silently losing
+// its verdict.
+export const FRAMEWORK_FINDING_ACTIVITY_IDS = {
+  sfdr_art8: "sfdr_v1_article_8",
+  sfdr_art9: "sfdr_v1_article_9",
+  uk_sdr_focus: "uk_sdr_focus",
+  uk_sdr_improvers: "uk_sdr_improvers",
+  uk_sdr_impact: "uk_sdr_impact",
 };
 
 // Criteria 2, 3, 5, 7 read entity-axis inputs. When these resolve to
@@ -1399,6 +1424,19 @@ const CONTRACT_VERDICTS = Object.freeze([
 ]);
 
 /**
+ * Render an engine verdict in the document's register. Falls back to the raw
+ * value rather than a default, so a band this version does not know appears
+ * verbatim instead of being silently reshaped into one it does.
+ *
+ * @param {string} verdict
+ * @returns {string}
+ */
+function humaniseVerdict(verdict) {
+  const match = CONTRACT_VERDICTS.find(([id]) => id === verdict);
+  return match ? match[1] : verdict;
+}
+
+/**
  * Summarise a framework's criterion verdicts as a factual count.
  *
  * This replaces two things the renderer used to invent.
@@ -1458,7 +1496,7 @@ export function summariseCriterionVerdicts(criteria) {
  * @param {RenderContract | null | undefined} renderContract
  * @returns {string}
  */
-function filterConclusionsNarrative(narrative, targetLabel, renderContract) {
+function filterConclusionsNarrative(narrative, targetLabel, renderContract, frameworkVerdicts) {
   if (!narrative || !targetLabel) return narrative || "";
 
   if (
@@ -1468,15 +1506,23 @@ function filterConclusionsNarrative(narrative, targetLabel, renderContract) {
   ) {
     const lines = renderContract.framework_findings.map((f) => {
       const heading = FRAMEWORK_FINDING_HEADINGS[f.framework] || f.framework;
-      return `${heading}: ${summariseCriterionVerdicts(f.criteria || [])}.`;
+      const counts = summariseCriterionVerdicts(f.criteria || []);
+      const activityId = FRAMEWORK_FINDING_ACTIVITY_IDS[f.framework];
+      const engineVerdict = activityId ? frameworkVerdicts?.[activityId] : undefined;
+      // The engine's verdict when we have it, never one derived here. When we
+      // do not, say nothing rather than guess — the counts still carry the
+      // finding.
+      return engineVerdict
+        ? `${heading}: overall verdict ${humaniseVerdict(engineVerdict)} (${counts}).`
+        : `${heading}: ${counts}.`;
     });
-    // Stated once, not per framework. The engine types RenderContract's
-    // overall_verdict as the literal "calibration_pending"; this is that,
-    // in the register of the document.
+    // The SCORE is genuinely pending — the engine hardcodes indicative_score
+    // to 0 for product labels — but the VERDICT is not, so this says only what
+    // is actually outstanding.
     lines.push(
-      "A single overall verdict for a product-label framework is pending " +
-        "methodology calibration and is deliberately not stated; the " +
-        "per-criterion findings above carry the assessment.",
+      "A calibrated numerical score for product-label frameworks is pending " +
+        "and is deliberately not stated; the verdicts above carry the " +
+        "assessment.",
     );
     return lines.join(" ");
   }
