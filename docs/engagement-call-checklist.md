@@ -25,7 +25,12 @@ An empty field is interpreted by the engine as "we don't know yet" — it does N
 | "Project ID for internal reference?" | `Project ID` |
 | "Is the engagement letter signed? Date?" | `Engagement Letter Signed` (checkbox), `Engagement Letter Date` |
 | "Who signs the report on behalf of Perennity? Title? Path to signature block?" | `Signatory Name`, `Signatory Title`, `Signatory Signature Block URI` (override fields — defaults to app config if blank) |
-| "Which regulatory framework should we report against?" | `Target Label` (single-select: `eu_taxonomy_aligned_8_1` / `sfdr_article_8` / `sfdr_article_9`) |
+| "Which regulatory framework should we report against?" | `Target Label` (single-select: `eu_taxonomy_aligned_8_1` / `sfdr_article_8` / `sfdr_article_9` / `uk_sdr_focus` / `uk_sdr_improvers` / `uk_sdr_impact`) |
+
+> **Do not pick `uk_sdr_mixed_goals`.** It is visible in the dropdown but not built. The
+> report will refuse with a message saying we do not yet issue against that framework.
+> (Until 20 Sep 2026 the three `uk_sdr_*` labels were missing from this row entirely, so a
+> UK SDR engagement could not be scoped from this checklist.)
 
 ## Section 2 — Project basics (every engagement)
 
@@ -99,38 +104,61 @@ These are the four entity-axis criteria that historically scored as `insufficien
 
 ### c2 Good governance — discrete columns
 
+> **The yes/no c2 answers are Yes / No / Unknown single-selects, not checkboxes**
+> (corrected 20 Sep 2026 — this section previously described them as checkboxes).
+>
+> The distinction is the whole point of the field. A checkbox cannot tell "No, they
+> have not" apart from "nobody has asked yet", so an unticked box used to be read as a
+> definite No and produced a scored failure out of silence. The single-select can say
+> all three things:
+>
+> | You enter | The engine reads |
+> |---|---|
+> | `Yes` | a definite yes |
+> | `No` | a definite no — a real finding, scored against them |
+> | `Unknown`, or blank | not answered; the domain returns insufficient evidence |
+>
+> So use `No` only when the developer has actually told you no. Leave it blank or
+> `Unknown` when the question has not been put to them.
+>
+> The eleven c2 selects are named below — all end `(Y/N/?)`, which is how you tell them
+> from the checkbox of the same name. `Climate Risk Completed (Y/N/?)` works the same way.
+> The legacy checkbox columns of the same name still exist and are still read when the
+> select is blank — a ticked one counts as `Yes` — but nothing needs to be entered in
+> them, and they can never record a `No`.
+
 Domain A (board structure):
 
 | Question | Column |
 |---|---|
-| "How many independent non-executive directors?" | `c2_independent_ned_count` |
-| "Are board terms of reference documented?" | `c2_terms_of_reference_documented` |
-| "CEO/Chair separated, OR lead independent director designated? (either is fine)" | `c2_ceo_chair_separated` AND/OR `c2_lead_independent_director_designated` |
-| "Is the executive committee publicly disclosed?" | `c2_executive_committee_published` |
+| "How many independent non-executive directors?" | `c2_independent_ned_count` (number) |
+| "Are board terms of reference documented?" | `c2 Terms of reference documented (Y/N/?)` |
+| "CEO/Chair separated, OR lead independent director designated? (either is fine)" | `c2 CEO/Chair separated (Y/N/?)` AND/OR `c2 Lead independent director designated (Y/N/?)` |
+| "Is the executive committee publicly disclosed?" | `c2 Executive committee published (Y/N/?)` |
 
 Domain B (employee relations):
 
 | Question | Column |
 |---|---|
 | "Any UNGC violations in the last 5 years?" | `c2_ungc_violations_5yr_count` (>0 forces Fail) |
-| "Is a UNGP-aligned policy published?" | `c2_ungp_aligned_policy_published` |
-| "Grievance mechanism documented?" | `c2_grievance_mechanism_documented` |
-| "Labour law compliance attested?" | `c2_labour_law_compliance_attested` |
+| "Is a UNGP-aligned policy published?" | `c2 UNGP-aligned policy published (Y/N/?)` |
+| "Grievance mechanism documented?" | `c2 Grievance mechanism documented (Y/N/?)` |
+| "Labour law compliance attested?" | `c2 Labour law compliance attested (Y/N/?)` |
 
 Domain C (remuneration):
 
 | Question | Column |
 |---|---|
-| "Remuneration policy published?" | `c2_remuneration_policy_published` |
-| "CEO-to-median pay ratio disclosed?" | `c2_ceo_to_median_ratio_disclosed` |
+| "Remuneration policy published?" | `c2 Remuneration policy published (Y/N/?)` |
+| "CEO-to-median pay ratio disclosed?" | `c2 CEO-to-median ratio disclosed (Y/N/?)` |
 | "What's the ratio value? (>300 forces Fail)" | `c2_ceo_to_median_ratio_value` |
-| "ESG-linked variable pay?" | `c2_esg_linked_variable_pay` |
+| "ESG-linked variable pay?" | `c2 ESG-linked variable pay (Y/N/?)` |
 
 Domain D (tax compliance):
 
 | Question | Column |
 |---|---|
-| "Tax policy published?" | `c2_tax_policy_published` |
+| "Tax policy published?" | `c2 Tax policy published (Y/N/?)` |
 | "Which jurisdictions does the entity operate in? (comma-separated ISO codes)" | `c2_tax_jurisdictions_used` (no EU Annex I jurisdictions) |
 | "Country-by-country reporting jurisdiction count?" | `c2_cbcr_jurisdiction_count` (<3 caps at Partial) |
 | "Largest unresolved tax dispute in EUR?" | `c2_unresolved_tax_disputes_eur_max` (>=10M forces Fail) |
@@ -142,6 +170,9 @@ Domain D (tax compliance):
 | "URL of the entity's PAI consideration statement?" | `c3_statement_url` |
 | "Publication date?" | `c3_statement_published_date` (<=365 days for aligned) |
 | "For each of the 11 material PAIs (1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13) — data disclosed? target disclosed? mitigation documented?" | Create 11 rows in the "**SFDR PAI Coverage**" linked child table, one per PAI |
+
+The same eleven PAIs are used by c10 (Art 9 only), in the separate SFDR Project PAI Data
+table. If you have asked these questions for c3 you have the list you need for c10.
 
 For aligned: 9+ PAIs with all three booleans = true.
 
@@ -189,16 +220,52 @@ For aligned: all three dominance booleans true, plus quantified indicators (curr
 |---|---|
 | "What's the assurance tier of the evidence pack?" | `SFDR Assurance Tier` (single-select: `reasonable_big4` / `limited_big4` / `limited_partial` / `management_only`) |
 
-For aligned (under the v3.5 four-tier hierarchy): Tier 1 (`reasonable_big4`) OR Tier 2 (`limited_big4`) with no material qualifications, alongside c2/c4/c8 not_aligned (Art 2(17) gates).
+For aligned (under the v3.5 four-tier hierarchy): Tier 1 (`reasonable_big4`) OR Tier 2
+(`limited_big4`) with no material qualifications — **and c2, c4 and c8 must NOT be
+not_aligned.** Any `not_aligned` upstream forces c9 to `not_aligned` (the Art 2(17)
+cascade).
+
+> **Corrected 20 Sep 2026.** This line previously read "alongside c2/c4/c8 not_aligned",
+> which says the opposite: read literally it told operators c9 could be aligned while its
+> gates had failed. The cascade is a bar, not a requirement.
 
 ### c10 Project PAI data provision
 
 | Question | Child table |
 |---|---|
-| "For each of the 10 material PAIs (1, 2, 4, 5, 7, 8, 9, 10, 11, 13): value? unit? verifier identity? assurance status?" | Create 10 rows in "**SFDR Project PAI Data**" |
-| "PAI 4 (fossil fuels) is always `not_applicable` for data centres — populate the applicability + rationale" | `applicability: not_applicable`, `applicability_rationale: "Data-centre infrastructure does not fall within the fossil-fuel sector definition per Annex I Table 1."` |
+| "For each of the 11 material PAIs (1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13): value? unit? methodology reference? verifier identity? assurance status?" | Create **11** rows in "**SFDR Project PAI Data**" — the same 11 as c3 |
 
-For aligned: all 10 PAIs evidenced, ≥9 third-party-verified when c3 entity policy is partial / weaker.
+> **Corrected 20 Sep 2026 — this was wrong in a way that made c10 unwinnable.**
+>
+> This section, and the Airtable table's own description, asked for ten rows covering
+> PAIs 1, 2, 4, 5, 7, 8, 9, 10, 11, 13 — with PAI 4 marked `not_applicable`.
+>
+> That is a different list from the one c10 scores against. It is the engine's
+> `PAI_ROW_ORDER` (`lib/paiDataFile.ts`), which fixes the row order of the
+> machine-readable PAI data **file** we hand the FMP. The c10 criterion iterates
+> `MATERIAL_PAI_NUMBERS` instead — PAIs 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13, the same
+> eleven the SFDR PAI Coverage child table uses for c3.
+>
+> Followed literally, the old instruction omitted two PAIs the engine requires (3 and 6)
+> and added one it never reads (4), so coverage was capped at 9/11 and **c10 could not
+> reach aligned on any engagement, however complete the evidence.**
+>
+> PAI 3 is in scope under PB's developer-as-investee framing — the developer's own GHG
+> intensity per unit revenue or per unit IT load, not an investee's. PAI 6 is treated as
+> material for data centres despite the NACE classification ambiguity. Both per
+> `regulatory-knowledge/constants/sfdr_v1_material_pais_data_centre.json`.
+>
+> Do not create a PAI 4 row here. PAI 4 is absent from the material list altogether, so
+> the criterion never looks for it; the `not_applicable` treatment of it belongs to the
+> data file, not to this table.
+
+For aligned: **all 11** PAIs carry a value AND a methodology reference, data no more than
+12 months old, and — when c3 (entity PAI policy) is anything short of aligned — at least
+9 of the 11 third-party verified. 8 to 10 PAIs caps at partially aligned. Fewer than 8, or
+any PAI with a value but no methodology reference, is not aligned.
+
+One hard override: if the project is within 2km of a Key Biodiversity Area and PAI 7 has
+no value, c10 is `not_aligned` outright, whatever the overall coverage. Ask the question.
 
 ## Engine determinism note
 

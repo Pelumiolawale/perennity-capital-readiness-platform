@@ -1,7 +1,7 @@
 # Perennity Bridge — Capital Readiness Platform
 
 Frontend MVP for the Perennity Bridge capital readiness assessment tool.
-Methodology v3.1 (April 2026).
+Methodology v3.5.
 
 ## Quick start
 

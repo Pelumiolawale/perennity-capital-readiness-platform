@@ -1,3 +1,7 @@
+> **Historical document, engine v0.6.0.** The pin is now a commit SHA at package
+> version `4.0.0-alpha.2` (methodology v3.5). Findings here were accurate against
+> v0.6.0 and have not been re-verified since. Do not treat as current.
+
 # Methodology + judgement-gap audit — engine v0.6.0
 
 **Date:** 2026-06-03

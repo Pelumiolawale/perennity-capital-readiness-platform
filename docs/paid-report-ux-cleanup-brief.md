@@ -1,3 +1,10 @@
+> **Historical document.** Written before the Phase C work landed; kept for the
+> reasoning, not as instructions. Phases C1, C2 and C3 have since been
+> implemented — see the signature page, the IC Defence Pack handling and the
+> running header in `src/export/reportPDF.js`. Engine references to `v0.6.0`
+> throughout are stale; the pin is a commit SHA at package version
+> `4.0.0-alpha.2`.
+
 # Paid Report PDF — UX cleanup brief
 
 **Audience:** a parallel Claude Code session executing this work alongside the founder's
@@ -236,7 +243,9 @@ save the resulting PDFs.
 1. Confirm the dev server is running on `localhost:5173`.
 2. Confirm all 12 engagements from `docs/test-engagements/engagements.json` are seeded into
    Airtable (parent rows + child rows for SFDR engagements #3, #4, #5, #6).
-3. Confirm `VITE_AIRTABLE_PAT` and `VITE_ENGINE_COMMIT_SHA` are set in `.env.local`.
+3. Confirm `AIRTABLE_PAT`, `AIRTABLE_BASE_ID` and `AIRTABLE_ENGAGEMENTS_TABLE_ID` are set
+   in `.env.local` — **unprefixed**. A `VITE_`-prefixed secret now fails the build.
+   `VITE_ENGINE_COMMIT_SHA` is set automatically by `vite.config.js`.
 
 ### Verification matrix
 

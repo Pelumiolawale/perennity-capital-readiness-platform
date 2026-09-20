@@ -96,18 +96,18 @@ export const TRI_STATE_OPTIONS = ["Yes", "No", "Unknown"];
  * becomes "not answered".
  */
 export const TRI_STATE_FIELDS = [
-  ["fldEyhNIThlbB4I2G", "c2 Terms of reference documented"],
-  ["fldKet7AlpF1Tfwfd", "c2 CEO/Chair separated"],
-  ["fld7amd191pUsqv2I", "c2 Lead independent director designated"],
-  ["fldKJdixJ5jmEAcRx", "c2 Executive committee published"],
-  ["fldhcrC3nBtyBxARu", "c2 UNGP-aligned policy published"],
-  ["fldFgwYltnGbCNCy9", "c2 Grievance mechanism documented"],
-  ["fldp3FLhBjp8zUT9K", "c2 Labour law compliance attested"],
-  ["fldkFOwp0xa582adT", "c2 Remuneration policy published"],
-  ["fldD9c8w5vDNXgtmi", "c2 CEO-to-median ratio disclosed"],
-  ["fldUyZSyGFiS9OOw1", "c2 ESG-linked variable pay"],
-  ["fld0BctdyUmTPIqj0", "c2 Tax policy published"],
-  ["fldkrdg8HKAB8jAUf", "Climate Risk Completed"],
+  ["fldEyhNIThlbB4I2G", "c2 Terms of reference documented (Y/N/?)"],
+  ["fldKet7AlpF1Tfwfd", "c2 CEO/Chair separated (Y/N/?)"],
+  ["fld7amd191pUsqv2I", "c2 Lead independent director designated (Y/N/?)"],
+  ["fldKJdixJ5jmEAcRx", "c2 Executive committee published (Y/N/?)"],
+  ["fldhcrC3nBtyBxARu", "c2 UNGP-aligned policy published (Y/N/?)"],
+  ["fldFgwYltnGbCNCy9", "c2 Grievance mechanism documented (Y/N/?)"],
+  ["fldp3FLhBjp8zUT9K", "c2 Labour law compliance attested (Y/N/?)"],
+  ["fldkFOwp0xa582adT", "c2 Remuneration policy published (Y/N/?)"],
+  ["fldD9c8w5vDNXgtmi", "c2 CEO-to-median ratio disclosed (Y/N/?)"],
+  ["fldUyZSyGFiS9OOw1", "c2 ESG-linked variable pay (Y/N/?)"],
+  ["fld0BctdyUmTPIqj0", "c2 Tax policy published (Y/N/?)"],
+  ["fldkrdg8HKAB8jAUf", "Climate Risk Completed (Y/N/?)"],
 ];
 
 /** @type {FieldContract[]} */

@@ -1,7 +1,7 @@
 # Test engagements for Perennity Bridge paid Report verification
 
 12 engagement records covering all 6 enabled `target_label` values × 2 tiers (strong / gap).
-Generated 2026-06-03 against engine v0.6.0 and the Airtable Engagements schema in base
+Generated 2026-06-03 against engine v0.6.0 (the pin is now a commit SHA at package version 4.0.0-alpha.2; these fixtures still load) and the Airtable Engagements schema in base
 `appasxX7eC3QsmxeM` table `tblRnd8BdQ65kuaej`.
 
 Profiles are anonymised composites of publicly disclosed data from AirTrunk, STT GDC, Digital Edge,
@@ -57,7 +57,7 @@ For each object in `engagements.json`:
 
 ```bash
 curl -X POST "https://api.airtable.com/v0/appasxX7eC3QsmxeM/tblRnd8BdQ65kuaej" \
-  -H "Authorization: Bearer $VITE_AIRTABLE_PAT" \
+  -H "Authorization: Bearer $AIRTABLE_PAT" \
   -H "Content-Type: application/json" \
   -d '{"records":[{"fields":<one engagement object>}],"returnFieldsByFieldId":true}'
 ```

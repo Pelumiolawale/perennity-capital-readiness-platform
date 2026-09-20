@@ -1,0 +1,160 @@
+# CLAUDE.md — rules for working in this repo
+
+Eleven source files cite this document as the authority for the free/paid boundary. Until
+20 Sep 2026 it did not exist: the rules were real and consistently followed, but they lived
+only in the comments that pointed here. This file makes the cited authority real. It records
+what was already being done — it is not a new policy.
+
+Keep it short. A rule nobody reads is not a rule.
+
+---
+
+## What this product is
+
+A React/Vite SPA on Vercel with two tiers:
+
+- **Free** — `/assessment/snapshot`. A self-serve wizard producing an indicative snapshot
+  and a lead-generation PDF. Explicitly **not** assurance.
+- **Paid** — `/assessment/report`. An £85k investor-grade Project Readiness Report,
+  signed, generated from data an operator enters in Airtable and scored by a pinned
+  engine repo (`@perennity/engine`, pinned by commit SHA in `package.json`).
+
+The engine is the methodology. This repo reads it, renders it, and must never restate it.
+
+---
+
+## The four rules
+
+### 1. The free tier must not receive paid methodology
+
+A free user must never be able to extract a methodology version stamp, per-criterion SPO
+narrative, PAI tables, signature blocks, or anything else resembling a Second Party Opinion.
+
+Files marked `// Paid-flow only` at the top must be imported only from `/assessment/report`
+and its children. This is architectural, not enforceable by the language — the import would
+compile fine. It is checked by reading.
+
+The files under this rule today:
+
+```
+src/components/SFDRPAITable.jsx   src/lib/entityInputAdapter.js
+src/export/footnoteEngine.js      src/lib/paiCsvExport.js
+src/export/reportTypography.js    src/lib/sfdrInputAdapter.js
+src/lib/snapshotPhrases.js        src/lib/taxJurisdictions.js
+src/lib/ukSDRInputAdapter.js
+```
+
+`src/lib/snapshotPhrases.js` is the one whose name invites the mistake. Despite "snapshot"
+in the filename, it holds the 125 investor-grade per-criterion phrases and is **paid-only**.
+
+### 2. `undefined` means "not answered". Nothing else does.
+
+The engine treats `undefined` as no input, and every other value — including `null`, `0`,
+`false`, `""` and `[]` — as a real answer from the developer.
+
+This single contract is the root cause of six separate defects fixed in this codebase, each
+of which put a scored failure in front of a client for a question nobody had asked. A blank
+WUE read as `0` passed a regulated water threshold. An unticked checkbox read as a definite
+"No". An empty list read as a finding of zero practices.
+
+So: **never coerce a blank cell.** No `?? null`, no `?? 0`, no `Boolean(...)` on a checkbox,
+no literal default standing in for an answer. Let the key be absent and let the engine say
+`data_missing`, which is the truth.
+
+`omitBlanks()` in `src/lib/airtableEngagement.js` strips blanks once at the boundary so that
+forgetting is harmless. `src/lib/blankRecordGuard.test.js` enforces the property: an
+engagement with nothing filled in must produce no answers. It also pins the fabrications
+that remain, each with a reason. That list may shrink deliberately. It must never grow
+quietly.
+
+### 3. Address Airtable data by identity, never by name or position
+
+Field IDs (`fld…`) and table IDs (`tbl…`) are immutable. Display names are not — an operator
+can rename a column in the UI and break a report with no error anywhere.
+
+Write field IDs. Fetch child rows by record ID via `RECORD_ID()`, which names no field at
+all. Never index an array from an external package by position.
+
+**One exception exists and only one.** The initial engagement lookup filters by
+`{Engagement Reference}` because `filterByFormula` offers no way to address a field by ID.
+It is guarded: on the 422 that a rename produces, the code falls back to a client-side scan
+by field ID and warns loudly. Clients keep working and the drift still gets noticed. Do not
+add a second exception.
+
+Airtable single-select **option names are code values**, compared literally by the engine.
+`src/lib/airtableSchemaContract.js` is the contract between the two, and
+`airtableSchemaParity.test.js` checks it against both the engine's constants and the live
+base. Renaming an option in the Airtable UI is a code change made in a spreadsheet.
+
+### 4. If a field is required, prove it is rendered
+
+Two defects had the same shape: a field the PDF generator refused to run without, which then
+appeared on no page. The signature block was one — the report page promised "Investor-grade.
+Signed." and handed over an unsigned document. The Article 26 disclaimer was the other.
+
+Both were invisible to unit tests, because every unit was correct in isolation, and both
+survived human review. `src/export/renderCompleteness.test.js` tests the invariant instead of
+the instances, in both directions: a required field must reach the page, and a drawn field
+must be required. Add a required field, add it there.
+
+---
+
+## Working practice
+
+**Red before green.** A test that was never red proves nothing. Prove the failure first.
+
+**Never invent a number.** If the engine declines to score something, the renderer prints
+nothing — not its own weighting. A figure the client cannot distinguish from methodology,
+which exists in no methodology document, is the most damaging thing this codebase can emit.
+`computeProductLabelScore` was deleted for doing exactly that.
+
+**Run the build, not just the tests.** `npm test` runs under `tsx`, which is permissive;
+`npm run build` runs `tsc`, which is not. The engine package's `prepare` script runs its
+build, so a type error there makes the package uninstallable for everyone — and that
+surfaces at `npm install` in this repo, not in the engine's own test run.
+
+**Verify against the live base before and after.** Structural changes to the Airtable read
+path must rescore all live engagements byte-identically. Anything else is a bug in the
+change, not a finding.
+
+**Never put a credential in client code.** The Airtable PAT moved server-side to
+`api/leads.js` on 18 Sep 2026. `VITE_`-prefixed environment variables are compiled into the
+browser bundle — never prefix a secret with `VITE_`. Some older runbooks said to; they were
+wrong and have been corrected.
+
+---
+
+## Where things are
+
+| | |
+|---|---|
+| Airtable base | `appasxX7eC3QsmxeM` — Engagements `tblRnd8BdQ65kuaej` |
+| Schema contract | `src/lib/airtableSchemaContract.js` |
+| Airtable read path | `src/lib/airtableEngagement.js` |
+| Engine boundary | `src/lib/engineClient.js` — see the note below |
+| Paid PDF | `src/export/reportPDF.js` |
+| Operator runbook | `docs/runbook-paid-reports.md` |
+| Call checklist | `docs/engagement-call-checklist.md` |
+| Base fixes outstanding | `docs/airtable-schema-corrections-pending.md` |
+
+Re-pin the engine by commit SHA, never by tag or branch.
+
+### A note on the engine import boundary, because the comments overstate it
+
+`engineClient.js` describes itself as "the single engine import boundary" and says
+`ReportRoute` imports from it "not from `@perennity/engine` directly". That is the intent.
+It is not the current state, and it was not true when written.
+
+Thirteen files reference the package today. Most are harmless — `@typedef` imports erase at
+build, and `airtableSchemaContract.js` and `taxJurisdictions.js` import regulatory-knowledge
+JSON deliberately, which is the "read the source of truth, don't mirror it" rule working as
+intended.
+
+The real drift is `src/routes/ReportRoute.jsx`, which imports `DeterministicEngine`,
+`ReportRenderer` and `buildRenderContract` and constructs and runs the engine itself, for
+the paid report. So the boundary holds on the free path and is bypassed on the paid one —
+the reverse of where you would want it.
+
+Nothing is broken by this today. It is recorded here so the next person does not read the
+comment, believe the boundary is intact, and reason from it. Either route the paid path
+through `engineClient.js` or stop claiming the boundary exists.
