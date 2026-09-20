@@ -364,14 +364,82 @@ function warnOnUnrecognisedOption(fieldId, label, value, warnings) {
   );
 }
 
+// What each position in an evidence line should look like. Used to catch a
+// line whose fields are in the wrong ORDER — the failure the old count-only
+// check could not see.
+//
+// Deliberately loose. These are shape checks, not content validation: a
+// truncated sha256 (the live records carry 11-22 hex characters, not 64) must
+// not be flagged, and a document_type the engine does not happen to consult
+// must not be either. They only need to be tight enough that two transposed
+// fields cannot both still look right.
+const EVIDENCE_FIELD_SHAPES = [
+  {
+    key: "document_id",
+    // Anything non-empty. The weakest slot, and the least consequential.
+    ok: (v) => v.length > 0,
+    expected: "a document identifier",
+  },
+  {
+    key: "document_type",
+    ok: (v) => /^[a-z][a-z0-9_]*$/.test(v),
+    expected: "a lower_snake_case type such as audit_report",
+  },
+  {
+    key: "uri",
+    ok: (v) => v.includes("://"),
+    expected: "a URL",
+  },
+  {
+    key: "uploaded_at",
+    ok: (v) => /^\d{4}-\d{2}-\d{2}/.test(v),
+    expected: "an ISO date, e.g. 2026-05-10T10:00:00Z",
+  },
+  {
+    key: "sha256",
+    ok: (v) => /^[0-9a-f]+$/i.test(v),
+    expected: "a hex digest",
+  },
+];
+
+/**
+ * Parse the Evidence Documents cell: one document per line, five
+ * pipe-separated fields, positional.
+ *
+ * ITEM-17. Position is not identity, and this is the last place in the app
+ * that relies on one. The order is `document_id | document_type | uri |
+ * uploaded_at | sha256`, typed by hand into a long-text cell, and position 2
+ * is what sc_8_1_1 matches on to find the independent audit report for EU
+ * Taxonomy Activity 8.1. Transpose two fields and the audit document becomes
+ * invisible: the criterion reports "No independent audit document in submitted
+ * evidence" against evidence that was supplied and is sitting in the cell.
+ *
+ * The old check counted the fields and nothing else, so it caught a line with
+ * four fields and was blind to a line with five in the wrong order — the more
+ * likely mistake, and the silent one.
+ *
+ * The format is NOT changed. Operators type this by hand and the runbook
+ * documents it; changing it would break every existing record and need the
+ * documentation to move in lockstep. Instead each position is checked for the
+ * SHAPE it should have, which catches transposition without asking anyone to
+ * retype anything. Verified against all 12 live evidence lines: none is
+ * flagged, so the warning only fires on genuine drift.
+ *
+ * @param {unknown} raw
+ * @returns {{documents: Array<Record<string, string|null>>, warnings: string[]}}
+ */
 function parseEvidenceDocuments(raw) {
-  if (!raw || typeof raw !== "string") return [];
-  return raw
+  if (!raw || typeof raw !== "string") return { documents: [], warnings: [] };
+
+  /** @type {string[]} */
+  const warnings = [];
+  const documents = raw
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => {
-      const parts = line.split(" | ");
+    .map((line, i) => {
+      const lineNo = i + 1;
+      const parts = line.split(" | ").map((p) => p.trim());
       const [document_id, document_type, uri, uploaded_at, sha256] = parts;
       const entry = {
         document_id: document_id ?? null,
@@ -380,11 +448,41 @@ function parseEvidenceDocuments(raw) {
         uploaded_at: uploaded_at ?? null,
         sha256: sha256 ?? null,
       };
-      if (parts.length < 5) {
-        entry.parse_warning = `Expected 5 pipe-separated fields, got ${parts.length}.`;
+
+      if (parts.length !== 5) {
+        warnings.push(
+          `Evidence Documents line ${lineNo} has ${parts.length} pipe-separated ` +
+            "fields, not 5. Expected: document_id | document_type | uri | " +
+            "uploaded_at | sha256.",
+        );
+        return entry;
+      }
+
+      const wrong = EVIDENCE_FIELD_SHAPES.filter(
+        ({ key, ok }) => !ok(String(entry[key] ?? "")),
+      );
+      if (wrong.length > 0) {
+        const detail = wrong
+          .map(({ key, expected }) => `${key} should be ${expected}, got "${entry[key]}"`)
+          .join("; ");
+        // Name the consequence when it is the slot that matters, because
+        // "field 2 looks odd" does not convey that the audit evidence is
+        // about to disappear from the flagship criterion.
+        const consequence = wrong.some((w) => w.key === "document_type")
+          ? " Until this is corrected, this document cannot be recognised as an " +
+            "independent audit, and EU Taxonomy criterion sc_8_1_1 will report " +
+            "that no audit evidence was supplied."
+          : "";
+        warnings.push(
+          `Evidence Documents line ${lineNo} looks mis-ordered: ${detail}. ` +
+            `The fields are positional — document_id | document_type | uri | ` +
+            `uploaded_at | sha256.${consequence}`,
+        );
       }
       return entry;
     });
+
+  return { documents, warnings };
 }
 
 function normalizeSignatoryOverrides(fields) {
@@ -860,9 +958,8 @@ export async function fetchEngagement(engagementReference, config) {
   // ITEM-15 fix, which has to decide the hashing question properly.
   const cleaned_data_points = omitBlanks(data_points);
 
-  const evidence_documents = parseEvidenceDocuments(
-    fields[FID.EVIDENCE_DOCUMENTS] ?? "",
-  );
+  const { documents: evidence_documents, warnings: evidenceWarnings } =
+    parseEvidenceDocuments(fields[FID.EVIDENCE_DOCUMENTS] ?? "");
 
   const project_input = {
     project_id: fields[FID.PROJECT_ID] ?? null,
@@ -982,7 +1079,7 @@ export async function fetchEngagement(engagementReference, config) {
   // and "pre_operational" behave alike) but still puts a claim in the input
   // shape that nobody made, and hides the fact that nobody answered.
   /** @type {string[]} */
-  const schemaWarnings = [];
+  const schemaWarnings = [...evidenceWarnings];
   if (lookupDegraded) {
     schemaWarnings.push(
       "The `Engagement Reference` field appears to have been renamed in " +
