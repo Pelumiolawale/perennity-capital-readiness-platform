@@ -116,8 +116,41 @@ export function isRoutableTargetLabel(targetLabel) {
   }
 }
 
+/**
+ * The EU Taxonomy Activity 8.1 knowledge-base id. Every framework set is built
+ * on this activity, so it has to be selected by identity.
+ */
+const EU_TAX_ACTIVITY_ID = "eu_tax_climate_8_1";
+
+/**
+ * Find Activity 8.1 among the engine's bundled activities.
+ *
+ * ITEM-17. This used to be `BUNDLED_ACTIVITIES[0]` — array position zero of an
+ * engine export. Today the array holds exactly one entry so the two are the
+ * same thing, which is why nothing has gone wrong. The day the engine bundles
+ * a second activity, or reorders, every paid report would silently assess the
+ * wrong activity with no error anywhere: a position is not an identity.
+ *
+ * Throws rather than falling back. An engine that no longer ships Activity 8.1
+ * is not a condition to paper over — every framework set in this file is built
+ * on it.
+ *
+ * @returns {AnyFramework}
+ */
+function euTaxonomyActivity() {
+  const found = BUNDLED_ACTIVITIES.find((a) => a && a.id === EU_TAX_ACTIVITY_ID);
+  if (!found) {
+    throw new Error(
+      `Engine does not bundle activity "${EU_TAX_ACTIVITY_ID}". ` +
+        `Bundled ids: ${BUNDLED_ACTIVITIES.map((a) => a && a.id).join(", ")}. ` +
+        "Every framework set is built on Activity 8.1; refusing to guess.",
+    );
+  }
+  return found;
+}
+
 export function frameworksForLabel(targetLabel) {
-  const euTax = BUNDLED_ACTIVITIES[0];
+  const euTax = euTaxonomyActivity();
   switch (targetLabel) {
     case "eu_taxonomy_aligned_8_1":
       return [euTax];

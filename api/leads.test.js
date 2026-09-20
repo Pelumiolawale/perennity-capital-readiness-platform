@@ -5,7 +5,12 @@
 // server-side, and the personal data in the body is never logged.
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import handler, { sanitizeLead, LEADS_TABLE } from "./leads.js";
+import handler, {
+  sanitizeLead,
+  LEADS_TABLE,
+  LEAD_FIELD_IDS,
+  toAirtableFields,
+} from "./leads.js";
 
 const ENV = {
   AIRTABLE_PAT: "pat_server_secret",
@@ -117,7 +122,56 @@ describe("api/leads handler", () => {
     const [url, init] = /** @type {any} */ (fetchImpl.mock.calls[0]);
     expect(url).toBe(`https://api.airtable.com/v0/app_test/${LEADS_TABLE}`);
     expect(init.headers.Authorization).toBe("Bearer pat_server_secret");
-    expect(JSON.parse(init.body)).toEqual({ fields: LEAD });
+    // ITEM-17: the payload is keyed by immutable field ids, not display names.
+    // This assertion replaces one that pinned the display-name payload — the
+    // behaviour that made renaming a column in the Airtable UI enough to stop
+    // inbound leads landing.
+    const written = JSON.parse(init.body).fields;
+    for (const key of Object.keys(written)) {
+      expect(key, `${key} should be a fld… id, not a display name`).toMatch(/^fld[A-Za-z0-9]{14}$/);
+    }
+    expect(written[LEAD_FIELD_IDS.name]).toBe(LEAD.name);
+    expect(written[LEAD_FIELD_IDS.email]).toBe(LEAD.email);
+    expect(written[LEAD_FIELD_IDS.company]).toBe(LEAD.company);
+    expect(written[LEAD_FIELD_IDS.status]).toBe("new");
+  });
+
+  it("maps every field sanitizeLead can emit — none is silently dropped", () => {
+    // A key present in the validated lead but missing from LEAD_FIELD_IDS
+    // would be discarded without a word. Drive the sanitiser with a fully
+    // populated payload and assert the map covers everything it produced.
+    const full = sanitizeLead({
+      ...LEAD,
+      phone: "+44 20 7946 0000",
+      message: "Please get in touch.",
+      snapshot_run_id: "11111111-1111-4111-8111-111111111111",
+      indicative_band: "Amber",
+      indicative_score: 61,
+      target_label: "sfdr_article_8",
+      jurisdiction: "DE",
+      facility_type: "hyperscale",
+      cta_value: "request_project_readiness_report",
+      honeypot_tripped: false,
+    });
+    expect(full.ok).toBe(true);
+    const unmapped = Object.keys(full.fields).filter((k) => !(k in LEAD_FIELD_IDS));
+    expect(unmapped, "add these to LEAD_FIELD_IDS").toEqual([]);
+    // And every one actually survives translation.
+    expect(Object.keys(toAirtableFields(full.fields))).toHaveLength(
+      Object.keys(full.fields).length,
+    );
+  });
+
+  it("the table is addressed by id, not by name", () => {
+    expect(LEADS_TABLE).toMatch(/^tbl[A-Za-z0-9]{14}$/);
+  });
+
+  it("drops an unmapped key rather than addressing it by name", () => {
+    // The safe direction: something we forgot to map is not written at all,
+    // instead of being sent as a display name that may not exist.
+    expect(toAirtableFields({ name: "x", surprise_new_field: "y" })).toEqual({
+      [LEAD_FIELD_IDS.name]: "x",
+    });
   });
 
   it("accepts a JSON string body", async () => {

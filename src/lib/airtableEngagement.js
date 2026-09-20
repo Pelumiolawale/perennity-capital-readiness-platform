@@ -457,6 +457,70 @@ export function findChildRowShortfalls(fields, fetched) {
  * @param {string} pat
  * @returns {Promise<Array<{id: string, fields: Record<string, unknown>}>>}
  */
+// Paging guard for the fallback scan below. Mirrors listEngagements.js, which
+// already scans this table the robust way.
+const SCAN_PAGE_SIZE = 100;
+const SCAN_MAX_PAGES = 100;
+
+/**
+ * Find an engagement by scanning the table and matching on FIELD ID.
+ *
+ * ITEM-17, the last name dependency. `filterByFormula` is the one thing in
+ * Airtable's API that cannot address a field by id — it only takes display
+ * names — so the fast path names `{Engagement Reference}`, and renaming that
+ * column takes EVERY client's report down at once.
+ *
+ * It cannot be designed away, so it degrades instead. When Airtable rejects
+ * the formula (422, which for this formula means exactly one thing), this
+ * scans the table and matches `fields[FID.ENGAGEMENT_REF]` — a field id, which
+ * nobody can rename. Slower, and only ever runs when the fast path is already
+ * broken, so it costs nothing when healthy.
+ *
+ * Deliberately not silent. The caller attaches a warning banner, because a
+ * fallback that quietly works forever is how a rename never gets fixed.
+ *
+ * @param {string} baseId
+ * @param {string} tableId
+ * @param {string} engagementReference
+ * @param {string} pat
+ * @returns {Promise<Array<{id: string, fields: Record<string, unknown>}>>}
+ */
+async function scanForEngagementByFieldId(baseId, tableId, engagementReference, pat) {
+  const matches = [];
+  let offset;
+  let page = 0;
+
+  do {
+    if (page >= SCAN_MAX_PAGES) {
+      throw new Error(
+        `Engagement scan exceeded ${SCAN_MAX_PAGES} pages — aborting rather than looping.`,
+      );
+    }
+    page += 1;
+
+    const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
+    url.searchParams.set("pageSize", String(SCAN_PAGE_SIZE));
+    url.searchParams.set("returnFieldsByFieldId", "true");
+    if (offset) url.searchParams.set("offset", offset);
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${pat}` },
+    });
+    if (!res.ok) {
+      throw new Error(`Airtable API error scanning engagements: ${res.status}`);
+    }
+    const body = await res.json();
+    for (const record of (body && body.records) || []) {
+      if ((record.fields || {})[FID.ENGAGEMENT_REF] === engagementReference) {
+        matches.push(record);
+      }
+    }
+    offset = body && body.offset;
+  } while (offset);
+
+  return matches;
+}
+
 // Airtable returns at most 100 records per page. Requesting 50 ids at a time
 // guarantees at most 50 records come back, so a chunk can never be truncated
 // and no `offset` token can ever be dropped — which is how ITEM-18 stops being
@@ -527,7 +591,7 @@ async function fetchChildRowsByIds(baseId, childTableId, recordIds, pat) {
  *
  * Return shape:
  *   { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired"
- *                        | "child_data_incomplete" }
+ *                        | "child_data_incomplete" | "duplicate_reference" }
  *   { ok: true, engagement: <normalized object> }
  *
  * Throws on env misconfiguration or network/API failure. The caller (route)
@@ -585,9 +649,15 @@ export async function fetchEngagement(engagementReference, config) {
   const formula = `{Engagement Reference}='${engagementReference}'`;
   const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
   url.searchParams.set("filterByFormula", formula);
-  url.searchParams.set("maxRecords", "1");
+  // ITEM-17: two, not one. Airtable does not enforce uniqueness on a text
+  // primary field, so two records can carry the same Engagement Reference.
+  // Under maxRecords=1 the report was silently drawn from whichever Airtable
+  // returned first — a coin toss between two clients' data, with nothing to
+  // notice. Asking for two costs nothing and makes the collision visible.
+  url.searchParams.set("maxRecords", "2");
   url.searchParams.set("returnFieldsByFieldId", "true");
 
+  let lookupDegraded = false;
   let res;
   try {
     res = await fetch(url.toString(), {
@@ -609,32 +679,46 @@ export async function fetchEngagement(engagementReference, config) {
     // the only field this formula names is `Engagement Reference`. The old
     // generic message sent the operator to the runbook's failure table, which
     // told them to check the UUID — a dead end, because the UUID is fine.
-    if (res.status === 422) {
+    if (res.status !== 422) {
+      throw new Error(`Airtable API error: ${res.status}`);
+    }
+    // 422 on this formula means one thing: the only field it names,
+    // `Engagement Reference`, no longer exists under that name. Degrade to a
+    // field-id scan rather than take every client's report down, and make
+    // sure somebody is told — see scanForEngagementByFieldId.
+    lookupDegraded = true;
+  }
+
+  let records;
+  if (lookupDegraded) {
+    records = await scanForEngagementByFieldId(
+      baseId,
+      tableId,
+      engagementReference,
+      pat,
+    );
+  } else {
+
+    let body;
+    try {
+      body = await res.json();
+    } catch (e) {
       throw new Error(
-        "Airtable rejected the engagement lookup formula (422). The " +
-          "`Engagement Reference` field has almost certainly been renamed: " +
-          "filterByFormula addresses fields by display name, so a rename " +
-          "breaks the lookup for EVERY engagement at once. Restore the field " +
-          "name, or update the formula in airtableEngagement.js.",
+        `Airtable returned malformed JSON: ${e && e.message ? e.message : String(e)}`,
       );
     }
-    throw new Error(`Airtable API error: ${res.status}`);
+    records = (body && body.records) || [];
   }
-
-  let body;
-  try {
-    body = await res.json();
-  } catch (e) {
-    throw new Error(
-      `Airtable returned malformed JSON: ${e && e.message ? e.message : String(e)}`,
-    );
-  }
-
-  const records = (body && body.records) || [];
 
   // 4. Response routing.
   if (records.length === 0) {
     return { ok: false, reason: "not_found" };
+  }
+
+  if (records.length > 1) {
+    // Never silently pick one. Whichever we chose could be the wrong client's
+    // engagement, and the report would render perfectly.
+    return { ok: false, reason: "duplicate_reference" };
   }
 
   const record = records[0];
@@ -899,6 +983,16 @@ export async function fetchEngagement(engagementReference, config) {
   // shape that nobody made, and hides the fact that nobody answered.
   /** @type {string[]} */
   const schemaWarnings = [];
+  if (lookupDegraded) {
+    schemaWarnings.push(
+      "The `Engagement Reference` field appears to have been renamed in " +
+        "Airtable. Report lookup has fallen back to a slower scan that matches " +
+        "on the immutable field id, so reports still work — but restore the " +
+        "field name, because filterByFormula can only address fields by " +
+        "display name and this is the one place that cannot be made " +
+        "rename-proof.",
+    );
+  }
   const c7StatusRaw = singleSelectValue(fields[FID.C7_OPERATIONAL_STATUS], undefined);
   for (const [fid, label] of [
     [FID.C6_METHODOLOGY, "c6 methodology"],
