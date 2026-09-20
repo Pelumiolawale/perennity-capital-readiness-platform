@@ -37,9 +37,14 @@ export const DATA_INCOMPLETE_COPY = {
 };
 
 // ITEM-17 (B5): shown when the engagement's Target Label is one the SPA cannot
-// route — today only uk_sdr_mixed_goals, which is selectable in Airtable but
-// not built. The generic engine-error copy invited the reader to "try again
-// shortly", which would never have worked.
+// route. Two causes, both of which mean the engagement is not ready to report:
+// uk_sdr_mixed_goals, which is selectable in Airtable but not built; and a
+// BLANK Target Label, which since 20 Sep 2026 is no longer defaulted to
+// eu_taxonomy_aligned_8_1. The client-facing wording covers both — from the
+// reader's side an unscoped engagement and an unbuilt framework are the same
+// thing, and in neither case is their reference at fault. The console.error in
+// ReportRoute names which one it was. The generic engine-error copy invited
+// the reader to "try again shortly", which would never have worked.
 export const UNSUPPORTED_LABEL_COPY = {
   message:
     "This engagement is scoped to a framework we do not yet issue Reports " +

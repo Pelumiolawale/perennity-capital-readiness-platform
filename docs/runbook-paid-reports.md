@@ -239,6 +239,20 @@ If any check fails, see "Failure modes" or escalate to engineering.
 
 ## Failure modes + fixes
 
+### The report refuses: "a framework we do not yet issue Reports against"
+
+Two causes, and the browser console says which.
+
+1. **No Target Label set.** The engagement is not scoped to anything. Set it in Airtable
+   and reload. Until 20 Sep 2026 a blank defaulted to `eu_taxonomy_aligned_8_1`, which
+   meant an unscoped engagement was quietly assessed against EU Taxonomy — so if you have
+   an older report for an engagement whose label is blank, it was issued against a
+   framework nobody chose, and is worth re-checking.
+2. **`uk_sdr_mixed_goals` selected.** That option is visible in the dropdown and is not
+   built. Re-scope the engagement to one of the three supported UK SDR labels, or escalate
+   if Mixed Goals is genuinely what the client needs.
+
+
 ### `entitlement_error` on the report route
 
 Four causes; identify which from the browser console (open DevTools → Console tab):

@@ -27,6 +27,12 @@ An empty field is interpreted by the engine as "we don't know yet" — it does N
 | "Who signs the report on behalf of Perennity? Title? Path to signature block?" | `Signatory Name`, `Signatory Title`, `Signatory Signature Block URI` (override fields — defaults to app config if blank) |
 | "Which regulatory framework should we report against?" | `Target Label` (single-select: `eu_taxonomy_aligned_8_1` / `sfdr_article_8` / `sfdr_article_9` / `uk_sdr_focus` / `uk_sdr_improvers` / `uk_sdr_impact`) |
 
+> **This field is now required.** Leaving it blank used to default the engagement to
+> `eu_taxonomy_aligned_8_1`, so an engagement nobody had scoped was assessed against EU
+> Taxonomy and a signed report issued against a framework the client never chose. Since
+> 20 Sep 2026 a blank Target Label makes the report refuse to render, with a message
+> telling the client to contact us. Scope the engagement on the call.
+>
 > **Do not pick `uk_sdr_mixed_goals`.** It is visible in the dropdown but not built. The
 > report will refuse with a message saying we do not yet issue against that framework.
 > (Until 20 Sep 2026 the three `uk_sdr_*` labels were missing from this row entirely, so a

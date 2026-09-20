@@ -341,11 +341,48 @@ function bandColour(/** @type {string} */ band) {
   return MUTED_GREY;
 }
 
+/**
+ * The colour for every verdict a HeatmapCell can carry.
+ *
+ * Exhaustive over the union in the engine's `HeatmapCell["verdict"]`
+ * (dist/engine.d.ts). Mirrored rather than read because it is a TypeScript
+ * union and erases at build; snapshotPDF.test.js asserts this map still covers
+ * it, so the two cannot drift silently.
+ *
+ * This replaced `pass → green, fail → red, everything else → amber`. Two of
+ * those "everything else" cases were wrong in ways a reader would not catch:
+ *
+ *   - `not_aligned` rendered AMBER. A criterion the engine had failed was
+ *     shown in the same colour as one it had partially passed. Free snapshots
+ *     reach this whenever the prospect picks an SFDR or UK SDR label, because
+ *     those framework sets emit the aligned/not_aligned vocabulary rather than
+ *     pass/fail.
+ *   - `data_missing`, `insufficient_evidence` and `not_applicable` rendered
+ *     amber too, so "we have not been told" looked identical to "partially
+ *     met". Absence is not a middling result and should not be coloured like
+ *     one.
+ */
+export const VERDICT_COLOURS = Object.freeze({
+  // pass / partial / fail — EU Taxonomy vocabulary
+  pass: PASS_GREEN,
+  partial: PARTIAL_AMBER,
+  fail: FAIL_RED,
+  // aligned / partially_aligned / not_aligned — SFDR and UK SDR vocabulary
+  aligned: PASS_GREEN,
+  partially_aligned: PARTIAL_AMBER,
+  not_aligned: FAIL_RED,
+  // absence, in both vocabularies
+  data_missing: MUTED_GREY,
+  insufficient_evidence: MUTED_GREY,
+  not_applicable: MUTED_GREY,
+});
+
 function verdictColour(/** @type {string} */ verdict) {
-  if (verdict === "pass") return PASS_GREEN;
-  if (verdict === "fail") return FAIL_RED;
-  // partial, data_missing, anything else → amber
-  return PARTIAL_AMBER;
+  // Grey, not amber, for anything unrecognised. An unknown verdict is a
+  // failure of ours to keep up with the engine, and it should look like the
+  // absence of a result rather than a plausible middling one. The pill prints
+  // the raw verdict string beside it, so the unfamiliar word is visible.
+  return VERDICT_COLOURS[verdict] ?? MUTED_GREY;
 }
 
 function setText(/** @type {jsPDF} */ doc, /** @type {number[]} */ rgb) {

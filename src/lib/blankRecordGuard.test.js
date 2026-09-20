@@ -124,9 +124,6 @@ describe("the fabrications that remain are pinned, not forgotten", () => {
     project_pai_data: "empty array from the child fetch",
 
     // Outstanding, each with a reason:
-    target_label:
-      "defaults to eu_taxonomy_aligned_8_1 when blank, so an unscoped " +
-      "engagement is silently scoped to EU Taxonomy. Plan: Workstream B.",
     c3_art_4_explicit_reference:
       "Boolean() of a blank checkbox. Harmless — no engine code reads it; " +
       "v3.5 removed it from the aligned gate.",
@@ -136,14 +133,27 @@ describe("the fabrications that remain are pinned, not forgotten", () => {
     c6_minimum_safeguards_attestation:
       "Boolean() of a blank checkbox. Reaches the engine only when a claim " +
       "is made, and a claim requires a quantified percentage.",
-    c7_specifies_indicators:
-      "Boolean() of a blank checkbox — the real one still open. A partially " +
-      "filled c7 commitment asserts false for the blanks, and the engine " +
-      "needs all three true for aligned. Needs tri-state Airtable fields, " +
-      "same remedy as ITEM-04.",
-    c7_specifies_annual_cadence: "as c7_specifies_indicators",
-    c7_specifies_assurance: "as c7_specifies_indicators",
   };
+
+  // Closed on 20 Sep 2026, listed so the shrinkage is on the record:
+  //
+  //   target_label      defaulted to eu_taxonomy_aligned_8_1 when blank, so an
+  //                     unscoped engagement was silently scoped to EU Taxonomy
+  //                     and a signed report issued against a framework the
+  //                     client never chose. Now undefined, which
+  //                     isRoutableTargetLabel rejects — the route refuses
+  //                     rather than guessing.
+  //
+  //   c7_specifies_*    Boolean() of a blank checkbox asserted that a
+  //                     commitment does not specify indicators / cadence /
+  //                     assurance, from an untouched box. Now coerceCheckbox,
+  //                     so unticked is undefined. Deliberately NOT given the
+  //                     tri-state treatment: the engine reads all three only
+  //                     through `allSpecifiers`, which needs every one true,
+  //                     so a definite No scores identically to a blank. That
+  //                     is the opposite of c2, where a definite No is the
+  //                     difference between failing a domain and returning
+  //                     insufficient evidence.
 
   it("nothing new has started fabricating a value", async () => {
     const e = await emptyEngagement();
@@ -158,6 +168,39 @@ describe("the fabrications that remain are pinned, not forgotten", () => {
     for (const [key, reason] of Object.entries(EXPECTED_RESIDUE)) {
       expect(typeof reason, key).toBe("string");
       expect(reason.length, key).toBeGreaterThan(20);
+    }
+  });
+});
+
+describe("an unscoped engagement is refused, not silently scoped", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("a blank Target Label yields no target_label at all", async () => {
+    // It used to default to eu_taxonomy_aligned_8_1. An engagement nobody had
+    // scoped was therefore scored against EU Taxonomy, and a signed £85k
+    // report issued against a framework the client had never chosen — the most
+    // expensive possible version of a blank becoming an answer.
+    const e = await emptyEngagement();
+    expect(e.target_label).toBeUndefined();
+  });
+
+  it("and the route's own guard rejects that, so it cannot reach the engine", async () => {
+    const { isRoutableTargetLabel } = await import("./engineClient.js");
+    expect(isRoutableTargetLabel(undefined)).toBe(false);
+    // Sanity: the guard is not simply rejecting everything.
+    expect(isRoutableTargetLabel("eu_taxonomy_aligned_8_1")).toBe(true);
+  });
+
+  it("the c7 specifiers are absent rather than denied", async () => {
+    // Boolean() of an untouched checkbox asserted that the developer's
+    // reporting commitment does NOT specify indicators, cadence or assurance.
+    const e = await emptyEngagement();
+    for (const k of [
+      "c7_specifies_indicators",
+      "c7_specifies_annual_cadence",
+      "c7_specifies_assurance",
+    ]) {
+      expect(e[k], k).toBeUndefined();
     }
   });
 });

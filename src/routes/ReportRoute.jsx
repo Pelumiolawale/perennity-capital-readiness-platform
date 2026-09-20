@@ -181,10 +181,17 @@ export default function ReportRoute() {
       const label = entitlement.engagement.target_label;
       if (!isRoutableTargetLabel(label)) {
         console.error(
-          `[ReportRoute] unsupported target_label "${label}" on engagement ` +
-            `${ref}. The Airtable Target Label field offers options the SPA ` +
-            "cannot route (uk_sdr_mixed_goals is selectable but not built). " +
-            "Re-scope the engagement or build the framework set.",
+          label
+            ? `[ReportRoute] unsupported target_label "${label}" on engagement ` +
+              `${ref}. The Airtable Target Label field offers options the SPA ` +
+              "cannot route (uk_sdr_mixed_goals is selectable but not built). " +
+              "Re-scope the engagement or build the framework set."
+            : `[ReportRoute] engagement ${ref} has no Target Label. It is not ` +
+              "scoped to any framework, so there is nothing to assess it " +
+              "against. This used to default to eu_taxonomy_aligned_8_1, which " +
+              "meant an unscoped engagement was silently assessed against EU " +
+              "Taxonomy and a signed report issued on that basis. Set the " +
+              "Target Label in Airtable.",
         );
         setState("unsupported_label");
         return;
