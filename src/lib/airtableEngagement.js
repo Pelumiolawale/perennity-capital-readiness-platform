@@ -476,14 +476,23 @@ export async function fetchEngagement(engagementReference, config) {
   }
 
   // Airtable returns true for checked, undefined (not false) for unchecked.
+  //
+  // ITEM-01 (Sep 2026): the engine signals "no input" with `=== undefined`
+  // ONLY — see sc_8_1_2.ts and dnsh_water.ts, which both fall through to
+  // `Number(raw)` for anything else. A blank numeric cell used to arrive as
+  // null, and Number(null) is 0, which sits under every efficiency threshold
+  // in the methodology. A blank annualised WUE therefore PASSED the DNSH
+  // water test on a water-stressed site, and a blank PUE passed sc_8_1_2 —
+  // false passes on regulated thresholds. Both now go through optionalKey so
+  // an empty cell leaves the key out and the engine reports data_missing.
   const data_points = {
     ecocc_practices_implemented: ecoccValue,
     last_independent_audit_date: fields[FID.LAST_INDEPENDENT_AUDIT_DATE] ?? null,
-    annualised_pue: fields[FID.ANNUALISED_PUE] ?? null,
+    ...optionalKey("annualised_pue", fields[FID.ANNUALISED_PUE]),
     climate_risk_assessment_completed: Boolean(fields[FID.CLIMATE_RISK_COMPLETED]),
     climate_risk_assessment_methodology:
       fields[FID.CLIMATE_RISK_METHODOLOGY] ?? null,
-    wue_annualised: fields[FID.WUE_ANNUALISED] ?? null,
+    ...optionalKey("wue_annualised", fields[FID.WUE_ANNUALISED]),
     site_water_stress_classification: fields[FID.SITE_WATER_STRESS] ?? null,
     ...(v32Value ?? {}),
     // v3.2 explicit columns — override the v32 JSON blob when present. Each
