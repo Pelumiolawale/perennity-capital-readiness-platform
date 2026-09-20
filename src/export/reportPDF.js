@@ -1386,30 +1386,72 @@ function isoToDate(value) {
   return tIndex > 0 ? value.slice(0, tIndex) : value;
 }
 
+// The engine's own contract vocabulary — CriterionContractVerdict in
+// @perennity/engine's renderContract.d.ts. Listed here in reporting order so
+// summariseCriterionVerdicts can be exhaustive over it rather than defaulting,
+// and so an unrecognised verdict is impossible to miss.
+const CONTRACT_VERDICTS = Object.freeze([
+  ["aligned", "aligned"],
+  ["partially_aligned", "partially aligned"],
+  ["not_aligned", "not aligned"],
+  ["insufficient_evidence", "insufficient evidence"],
+  ["not_applicable", "not applicable"],
+]);
+
 /**
- * Compute an indicative score from product_label criterion verdicts. The
- * engine hardcodes indicative_score=0 for product_label frameworks (SFDR
- * Art 8/9, UK SDR Focus/Improvers/Impact — calibration pending), so we
- * derive a percentage here from the criterion-level verdicts.
+ * Summarise a framework's criterion verdicts as a factual count.
+ *
+ * This replaces two things the renderer used to invent.
+ *
+ * It used to derive an OVERALL VERDICT with:
+ *
+ *   hasNotAligned ? "not aligned" : hasPartial ? "partially aligned" : "aligned"
+ *
+ * `insufficient_evidence` appears in neither test, so it fell through to the
+ * final arm. A framework on which EVERY criterion resolved to insufficient
+ * evidence printed "overall verdict aligned" into a client's Conclusions —
+ * and that is exactly the state of a newly created engagement before anyone
+ * has filled anything in. No live engagement tripped it when this was found,
+ * but nothing stopped one doing so.
+ *
+ * It also used to derive an INDICATIVE SCORE, weighting aligned at 1 and
+ * partially_aligned at 0.5. That weighting appears in no methodology document.
+ * The engine returns indicative_score = 0 for product labels deliberately, and
+ * its RenderContract types the top-level field as the literal
+ * `overall_verdict: "calibration_pending"` — it is declining to answer, and
+ * FrameworkFinding carries no per-framework band either. Answering on its
+ * behalf, in the presentation layer, in a document sold as investor-grade, is
+ * the same act as the invented input defaults retired under ITEM-05: a number
+ * the client cannot distinguish from methodology and nobody can audit.
+ *
+ * So: report what each criterion actually said, name no overall verdict, and
+ * say plainly that the single-figure verdict is pending calibration.
  *
  * @param {CriterionVerdict[]} criteria
- * @returns {number} 0–100
+ * @returns {string}
  */
-function computeProductLabelScore(criteria) {
-  const scored = criteria.filter((c) => c.verdict !== "not_applicable");
-  if (scored.length === 0) return 0;
-  const points = scored.reduce((sum, c) => {
-    if (c.verdict === "aligned") return sum + 1;
-    if (c.verdict === "partially_aligned") return sum + 0.5;
-    return sum;
-  }, 0);
-  return Math.round((points / scored.length) * 100);
+export function summariseCriterionVerdicts(criteria) {
+  const counts = new Map(CONTRACT_VERDICTS.map(([id]) => [id, 0]));
+  const unrecognised = [];
+  for (const c of criteria) {
+    if (counts.has(c.verdict)) counts.set(c.verdict, counts.get(c.verdict) + 1);
+    else unrecognised.push(c.verdict);
+  }
+  const parts = CONTRACT_VERDICTS.filter(([id]) => counts.get(id) > 0).map(
+    ([id, label]) => `${counts.get(id)} ${label}`,
+  );
+  // An engine that grows a sixth band must not vanish into a default arm.
+  if (unrecognised.length > 0) {
+    parts.push(`${unrecognised.length} not recognised by this report version`);
+  }
+  return parts.length > 0 ? parts.join(", ") : "no criteria assessed";
 }
 
 /**
- * Build a conclusions narrative filtered to the target framework. For SFDR
- * labels the engine's indicative_score is always 0 (calibration pending), so
- * we recompute it from the renderContract's criterion verdicts.
+ * Build a conclusions narrative filtered to the target framework. For product
+ * labels the engine returns no score and no overall band — deliberately —
+ * so this reports the per-criterion counts and says the single-figure verdict
+ * is pending. See summariseCriterionVerdicts for what it used to do instead.
  *
  * @param {string} narrative
  * @param {string | null | undefined} targetLabel
@@ -1425,14 +1467,17 @@ function filterConclusionsNarrative(narrative, targetLabel, renderContract) {
     Array.isArray(renderContract.framework_findings)
   ) {
     const lines = renderContract.framework_findings.map((f) => {
-      const score = computeProductLabelScore(f.criteria || []);
       const heading = FRAMEWORK_FINDING_HEADINGS[f.framework] || f.framework;
-      const verdicts = (f.criteria || []).map((c) => c.verdict);
-      const hasNotAligned = verdicts.includes("not_aligned");
-      const hasPartial = verdicts.includes("partially_aligned");
-      const overall = hasNotAligned ? "not aligned" : hasPartial ? "partially aligned" : "aligned";
-      return `${heading}: overall verdict ${overall}, indicative score ${score}.`;
+      return `${heading}: ${summariseCriterionVerdicts(f.criteria || [])}.`;
     });
+    // Stated once, not per framework. The engine types RenderContract's
+    // overall_verdict as the literal "calibration_pending"; this is that,
+    // in the register of the document.
+    lines.push(
+      "A single overall verdict for a product-label framework is pending " +
+        "methodology calibration and is deliberately not stated; the " +
+        "per-criterion findings above carry the assessment.",
+    );
     return lines.join(" ");
   }
 
