@@ -481,6 +481,15 @@ function drawSectionPage(
   /** @type {string} */ fallbackHeading,
   /** @type {{ showReferences: boolean }} */ opts,
 ) {
+  // ARTICLE-26: tell the footnote engine which page this body draws on, so
+  // the page-keyed map has an entry for it and any citations it emits bucket
+  // to the right page. Every body-render function must do this; only
+  // drawSFDRSectionPage used to, which is why the Article 26 fixed footnote
+  // reached no other page. renderFootnotesForPage now also falls back to the
+  // fixed footnotes for unregistered pages, so the caveat cannot go missing
+  // again, but registering here keeps per-page citations correct.
+  setCurrentPage(doc.internal.getCurrentPageInfo().pageNumber);
+
   let y = MARGIN_MM;
   y = drawWordmark(doc, y);
   y += 8;
@@ -561,6 +570,15 @@ function drawPueSummaryPage(
   /** @type {jsPDF} */ doc,
   /** @type {PUESummary} */ pue,
 ) {
+  // ARTICLE-26: tell the footnote engine which page this body draws on, so
+  // the page-keyed map has an entry for it and any citations it emits bucket
+  // to the right page. Every body-render function must do this; only
+  // drawSFDRSectionPage used to, which is why the Article 26 fixed footnote
+  // reached no other page. renderFootnotesForPage now also falls back to the
+  // fixed footnotes for unregistered pages, so the caveat cannot go missing
+  // again, but registering here keeps per-page citations correct.
+  setCurrentPage(doc.internal.getCurrentPageInfo().pageNumber);
+
   let y = MARGIN_MM;
   y = drawWordmark(doc, y);
   y += 8;
@@ -864,6 +882,15 @@ function drawEvidenceLogPage(
   /** @type {jsPDF} */ doc,
   /** @type {any[]} */ evidenceLog,
 ) {
+  // ARTICLE-26: tell the footnote engine which page this body draws on, so
+  // the page-keyed map has an entry for it and any citations it emits bucket
+  // to the right page. Every body-render function must do this; only
+  // drawSFDRSectionPage used to, which is why the Article 26 fixed footnote
+  // reached no other page. renderFootnotesForPage now also falls back to the
+  // fixed footnotes for unregistered pages, so the caveat cannot go missing
+  // again, but registering here keeps per-page citations correct.
+  setCurrentPage(doc.internal.getCurrentPageInfo().pageNumber);
+
   let y = MARGIN_MM;
   y = drawWordmark(doc, y);
   y += 8;
@@ -955,6 +982,9 @@ function drawSignatureBlock(doc, output, meta) {
   // around a page break is worse than one on a clean page — and avoids
   // colliding with narrative that overflowed.
   doc.addPage();
+  // Registered after addPage, not before it: this function makes its own
+  // page, so registering on entry would have tagged the previous one.
+  setCurrentPage(doc.internal.getCurrentPageInfo().pageNumber);
   let y = MARGIN_MM;
   y = drawWordmark(doc, y);
   y += 10;
@@ -1090,6 +1120,15 @@ function drawIcDefencePackPage(
   /** @type {jsPDF} */ doc,
   /** @type {ReportOutput} */ output,
 ) {
+  // ARTICLE-26: tell the footnote engine which page this body draws on, so
+  // the page-keyed map has an entry for it and any citations it emits bucket
+  // to the right page. Every body-render function must do this; only
+  // drawSFDRSectionPage used to, which is why the Article 26 fixed footnote
+  // reached no other page. renderFootnotesForPage now also falls back to the
+  // fixed footnotes for unregistered pages, so the caveat cannot go missing
+  // again, but registering here keeps per-page citations correct.
+  setCurrentPage(doc.internal.getCurrentPageInfo().pageNumber);
+
   let y = MARGIN_MM;
   y = drawWordmark(doc, y);
   y += 8;

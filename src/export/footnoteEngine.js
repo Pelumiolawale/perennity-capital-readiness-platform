@@ -331,6 +331,34 @@ export function renderPageFootnotes(doc, y, bounds) {
 }
 
 /**
+ * The fixed footnotes alone, numbered from 1, as they would be seeded onto a
+ * fresh page.
+ *
+ * ARTICLE-26 (Sep 2026). A fixed footnote is by definition one that fires on
+ * EVERY page — that is the whole reason the registry exists, and the Article
+ * 26 scoping caveat is the only thing in it. But renderFootnotesForPage used
+ * to read the page-keyed map and return early for any page with no entry,
+ * and a page only gets an entry if a body-render function called
+ * setCurrentPage(). Exactly one of them did: drawSFDRSectionPage. So the
+ * caveat appeared only on SFDR framework-finding pages, and on an engagement
+ * with no SFDR findings it appeared NOWHERE IN THE DOCUMENT — verified by
+ * generating a report and searching the rendered PDF for the disclaimer
+ * text: zero occurrences, across every page.
+ *
+ * That is a regulatory scoping caveat missing from a document sold as
+ * investor-grade, so it is made unconditional here rather than left to
+ * depend on every future page-drawing function remembering to register
+ * itself. Pages that DO register are unaffected: setCurrentPage already
+ * seeds their accumulator with the fixed footnotes, so this fallback only
+ * ever fires for pages that have none, and nothing is double-rendered.
+ *
+ * @returns {AccumulatedFootnote[]}
+ */
+function fixedFootnotesOnly() {
+  return fixedFootnoteTexts.map((text, i) => ({ n: i + 1, text }));
+}
+
+/**
  * Render the footnotes accumulated for a specific page number. Used by the
  * footer post-pass in reportPDF.js: for each page n, look up its captured
  * accumulator and render. Behaviour is identical to renderPageFootnotes
@@ -344,7 +372,7 @@ export function renderPageFootnotes(doc, y, bounds) {
  * @returns {number}
  */
 export function renderFootnotesForPage(doc, pageNum, y, bounds) {
-  const fns = footnotesByPage.get(pageNum);
+  const fns = footnotesByPage.get(pageNum) ?? fixedFootnotesOnly();
   if (!fns || fns.length === 0) return y;
   // Temporarily swap the accumulator so renderPageFootnotes (which reads
   // from it) emits the right page's footnotes, then restore.
