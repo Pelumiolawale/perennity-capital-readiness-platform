@@ -243,6 +243,39 @@ function singleSelectFieldValue(raw) {
  * @param {EngagementSFDRRaw} engagement
  * @returns {object | undefined}
  */
+/**
+ * Is the engagement's c6 Taxonomy claim quantified — i.e. does it state the
+ * percentage it claims? A claim without one cannot be corroborated against
+ * Activity 8.1, and cannot be scored without either inventing a number or
+ * printing "undefined%" into the client's PDF. See ITEM-05 in buildSFDRInputs.
+ *
+ * @param {{ c6_claimed_percentage?: number }} engagement
+ * @returns {boolean}
+ */
+export function c6ClaimIsQuantified(engagement) {
+  return typeof engagement?.c6_claimed_percentage === "number";
+}
+
+/**
+ * The operator-facing warning for a Taxonomy claim that is ticked but not
+ * quantified, or null when there is nothing to say. Rendered as a banner on
+ * the report page so the cell gets filled before the report is issued.
+ *
+ * @param {{ c6_taxonomy_claim_made?: boolean, c6_claimed_percentage?: number }} engagement
+ * @returns {string | null}
+ */
+export function c6ClaimIncompleteWarning(engagement) {
+  if (!engagement?.c6_taxonomy_claim_made) return null;
+  if (c6ClaimIsQuantified(engagement)) return null;
+  return (
+    "A Taxonomy alignment claim is ticked for this engagement, but " +
+    "'c6 Claimed Percentage' is blank. A claim cannot be corroborated against " +
+    "Activity 8.1 without the percentage being claimed, so criterion 6 is " +
+    "reported as though no claim were made. Enter the claimed percentage, or " +
+    "untick the claim, and re-issue."
+  );
+}
+
 export function buildSFDRInputs(engagement) {
   if (!engagement) return undefined;
 
@@ -287,12 +320,49 @@ export function buildSFDRInputs(engagement) {
   // When false (the common case for Article 8 light-green positioning),
   // omit taxonomy_claim entirely — engine returns not_applicable with
   // the regulatorily-correct "no Taxonomy claim is permitted" rationale.
-  if (engagement.c6_taxonomy_claim_made) {
+  //
+  // ITEM-05 (Sep 2026): the tick used to be enough on its own, and the three
+  // details it needs were invented when blank — 0 percent, a capex basis, and
+  // a published date of today. The date was the damaging one: art8_c6 reads
+  // `daysSince(published_date)` and requires <= 365 to reach aligned, so a
+  // claim with no publication date on record passed the recency test
+  // automatically, every single day. A claimed percentage of 0 likewise made
+  // the overstatement check (claimed - PB-corroborated) impossible to fail.
+  // Between them, an unpublished, unquantified Taxonomy claim could be scored
+  // `aligned`.
+  //
+  // Nothing is invented now. A missing publication date stays missing, and
+  // the engine's `?? POSITIVE_INFINITY` correctly puts the claim out of reach
+  // of aligned; a missing methodology stays missing rather than asserting a
+  // capex basis the developer never stated.
+  //
+  // The claimed percentage is handled differently on purpose. It cannot be
+  // defaulted (that is the false pass) and it cannot simply be left out
+  // either: the engine would compute `undefined - corroborated` and publish
+  // "Claimed Taxonomy alignment: undefined% ... Overstatement: NaNpp" as the
+  // criterion's rationale_text, which buildRenderContract copies into
+  // band_rationale and reportPDF prints verbatim into a paying client's
+  // document. So a ticked-but-unquantified claim is held back and raised as a
+  // warning for the operator to resolve before issuing.
+  //
+  // The complete fix belongs in the engine — art8_c6 wants an `insufficient()`
+  // guard for a claim whose percentage is absent, the way its sibling criteria
+  // already guard their inputs. That is a separate, commit-pinned repo, so it
+  // is flagged rather than done here.
+  if (engagement.c6_taxonomy_claim_made && !c6ClaimIsQuantified(engagement)) {
+    // Held back deliberately — see the note above. c6ClaimIncompleteWarning()
+    // gives the operator the banner; nothing non-schema is smuggled into the
+    // engine's input shape.
+  } else if (engagement.c6_taxonomy_claim_made) {
     const claim = {
-      claimed_percentage: engagement.c6_claimed_percentage ?? 0,
-      methodology: engagement.c6_methodology ?? "capex",
+      claimed_percentage: engagement.c6_claimed_percentage,
       minimum_safeguards_attestation: Boolean(engagement.c6_minimum_safeguards_attestation),
-      published_date: engagement.c6_published_date ?? new Date().toISOString().slice(0, 10),
+      ...(engagement.c6_methodology !== undefined
+        ? { methodology: engagement.c6_methodology }
+        : {}),
+      ...(engagement.c6_published_date !== undefined
+        ? { published_date: engagement.c6_published_date }
+        : {}),
     };
     const breakdown = {};
     if (engagement.c6_breakdown_climate_mitigation_pct !== undefined) breakdown.climate_mitigation = engagement.c6_breakdown_climate_mitigation_pct;

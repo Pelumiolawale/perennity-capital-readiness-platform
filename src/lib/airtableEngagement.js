@@ -166,6 +166,13 @@ export const FID = {
   C2_CEO_TO_MEDIAN_RATIO_DISCLOSED_TRI: "fldD9c8w5vDNXgtmi",
   C2_ESG_LINKED_VARIABLE_PAY_TRI: "fldUyZSyGFiS9OOw1",
   C2_TAX_POLICY_PUBLISHED_TRI: "fld0BctdyUmTPIqj0",
+
+  // ── ITEM-04 (Sep 2026) — climate-risk tri-state ─────────────────────
+  // Same root cause as BUG-01, one criterion over: a checkbox cannot tell
+  // "No, no assessment was done" from "nobody has answered yet", and
+  // dnsh_adaptation treats a definite false as a FAIL. Created 20 Sep 2026;
+  // the legacy CLIMATE_RISK_COMPLETED checkbox stays as a fallback.
+  CLIMATE_RISK_COMPLETED_TRI: "fldkrdg8HKAB8jAUf",
 };
 
 // Child table IDs (PR A2 + A4). Each engagement record can have N linked
@@ -442,15 +449,41 @@ export async function fetchEngagement(engagementReference, config) {
   // ECoCC: structured_list serialised as a JSON array in a multilineText
   // column. Parse safely; on failure, surface a top-level warning the route
   // can render as a banner without blocking the rest of the report.
-  let ecoccValue = null;
+  //
+  // ITEM-03 (Sep 2026): sc_8_1_1 reports data_missing only for `undefined`,
+  // and treats anything else as an answer — a non-array (or an empty array)
+  // becomes practiceCount 0, which is a `fail`: "No European Code of Conduct
+  // practices recorded as implemented." A blank cell therefore made the paid
+  // report ASSERT a failure against the developer where the honest statement
+  // is that we were never given the evidence. That is a materially different
+  // sentence to put in front of an investment committee.
+  //
+  // So the key now reaches the engine only when the cell decoded to a
+  // non-empty array of practices. Anything else — blank, malformed JSON, or
+  // valid JSON that is not a list (`{}`, `"none"`, `null`) — leaves the key
+  // out and the engine says data_missing. Content that failed to decode also
+  // raises the banner warning, so an operator sees that their cell was
+  // ignored rather than silently reading a "no evidence" report.
+  let ecoccValue = undefined;
   let ecoccParseWarning = null;
   const ecoccRaw = fields[FID.ECOCC_PRACTICES_JSON];
   if (ecoccRaw && typeof ecoccRaw === "string" && ecoccRaw.trim().length > 0) {
+    let parsed;
     try {
-      ecoccValue = JSON.parse(ecoccRaw);
+      parsed = JSON.parse(ecoccRaw);
     } catch (e) {
-      ecoccValue = null;
       ecoccParseWarning = e && e.message ? e.message : "JSON.parse failed.";
+    }
+    if (ecoccParseWarning === null) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        ecoccValue = parsed;
+      } else if (Array.isArray(parsed)) {
+        ecoccParseWarning =
+          "ECoCC Practices JSON decoded to an empty list; no practices were recorded, so the criterion is reported as evidence missing.";
+      } else {
+        ecoccParseWarning =
+          "ECoCC Practices JSON must decode to a JSON array of practices.";
+      }
     }
   }
 
@@ -476,14 +509,36 @@ export async function fetchEngagement(engagementReference, config) {
   }
 
   // Airtable returns true for checked, undefined (not false) for unchecked.
+  //
+  // ITEM-01 (Sep 2026): the engine signals "no input" with `=== undefined`
+  // ONLY — see sc_8_1_2.ts and dnsh_water.ts, which both fall through to
+  // `Number(raw)` for anything else. A blank numeric cell used to arrive as
+  // null, and Number(null) is 0, which sits under every efficiency threshold
+  // in the methodology. A blank annualised WUE therefore PASSED the DNSH
+  // water test on a water-stressed site, and a blank PUE passed sc_8_1_2 —
+  // false passes on regulated thresholds. Both now go through optionalKey so
+  // an empty cell leaves the key out and the engine reports data_missing.
   const data_points = {
-    ecocc_practices_implemented: ecoccValue,
+    ...optionalKey("ecocc_practices_implemented", ecoccValue),
     last_independent_audit_date: fields[FID.LAST_INDEPENDENT_AUDIT_DATE] ?? null,
-    annualised_pue: fields[FID.ANNUALISED_PUE] ?? null,
-    climate_risk_assessment_completed: Boolean(fields[FID.CLIMATE_RISK_COMPLETED]),
-    climate_risk_assessment_methodology:
-      fields[FID.CLIMATE_RISK_METHODOLOGY] ?? null,
-    wue_annualised: fields[FID.WUE_ANNUALISED] ?? null,
+    ...optionalKey("annualised_pue", fields[FID.ANNUALISED_PUE]),
+    // ITEM-04: dnsh_adaptation has three distinct paths — undefined is
+    // data_missing, an explicit false is a FAIL ("Climate risk vulnerability
+    // assessment has not been completed"), and true passes or partials.
+    // Boolean(undefined) collapsed the first two, so an unticked box — which
+    // is the state of every record nobody has got to yet — published a DNSH
+    // adaptation failure against the developer on no evidence at all. The
+    // tri-state select now carries a real No when there is one; blank stays
+    // blank. Same shape as triState() for the c2 fields under BUG-01.
+    ...optionalKey(
+      "climate_risk_assessment_completed",
+      triState(fields[FID.CLIMATE_RISK_COMPLETED_TRI], fields[FID.CLIMATE_RISK_COMPLETED]),
+    ),
+    ...optionalKey(
+      "climate_risk_assessment_methodology",
+      fields[FID.CLIMATE_RISK_METHODOLOGY],
+    ),
+    ...optionalKey("wue_annualised", fields[FID.WUE_ANNUALISED]),
     site_water_stress_classification: fields[FID.SITE_WATER_STRESS] ?? null,
     ...(v32Value ?? {}),
     // v3.2 explicit columns — override the v32 JSON blob when present. Each
