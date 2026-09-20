@@ -180,20 +180,133 @@ describe("a renamed lookup field fails legibly (item 17, the loud half)", () => 
     );
   });
 
-  it("a 422 on a child lookup names the link field", async () => {
+  // There used to be a test here asserting that a 422 on a CHILD lookup named
+  // the renamed link field. It has been replaced rather than deleted, because
+  // the failure it pinned can no longer happen: child rows are fetched by
+  // RECORD_ID(), which names no field, so renaming the child table's
+  // `engagement` link cannot produce a 422 or anything else. The replacement
+  // asserts that structural property directly — it is strictly stronger than
+  // asserting a good error message for a failure that is now unreachable.
+  it("no child request references a field by name — nothing to rename", async () => {
+    const urls = [];
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
-      if (String(url).includes("/tbl_test")) {
+      urls.push(String(url));
+      const isParent = String(url).includes("/tbl_test");
+      return /** @type {any} */ ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          records: isParent
+            ? [
+                {
+                  id: "recTEST",
+                  fields: {
+                    [FID.STATUS]: "active",
+                    ...links({ PAI_COVERAGE: 2, ES_CHARACTERISTICS: 1 }),
+                  },
+                },
+              ]
+            : [{ id: "recCHILD0", fields: {} }, { id: "recCHILD1", fields: {} }],
+        }),
+      });
+    });
+    await fetchEngagement(REF, CONFIG);
+
+    const childUrls = urls.filter((u) => !u.includes("/tbl_test"));
+    expect(childUrls.length).toBeGreaterThan(0);
+    for (const u of childUrls) {
+      const decoded = decodeURIComponent(u);
+      expect(decoded, u).toContain("RECORD_ID()");
+      // The two names the old formula depended on.
+      expect(decoded, u).not.toContain("ARRAYJOIN");
+      expect(decoded, u).not.toContain("{engagement}");
+    }
+  });
+
+  it("a table the engagement links nothing in is not queried at all", async () => {
+    const urls = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      urls.push(String(url));
+      const isParent = String(url).includes("/tbl_test");
+      return /** @type {any} */ ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          records: isParent
+            ? [
+                {
+                  id: "recTEST",
+                  fields: { [FID.STATUS]: "active", ...links({ PAI_COVERAGE: 1 }) },
+                },
+              ]
+            : [{ id: "recCHILD0", fields: {} }],
+        }),
+      });
+    });
+    await fetchEngagement(REF, CONFIG);
+
+    // One parent call plus exactly one child call, not one parent plus six.
+    expect(urls).toHaveLength(2);
+    expect(urls[1]).toContain(CHILD_TABLES.PAI_COVERAGE);
+  });
+
+  it("an engagement linking no child rows makes one request in total", async () => {
+    const urls = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      urls.push(String(url));
+      return /** @type {any} */ ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          records: [{ id: "recTEST", fields: { [FID.STATUS]: "active" } }],
+        }),
+      });
+    });
+    await fetchEngagement(REF, CONFIG);
+    expect(urls).toHaveLength(1);
+  });
+
+  it("more than 50 linked rows are chunked, and none is dropped", async () => {
+    // ITEM-18 by construction rather than by detection: 50 ids per request can
+    // never return more than 50 records, so Airtable's 100-record page limit is
+    // unreachable and no `offset` token can go missing.
+    const ids = Array.from({ length: 120 }, (_, i) => `recBULK${i}`);
+    const seen = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const href = String(url);
+      if (href.includes("/tbl_test")) {
         return /** @type {any} */ ({
           ok: true,
           status: 200,
           json: async () => ({
-            records: [{ id: "recTEST", fields: { [FID.STATUS]: "active" } }],
+            records: [
+              {
+                id: "recTEST",
+                fields: {
+                  [FID.STATUS]: "active",
+                  [CHILD_LINK_FIDS.PROJECT_PAI_DATA]: ids,
+                },
+              },
+            ],
           }),
         });
       }
-      return /** @type {any} */ ({ ok: false, status: 422, json: async () => ({}) });
+      const formula = decodeURIComponent(href);
+      const matched = ids.filter((id) => formula.includes(`'${id}'`));
+      seen.push(matched.length);
+      return /** @type {any} */ ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          records: matched.map((id) => ({ id, fields: {} })),
+        }),
+      });
     });
-    await expect(fetchEngagement(REF, CONFIG)).rejects.toThrow(/engagement.*renamed/s);
+
+    const r = await fetchEngagement(REF, CONFIG);
+    expect(r.ok).toBe(true);
+    expect(seen).toEqual([50, 50, 20]);
+    expect(r.engagement.project_pai_data).toHaveLength(120);
   });
 
   it("other statuses keep the generic message", async () => {
