@@ -43,7 +43,7 @@ to a finished competitor, it reads as "scoring works but doesn't compose into a 
   rather than letting `not_applicable` silently propagate.
 
 **Effort:** ≤1 hour for A; ≤30 min for B (PDF copy change).
-**Owner:** Engine team for A (Bolu); app team for B (Dolapo / parallel session).
+**Owner:** Engine team for A (Pels); app team for B (Dolapo / parallel session).
 
 ---
 

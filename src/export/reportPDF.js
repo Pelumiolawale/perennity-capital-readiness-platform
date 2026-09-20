@@ -978,21 +978,24 @@ function drawEvidenceLogPage(
 /* Signature block — foot of Conclusions                                       */
 /* -------------------------------------------------------------------------- */
 
-// The literal placeholder that has stood in for a real signature asset since
-// commit 3 was deferred. Kept in sync with SIGNATURE_PENDING_URI in
-// ReportRoute.jsx; duplicated rather than imported because this module must
-// not depend on a route.
-const SIGNATURE_PENDING_URI = "PLACEHOLDER_DEFER_TO_COMMIT_3";
-
 /**
- * Draw the signature block at the foot of the current page, or on a fresh
- * page when there is not enough room above the footer band.
+ * Draw the signature page.
  *
- * When the engagement carries a real signature asset (a base64 data URI in
- * `Signatory Signature Block URI`), it is embedded above the rule. When it is
- * still the deferred placeholder, the block says so in plain words rather
- * than printing the raw token or, worse, implying a signature that is not
- * there — brief C2 option B.
+ * PB reports are signed in wet ink. Dolapo prints the PDF, signs the rule by
+ * hand, and that signed copy is what is issued — so this page's job is to
+ * leave a clean, unambiguous space to sign in, not to embed anything.
+ *
+ * This replaced a design that tried to embed a signature image and, failing to
+ * find one, stamped "NOT YET COUNTERSIGNED" in red on the page. That warning
+ * existed for a good reason — a reader must never mistake an unsigned draft
+ * for a countersigned opinion — but under wet-ink signing there is never an
+ * asset to find, so it would have fired on every report we ever produced. A
+ * warning that is always on is a warning nobody reads.
+ *
+ * The protection is structural now instead: an unsigned copy has a visibly
+ * empty rule, and nobody needs to be told that a blank line is blank. The
+ * caption states what makes a copy binding, so the inference is not left to
+ * the reader.
  *
  * @param {jsPDF} doc
  * @param {ReportOutput} output
@@ -1000,21 +1003,12 @@ const SIGNATURE_PENDING_URI = "PLACEHOLDER_DEFER_TO_COMMIT_3";
  */
 function drawSignatureBlock(doc, output, meta) {
   const signatory = output.signatory || {};
-  const uri = signatory.signature_block_uri;
-  const hasImage =
-    typeof uri === "string" && uri.startsWith("data:image/") && uri.length > 32;
-  const isPending = !hasImage;
 
-  const IMAGE_HEIGHT_MM = 18;
-  const blockHeight = 8 + (hasImage ? IMAGE_HEIGHT_MM + 4 : 14) + 6 + 5 + 5 + 10;
-
-  // drawSectionPage does not report where it stopped, so the block always
-  // starts on its own page. That keeps it unambiguous — a signature wrapping
-  // around a page break is worse than one on a clean page — and avoids
-  // colliding with narrative that overflowed.
+  // Its own page. A signature wrapping around a page break is worse than one
+  // on a clean page, and this avoids colliding with overflowed narrative.
   doc.addPage();
-  // Registered after addPage, not before it: this function makes its own
-  // page, so registering on entry would have tagged the previous one.
+  // Registered after addPage, not before: this function makes its own page,
+  // so registering on entry would have tagged the previous one.
   setCurrentPage(doc.internal.getCurrentPageInfo().pageNumber);
   let y = MARGIN_MM;
   y = drawWordmark(doc, y);
@@ -1034,28 +1028,14 @@ function drawSignatureBlock(doc, output, meta) {
     CONTENT_WIDTH_MM,
   );
   doc.text(preamble, MARGIN_MM, y);
-  y += preamble.length * 5 + 10;
+  y += preamble.length * 5 + 12;
 
+  // Clear space to sign into. Sized for a hand signature rather than for a
+  // rendered image — the old 18mm image slot left a cramped line to sign on.
   const SIG_RULE_WIDTH_MM = 70;
+  const SIG_CLEAR_SPACE_MM = 22;
+  y += SIG_CLEAR_SPACE_MM;
 
-  if (hasImage) {
-    try {
-      doc.addImage(uri, "PNG", MARGIN_MM, y, SIG_RULE_WIDTH_MM, IMAGE_HEIGHT_MM);
-      y += IMAGE_HEIGHT_MM + 2;
-    } catch {
-      // A malformed data URI must not take the whole report down: fall
-      // through to the pending treatment, which is honest about what is
-      // missing.
-      setText(doc, INK.fail);
-      applyType(doc, TYPE.caption);
-      doc.text("Signature image could not be embedded.", MARGIN_MM, y);
-      y += 6;
-    }
-  } else {
-    y += 12;
-  }
-
-  // Signature rule.
   doc.setDrawColor(INK.navy[0], INK.navy[1], INK.navy[2]);
   doc.setLineWidth(0.3);
   doc.line(MARGIN_MM, y, MARGIN_MM + SIG_RULE_WIDTH_MM, y);
@@ -1069,26 +1049,18 @@ function drawSignatureBlock(doc, output, meta) {
   setText(doc, INK.inkMuted);
   applyType(doc, TYPE.body);
   doc.text(coalesce(signatory.title), MARGIN_MM, y);
-  y += 8;
+  y += 10;
 
-  if (isPending) {
-    // Explicit, and deliberately not subtle. A reader must never be able to
-    // mistake an unsigned draft for a countersigned opinion.
-    setText(doc, INK.fail);
-    applyType(doc, TYPE.bodyLabel);
-    doc.text("NOT YET COUNTERSIGNED", MARGIN_MM, y);
-    y += 5;
-    setText(doc, INK.inkMuted);
-    applyType(doc, TYPE.caption);
-    const pendingNote = doc.splitTextToSize(
-      "No authorised signature block has been recorded against this engagement. " +
-        "This document is a draft for internal review and must not be issued to a " +
-        "client or relied upon by a third party until it is signed.",
-      CONTENT_WIDTH_MM,
-    );
-    doc.text(pendingNote, MARGIN_MM, y);
-    y += pendingNote.length * 4 + 6;
-  }
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.caption);
+  const issuanceNote = doc.splitTextToSize(
+    "This report is issued under manuscript signature. It takes effect only as a " +
+      "copy signed above by the named signatory; an unsigned copy is a draft and " +
+      "is not an issued opinion.",
+    CONTENT_WIDTH_MM,
+  );
+  doc.text(issuanceNote, MARGIN_MM, y);
+  y += issuanceNote.length * 4 + 8;
 
   setText(doc, INK.inkMuted);
   applyType(doc, TYPE.footnote);
@@ -1109,24 +1081,6 @@ function drawSignatureBlock(doc, output, meta) {
       (meta.engagement_letter_date ? ` (${String(meta.engagement_letter_date).slice(0, 10)})` : ""),
     MARGIN_MM,
     y,
-  );
-}
-
-/**
- * Whether a signatory object is backed by a real signature asset. Exported
- * for tests and for the report page, which must not claim "Signed" for a
- * document carrying the pending notice.
- *
- * @param {{signature_block_uri?: string|null} | null | undefined} signatory
- * @returns {boolean}
- */
-export function signatureBlockIsReal(signatory) {
-  const uri = signatory?.signature_block_uri;
-  return (
-    typeof uri === "string" &&
-    uri.length > 0 &&
-    uri !== SIGNATURE_PENDING_URI &&
-    uri.startsWith("data:image/")
   );
 }
 

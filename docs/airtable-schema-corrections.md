@@ -4,8 +4,8 @@ Changes to the **Airtable base itself** (`appasxX7eC3QsmxeM`), not to the repo. 
 here because nothing in the codebase would otherwise show them, and because two of them
 document defects worth remembering rather than just fixing.
 
-Seventeen description edits and one option merge were applied, each verified by reading
-the schema back afterwards. Nothing on the base is outstanding.
+Eighteen description edits and one option merge were applied, each verified by reading the
+schema back afterwards. Nothing on the base is outstanding.
 
 None of these edits changes a verdict by itself. They matter because each one was an
 instruction an operator follows, and following it produced a wrong engagement — which
@@ -99,6 +99,20 @@ would have led someone to do — would have stripped `pue` from 7 live engagemen
 their UK SDR verdicts, because deleting a select option removes it from every record using
 it. The general lesson is the one in CLAUDE.md: identity over position, including when the
 identities are invisible in the tool you happen to be looking through.
+
+---
+
+## 6. `Signatory Signature Block URI` — marked as no longer read ✅
+
+Added 20 Sep 2026, after the decision to sign reports by hand.
+
+The app stopped reading this column: there is no signature asset, so nothing consumes it,
+and a field read but never used is the shape CLAUDE.md rule 4 warns about. The description
+now says it is ignored and should be left blank, and that re-enabling a digital signing
+path is a new feature rather than a switch to flip back on.
+
+The column is kept rather than deleted so anything already typed into it is not destroyed.
+`Signatory Name` and `Signatory Title` remain live overrides.
 
 ---
 

@@ -111,7 +111,6 @@ function outputFixture(overrides = {}) {
     signatory: {
       name: "SIGNATORYNAMESENTINEL",
       title: "SIGNATORYTITLESENTINEL",
-      signature_block_uri: "PLACEHOLDER_DEFER_TO_COMMIT_3",
     },
     evidence_log: [],
     ic_defence_pack: { pack_version: "v1", questions: [] },

@@ -46,7 +46,6 @@ export const FID = {
   EVIDENCE_DOCUMENTS: "fldwz4Gcfx35bXxzy",
   SIGNATORY_NAME: "fldLkslrH9GckfPIf",
   SIGNATORY_TITLE: "fld4Or0uEUFg5xG3o",
-  SIGNATORY_SIG_URI: "fldRYnapeizVC4Hd5",
   // Methodology v3.2: a single multilineText column carries every new
   // data_point as one JSON object. Future v3.x keys are added inside that
   // blob without touching the Airtable schema.
@@ -485,12 +484,16 @@ function parseEvidenceDocuments(raw) {
   return { documents, warnings };
 }
 
+// Only name and title. The `Signatory Signature Block URI` column is no
+// longer read: PB reports are signed in wet ink, so there is no asset to
+// embed, and a value read but never used is the shape CLAUDE.md rule 4 warns
+// about. The column is kept in Airtable, marked deprecated, so that anything
+// already typed into it is not silently destroyed.
 function normalizeSignatoryOverrides(fields) {
   const name = fields[FID.SIGNATORY_NAME] || null;
   const title = fields[FID.SIGNATORY_TITLE] || null;
-  const signature_block_uri = fields[FID.SIGNATORY_SIG_URI] || null;
-  if (!name && !title && !signature_block_uri) return null;
-  return { name, title, signature_block_uri };
+  if (!name && !title) return null;
+  return { name, title };
 }
 
 /**

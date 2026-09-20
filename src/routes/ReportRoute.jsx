@@ -59,17 +59,14 @@ import { generateReportPDF } from "../export/reportPDF.js";
 // "Chief Executive Officer". The runbook is the one that is now out of date
 // on this point, not the code.
 //
-// SIGNATURE_PENDING_URI is the literal placeholder that has been in
-// place since commit 3 was deferred. It is exported so the PDF can
-// recognise it and print an explicit "not yet countersigned" notice
-// instead of the raw token — option B of brief C2, the lower-risk
-// default until a real signature asset exists.
-export const SIGNATURE_PENDING_URI = "PLACEHOLDER_DEFER_TO_COMMIT_3";
-
+// PB reports are signed in wet ink: the PDF is printed, signed by hand and
+// that copy is what is issued. So there is no signature asset, and no
+// placeholder standing in for one — the signature page leaves a rule to sign
+// on. See drawSignatureBlock in src/export/reportPDF.js for why the old
+// "NOT YET COUNTERSIGNED" treatment was removed rather than kept as a default.
 const DEFAULT_SIGNATORY = {
   name: "Dolapo Faseun",
   title: "Chief Executive Officer, Perennity Bridge",
-  signature_block_uri: SIGNATURE_PENDING_URI,
 };
 
 /**
@@ -83,30 +80,15 @@ const DEFAULT_SIGNATORY = {
  * name. The three cells are independent overrides and are now treated as
  * such: each blank cell falls back to the default on its own.
  *
- * @param {{name?: string|null, title?: string|null, signature_block_uri?: string|null} | null | undefined} overrides
- * @returns {{name: string, title: string, signature_block_uri: string}}
+ * @param {{name?: string|null, title?: string|null} | null | undefined} overrides
+ * @returns {{name: string, title: string}}
  */
 export function resolveSignatory(overrides) {
   const o = overrides || {};
   return {
     name: o.name || DEFAULT_SIGNATORY.name,
     title: o.title || DEFAULT_SIGNATORY.title,
-    signature_block_uri:
-      o.signature_block_uri || DEFAULT_SIGNATORY.signature_block_uri,
   };
-}
-
-/**
- * Is this signatory backed by a real signature asset, or is it still the
- * deferred placeholder? Drives both the PDF's signature block and the
- * "Signed" claim on the report page.
- *
- * @param {{signature_block_uri?: string|null}} signatory
- * @returns {boolean}
- */
-export function hasRealSignatureBlock(signatory) {
-  const uri = signatory?.signature_block_uri;
-  return typeof uri === "string" && uri.length > 0 && uri !== SIGNATURE_PENDING_URI;
 }
 
 // Engine commit SHA — injected at build time by vite.config.js's define
@@ -451,16 +433,6 @@ export default function ReportRoute() {
           {engagement.v32_parse_warning}
         </div>
       )}
-      {!hasRealSignatureBlock(
-        resolveSignatory(engagement?.signatory_overrides),
-      ) && (
-        <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
-          <strong>Not yet countersigned:</strong> no authorised signature block
-          is recorded for this engagement, so the PDF carries a
-          &ldquo;NOT YET COUNTERSIGNED&rdquo; notice. It is a draft for internal
-          review and must not be issued to a client.
-        </div>
-      )}
       {(engagement?.schema_warnings ?? []).map((w, i) => (
         <div
           key={i}
@@ -478,12 +450,11 @@ export default function ReportRoute() {
 
       <h1 className="text-3xl font-bold mb-2">Report ready</h1>
       <p className="text-sm text-[#5C6B5C] mb-8">
-        {/* ITEM-11: the page used to say "Signed" unconditionally, while the
-            PDF carried no signature block at all. It now only claims a
-            signature when there is one to claim. */}
-        {hasRealSignatureBlock(resolveSignatory(engagement?.signatory_overrides))
-          ? "Investor-grade. Signed. Issued under your engagement reference."
-          : "Investor-grade. Issued under your engagement reference."}
+        {/* ITEM-11: this used to claim "Signed" unconditionally while the PDF
+            carried no signature block at all. It does not claim it now,
+            because the download never is: the PDF is printed and signed by
+            hand, and that copy is the issued opinion. */}
+        Investor-grade. Issued under your engagement reference.
       </p>
 
       <div className="bg-[#F8F6F2] border border-[#DDD5CA] rounded-xl p-6 mb-6">
@@ -525,6 +496,13 @@ export default function ReportRoute() {
             </button>
           )}
         </div>
+        {/* Replaces the permanent "Not yet countersigned" warning banner. The
+            PDF is always unsigned at download — that is the process, not a
+            fault — so this says what to do rather than warning about it. */}
+        <p className="text-xs text-[#8A957F] text-center max-w-md">
+          The PDF downloads unsigned. Print the signature page, sign it by
+          hand, and issue that signed copy — an unsigned copy is a draft.
+        </p>
       </div>
 
       <div className="mt-10 pt-5 border-t border-[#DDD5CA] text-xs text-[#8A957F] leading-relaxed">
