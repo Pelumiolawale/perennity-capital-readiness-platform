@@ -158,3 +158,51 @@ describe("blank numeric cells never read as zero (item 1)", () => {
     expect(engagement.project_input.data_points.annualised_pue).toBe(1.22);
   });
 });
+
+describe("a blank ECoCC list is evidence missing, not a failure (item 3)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("no ECoCC cell at all → data_missing, not fail", async () => {
+    const { engagement, run } = await scoreEUTax({});
+    const ecocc = criterion(run, "ecocc");
+    expect(ecocc.verdict).toBe("data_missing");
+    expect("ecocc_practices_implemented" in engagement.project_input.data_points).toBe(false);
+  });
+
+  it("a real list of practices still scores on its merits", async () => {
+    const { engagement, run } = await scoreEUTax({
+      [FID.ECOCC_PRACTICES_JSON]: JSON.stringify(["5.1.1", "5.2.1", "5.3.1"]),
+    });
+    expect(engagement.project_input.data_points.ecocc_practices_implemented)
+      .toEqual(["5.1.1", "5.2.1", "5.3.1"]);
+    // Practices are present, so the verdict moves off data_missing for the
+    // list itself and on to the audit-document requirement.
+    expect(criterion(run, "ecocc").gap_summary).not.toMatch(
+      /No European Code of Conduct practices/,
+    );
+  });
+
+  it("an empty JSON array is evidence missing, and says so", async () => {
+    const { engagement, run } = await scoreEUTax({
+      [FID.ECOCC_PRACTICES_JSON]: "[]",
+    });
+    expect(criterion(run, "ecocc").verdict).toBe("data_missing");
+    expect(engagement.ecocc_parse_warning).toMatch(/empty list/);
+  });
+
+  it("malformed JSON is evidence missing and raises the banner", async () => {
+    const { engagement, run } = await scoreEUTax({
+      [FID.ECOCC_PRACTICES_JSON]: "{not json",
+    });
+    expect(criterion(run, "ecocc").verdict).toBe("data_missing");
+    expect(engagement.ecocc_parse_warning).toBeTruthy();
+  });
+
+  it("valid JSON that is not a list is evidence missing, not zero practices", async () => {
+    const { engagement, run } = await scoreEUTax({
+      [FID.ECOCC_PRACTICES_JSON]: '"none"',
+    });
+    expect(criterion(run, "ecocc").verdict).toBe("data_missing");
+    expect(engagement.ecocc_parse_warning).toMatch(/must decode to a JSON array/);
+  });
+});

@@ -442,15 +442,41 @@ export async function fetchEngagement(engagementReference, config) {
   // ECoCC: structured_list serialised as a JSON array in a multilineText
   // column. Parse safely; on failure, surface a top-level warning the route
   // can render as a banner without blocking the rest of the report.
-  let ecoccValue = null;
+  //
+  // ITEM-03 (Sep 2026): sc_8_1_1 reports data_missing only for `undefined`,
+  // and treats anything else as an answer — a non-array (or an empty array)
+  // becomes practiceCount 0, which is a `fail`: "No European Code of Conduct
+  // practices recorded as implemented." A blank cell therefore made the paid
+  // report ASSERT a failure against the developer where the honest statement
+  // is that we were never given the evidence. That is a materially different
+  // sentence to put in front of an investment committee.
+  //
+  // So the key now reaches the engine only when the cell decoded to a
+  // non-empty array of practices. Anything else — blank, malformed JSON, or
+  // valid JSON that is not a list (`{}`, `"none"`, `null`) — leaves the key
+  // out and the engine says data_missing. Content that failed to decode also
+  // raises the banner warning, so an operator sees that their cell was
+  // ignored rather than silently reading a "no evidence" report.
+  let ecoccValue = undefined;
   let ecoccParseWarning = null;
   const ecoccRaw = fields[FID.ECOCC_PRACTICES_JSON];
   if (ecoccRaw && typeof ecoccRaw === "string" && ecoccRaw.trim().length > 0) {
+    let parsed;
     try {
-      ecoccValue = JSON.parse(ecoccRaw);
+      parsed = JSON.parse(ecoccRaw);
     } catch (e) {
-      ecoccValue = null;
       ecoccParseWarning = e && e.message ? e.message : "JSON.parse failed.";
+    }
+    if (ecoccParseWarning === null) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        ecoccValue = parsed;
+      } else if (Array.isArray(parsed)) {
+        ecoccParseWarning =
+          "ECoCC Practices JSON decoded to an empty list; no practices were recorded, so the criterion is reported as evidence missing.";
+      } else {
+        ecoccParseWarning =
+          "ECoCC Practices JSON must decode to a JSON array of practices.";
+      }
     }
   }
 
@@ -486,7 +512,7 @@ export async function fetchEngagement(engagementReference, config) {
   // false passes on regulated thresholds. Both now go through optionalKey so
   // an empty cell leaves the key out and the engine reports data_missing.
   const data_points = {
-    ecocc_practices_implemented: ecoccValue,
+    ...optionalKey("ecocc_practices_implemented", ecoccValue),
     last_independent_audit_date: fields[FID.LAST_INDEPENDENT_AUDIT_DATE] ?? null,
     ...optionalKey("annualised_pue", fields[FID.ANNUALISED_PUE]),
     climate_risk_assessment_completed: Boolean(fields[FID.CLIMATE_RISK_COMPLETED]),
