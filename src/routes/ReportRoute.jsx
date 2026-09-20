@@ -45,13 +45,67 @@ import {
 import { generateReportPDF } from "../export/reportPDF.js";
 
 // Default signatory when the engagement record has no overrides set.
-// Commit 3 will replace the placeholder URI with the real pre-signed
-// PDF segment once the design lands.
+//
+// ITEM-11 / ITEM-13 (Sep 2026). Two things were wrong here.
+//
+// The name disagrees with docs/runbook-paid-reports.md, which says the
+// report is signed by "Dolapo Faseun, Founder/Managing Director". The
+// runbook and the company mailbox (dfaseun@) agree with each other and
+// disagree with this constant. Changing a signatory on an
+// audit-bearing document is the founder's call, not a code cleanup, so
+// the name is left exactly as it was and flagged rather than silently
+// corrected. See docs/paid-report-ux-cleanup-brief.md C2: "The parallel
+// session should NOT pick a signatory; route this back to the founder."
+//
+// SIGNATURE_PENDING_URI is the literal placeholder that has been in
+// place since commit 3 was deferred. It is exported so the PDF can
+// recognise it and print an explicit "not yet countersigned" notice
+// instead of the raw token — option B of brief C2, the lower-risk
+// default until a real signature asset exists.
+export const SIGNATURE_PENDING_URI = "PLACEHOLDER_DEFER_TO_COMMIT_3";
+
 const DEFAULT_SIGNATORY = {
   name: "Dolapo Olawale",
   title: "Chief Executive Officer, Perennity Bridge",
-  signature_block_uri: "PLACEHOLDER_DEFER_TO_COMMIT_3",
+  signature_block_uri: SIGNATURE_PENDING_URI,
 };
+
+/**
+ * Merge the engagement's signatory overrides onto the default, field by
+ * field.
+ *
+ * ITEM-13: this used to be `overrides ?? DEFAULT_SIGNATORY`, and
+ * normalizeSignatoryOverrides returns an object as soon as ANY ONE of the
+ * three Airtable cells is filled — with null in the other two. So filling
+ * in just a title replaced the whole default and blanked the signatory's
+ * name. The three cells are independent overrides and are now treated as
+ * such: each blank cell falls back to the default on its own.
+ *
+ * @param {{name?: string|null, title?: string|null, signature_block_uri?: string|null} | null | undefined} overrides
+ * @returns {{name: string, title: string, signature_block_uri: string}}
+ */
+export function resolveSignatory(overrides) {
+  const o = overrides || {};
+  return {
+    name: o.name || DEFAULT_SIGNATORY.name,
+    title: o.title || DEFAULT_SIGNATORY.title,
+    signature_block_uri:
+      o.signature_block_uri || DEFAULT_SIGNATORY.signature_block_uri,
+  };
+}
+
+/**
+ * Is this signatory backed by a real signature asset, or is it still the
+ * deferred placeholder? Drives both the PDF's signature block and the
+ * "Signed" claim on the report page.
+ *
+ * @param {{signature_block_uri?: string|null}} signatory
+ * @returns {boolean}
+ */
+export function hasRealSignatureBlock(signatory) {
+  const uri = signatory?.signature_block_uri;
+  return typeof uri === "string" && uri.length > 0 && uri !== SIGNATURE_PENDING_URI;
+}
 
 // Engine commit SHA — injected at build time by vite.config.js's define
 // block, which parses it from package-lock.json's @perennity/engine entry.
@@ -119,8 +173,9 @@ export default function ReportRoute() {
         });
         const renderer = new ReportRenderer({
           activities: BUNDLED_ACTIVITIES,
-          signatory:
-            entitlement.engagement.signatory_overrides ?? DEFAULT_SIGNATORY,
+          signatory: resolveSignatory(
+            entitlement.engagement.signatory_overrides,
+          ),
           disclaimer: ARTICLE_26_DISCLAIMER,
           // Deliberately ignore the engine's run_id arg: the engine generates a
           // fresh UUID per render (useful internal serial for replay/debug),
@@ -320,6 +375,16 @@ export default function ReportRoute() {
           {engagement.v32_parse_warning}
         </div>
       )}
+      {!hasRealSignatureBlock(
+        resolveSignatory(engagement?.signatory_overrides),
+      ) && (
+        <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
+          <strong>Not yet countersigned:</strong> no authorised signature block
+          is recorded for this engagement, so the PDF carries a
+          &ldquo;NOT YET COUNTERSIGNED&rdquo; notice. It is a draft for internal
+          review and must not be issued to a client.
+        </div>
+      )}
       {c6ClaimIncompleteWarning(engagement) && (
         <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
           <strong>Taxonomy claim incomplete:</strong>{" "}
@@ -329,7 +394,12 @@ export default function ReportRoute() {
 
       <h1 className="text-3xl font-bold mb-2">Report ready</h1>
       <p className="text-sm text-[#5C6B5C] mb-8">
-        Investor-grade. Signed. Issued under your engagement reference.
+        {/* ITEM-11: the page used to say "Signed" unconditionally, while the
+            PDF carried no signature block at all. It now only claims a
+            signature when there is one to claim. */}
+        {hasRealSignatureBlock(resolveSignatory(engagement?.signatory_overrides))
+          ? "Investor-grade. Signed. Issued under your engagement reference."
+          : "Investor-grade. Issued under your engagement reference."}
       </p>
 
       <div className="bg-[#F8F6F2] border border-[#DDD5CA] rounded-xl p-6 mb-6">
