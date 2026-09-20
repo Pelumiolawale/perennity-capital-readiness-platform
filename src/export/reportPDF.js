@@ -266,14 +266,40 @@ export async function generateReportPDF(output, engagementMetadata, renderContra
   stampSection("Residual Disclosure");
   drawSectionPage(doc, residual, "Residual Disclosure", { showReferences: false });
 
+  // ITEM-11: the signature block. `output.signatory` has been a required
+  // field since the first version of this generator (requireField above) and
+  // was never drawn on any page — so the report page promised "Investor-grade.
+  // Signed." and the PDF it handed over carried no signature at all. The cover
+  // comment says the signatory "moves to the Executive Summary signature
+  // line", but there is no Executive Summary page and never was.
+  //
+  // It sits after Residual Disclosure and before the appendices: the
+  // signature has to follow the whole opinion, including its caveats, the way
+  // a fairness opinion is signed. Signing ahead of the residual disclosure
+  // would mean signing something the reader has not been shown yet.
+  drawSignatureBlock(doc, output, meta);
+  stampSection("Signature");
+
   // Page 7 — evidence log
   doc.addPage();
   stampSection("Evidence Log");
   drawEvidenceLogPage(doc, output.evidence_log || []);
 
-  // Page 8 — IC Defence Pack + provenance block at bottom
+  // Final page — IC Defence Pack (when it has content) + provenance block.
+  //
+  // ITEM-12: the engine's buildDefencePack returns a versioned stub with an
+  // empty questions[] and will until the Q&A library ships. The page used to
+  // print "Q&A library in development. See engine repo for status." into a
+  // client's copy — an empty section that names our internal repo, in a
+  // document sold as investor-grade. The Q&A content is methodology work and
+  // is not invented here (docs/paid-report-ux-cleanup-brief.md C3); what is
+  // fixed is that an empty section is no longer published. The page falls back
+  // to Provenance alone, which is audit-bearing and has to be on it either
+  // way. As soon as the engine emits questions, the section returns by itself.
   doc.addPage();
-  stampSection("IC Defence Pack");
+  stampSection(
+    icDefencePackHasContent(output) ? "IC Defence Pack" : "Provenance",
+  );
   drawIcDefencePackPage(doc, output);
 
   // 1.4e: flush the in-flight footnote accumulator into the page-keyed
@@ -891,8 +917,174 @@ function drawEvidenceLogPage(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Signature block — foot of Conclusions                                       */
+/* -------------------------------------------------------------------------- */
+
+// The literal placeholder that has stood in for a real signature asset since
+// commit 3 was deferred. Kept in sync with SIGNATURE_PENDING_URI in
+// ReportRoute.jsx; duplicated rather than imported because this module must
+// not depend on a route.
+const SIGNATURE_PENDING_URI = "PLACEHOLDER_DEFER_TO_COMMIT_3";
+
+/**
+ * Draw the signature block at the foot of the current page, or on a fresh
+ * page when there is not enough room above the footer band.
+ *
+ * When the engagement carries a real signature asset (a base64 data URI in
+ * `Signatory Signature Block URI`), it is embedded above the rule. When it is
+ * still the deferred placeholder, the block says so in plain words rather
+ * than printing the raw token or, worse, implying a signature that is not
+ * there — brief C2 option B.
+ *
+ * @param {jsPDF} doc
+ * @param {ReportOutput} output
+ * @param {Record<string, unknown>} meta
+ */
+function drawSignatureBlock(doc, output, meta) {
+  const signatory = output.signatory || {};
+  const uri = signatory.signature_block_uri;
+  const hasImage =
+    typeof uri === "string" && uri.startsWith("data:image/") && uri.length > 32;
+  const isPending = !hasImage;
+
+  const IMAGE_HEIGHT_MM = 18;
+  const blockHeight = 8 + (hasImage ? IMAGE_HEIGHT_MM + 4 : 14) + 6 + 5 + 5 + 10;
+
+  // drawSectionPage does not report where it stopped, so the block always
+  // starts on its own page. That keeps it unambiguous — a signature wrapping
+  // around a page break is worse than one on a clean page — and avoids
+  // colliding with narrative that overflowed.
+  doc.addPage();
+  let y = MARGIN_MM;
+  y = drawWordmark(doc, y);
+  y += 10;
+
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.sectionHead);
+  doc.text("Signature", MARGIN_MM, y);
+  y += 10;
+
+  setText(doc, INK.ink);
+  applyType(doc, TYPE.body);
+  const preamble = doc.splitTextToSize(
+    "Signed for and on behalf of Perennity Bridge Limited. This opinion is issued " +
+      "under the engagement reference below, and is given subject to the scope, " +
+      "methodology and disclaimer that form part of this report.",
+    CONTENT_WIDTH_MM,
+  );
+  doc.text(preamble, MARGIN_MM, y);
+  y += preamble.length * 5 + 10;
+
+  const SIG_RULE_WIDTH_MM = 70;
+
+  if (hasImage) {
+    try {
+      doc.addImage(uri, "PNG", MARGIN_MM, y, SIG_RULE_WIDTH_MM, IMAGE_HEIGHT_MM);
+      y += IMAGE_HEIGHT_MM + 2;
+    } catch {
+      // A malformed data URI must not take the whole report down: fall
+      // through to the pending treatment, which is honest about what is
+      // missing.
+      setText(doc, INK.fail);
+      applyType(doc, TYPE.caption);
+      doc.text("Signature image could not be embedded.", MARGIN_MM, y);
+      y += 6;
+    }
+  } else {
+    y += 12;
+  }
+
+  // Signature rule.
+  doc.setDrawColor(INK.navy[0], INK.navy[1], INK.navy[2]);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN_MM, y, MARGIN_MM + SIG_RULE_WIDTH_MM, y);
+  y += 5;
+
+  setText(doc, INK.navy);
+  applyType(doc, TYPE.bodyLabel);
+  doc.text(coalesce(signatory.name), MARGIN_MM, y);
+  y += 5;
+
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.body);
+  doc.text(coalesce(signatory.title), MARGIN_MM, y);
+  y += 8;
+
+  if (isPending) {
+    // Explicit, and deliberately not subtle. A reader must never be able to
+    // mistake an unsigned draft for a countersigned opinion.
+    setText(doc, INK.fail);
+    applyType(doc, TYPE.bodyLabel);
+    doc.text("NOT YET COUNTERSIGNED", MARGIN_MM, y);
+    y += 5;
+    setText(doc, INK.inkMuted);
+    applyType(doc, TYPE.caption);
+    const pendingNote = doc.splitTextToSize(
+      "No authorised signature block has been recorded against this engagement. " +
+        "This document is a draft for internal review and must not be issued to a " +
+        "client or relied upon by a third party until it is signed.",
+      CONTENT_WIDTH_MM,
+    );
+    doc.text(pendingNote, MARGIN_MM, y);
+    y += pendingNote.length * 4 + 6;
+  }
+
+  setText(doc, INK.inkMuted);
+  applyType(doc, TYPE.footnote);
+  doc.text(
+    `Date of issue: ${coalesce(String(output.generated_at || "").slice(0, 10) || null)}`,
+    MARGIN_MM,
+    y,
+  );
+  y += 4;
+  doc.text(
+    `Engagement reference: ${coalesce(output.engagement_reference)}`,
+    MARGIN_MM,
+    y,
+  );
+  y += 4;
+  doc.text(
+    `Engagement letter countersigned: ${boolLabel(meta.engagement_letter_signed ?? null)}` +
+      (meta.engagement_letter_date ? ` (${String(meta.engagement_letter_date).slice(0, 10)})` : ""),
+    MARGIN_MM,
+    y,
+  );
+}
+
+/**
+ * Whether a signatory object is backed by a real signature asset. Exported
+ * for tests and for the report page, which must not claim "Signed" for a
+ * document carrying the pending notice.
+ *
+ * @param {{signature_block_uri?: string|null} | null | undefined} signatory
+ * @returns {boolean}
+ */
+export function signatureBlockIsReal(signatory) {
+  const uri = signatory?.signature_block_uri;
+  return (
+    typeof uri === "string" &&
+    uri.length > 0 &&
+    uri !== SIGNATURE_PENDING_URI &&
+    uri.startsWith("data:image/")
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Page 8 — IC Defence Pack + provenance                                       */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * Does the engine's defence pack actually carry any questions? Exported so
+ * the page-assembly code can name the final page honestly and so tests can
+ * assert on the empty case without reaching into the PDF.
+ *
+ * @param {ReportOutput} output
+ * @returns {boolean}
+ */
+export function icDefencePackHasContent(output) {
+  const questions = output?.ic_defence_pack?.questions;
+  return Array.isArray(questions) && questions.length > 0;
+}
 
 function drawIcDefencePackPage(
   /** @type {jsPDF} */ doc,
@@ -902,31 +1094,22 @@ function drawIcDefencePackPage(
   y = drawWordmark(doc, y);
   y += 8;
 
-  // Heading
-  setText(doc, INK.navy);
-  applyType(doc, TYPE.sectionHead);
-  doc.text("IC Defence Pack — Q&A", MARGIN_MM, y);
-  y += 8;
-
   const pack = output.ic_defence_pack || { pack_version: "", questions: [] };
-
-  // Pack version subheading
-  setText(doc, INK.inkMuted);
-  applyType(doc, TYPE.footnote);
-  doc.text(`Pack version: ${coalesce(pack.pack_version)}`, MARGIN_MM, y);
-  y += 8;
-
   const questions = Array.isArray(pack.questions) ? pack.questions : [];
 
-  if (questions.length === 0) {
+  if (questions.length > 0) {
+    // Heading
+    setText(doc, INK.navy);
+    applyType(doc, TYPE.sectionHead);
+    doc.text("IC Defence Pack — Q&A", MARGIN_MM, y);
+    y += 8;
+
+    // Pack version subheading
     setText(doc, INK.inkMuted);
-    applyType(doc, TYPE.body);
-    const placeholder =
-      "IC Defence Pack — Q&A library in development. See engine repo for status.";
-    const lines = doc.splitTextToSize(placeholder, CONTENT_WIDTH_MM);
-    doc.text(lines, MARGIN_MM, y);
-    y += lines.length * 5 + 4;
-  } else {
+    applyType(doc, TYPE.footnote);
+    doc.text(`Pack version: ${coalesce(pack.pack_version)}`, MARGIN_MM, y);
+    y += 8;
+
     for (const q of questions) {
       // Pre-compute heights for overflow check.
       const questionLines = doc.splitTextToSize(
