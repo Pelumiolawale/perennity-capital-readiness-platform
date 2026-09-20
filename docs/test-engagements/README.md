@@ -28,6 +28,39 @@ maps 1:1 to a real asset.
 | 11 | `uk_sdr_impact` | Strong | `01af2113-46f1-4d6b-bc65-ee89b0fb1a32` | ACC-IMP-01 / Sub-Sahara Impact Infrastructure | `aligned` across c10–c15 |
 | 12 | `uk_sdr_impact` | Gap | `fff71f4b-2a49-4cbd-97be-c32000412a6d` | LDN-IMP-002 / Thameside Digital Estates | `not_aligned` on c10 objective, c11 measurement; cascades to c13 |
 
+### c9 / c10 evidence-pack values (added 20 Sep 2026)
+
+Four of the twelve carry an `SFDR Assurance Tier`, and those four now also carry the c9 and
+c10 scalars. Before 20 Sep 2026 the app hardcoded these (`operational_doc_age_months: 6`,
+`material_qualifications_present: false`, `data_recency_months: 6`) for every engagement;
+they are read from Airtable now, so a fixture that does not set them exercises the
+"unanswered" path instead of the recency gate.
+
+| # | UUID | Tier | c9 op doc age | c9 material quals | c10 recency | What it exercises |
+|---|------|------|---------------|-------------------|-------------|-------------------|
+| 3 | `595791d1` | `limited_big4` | 6 | No | — | Tier 2 clean: recency well inside 12 months |
+| 4 | `ba4634e6` | `management_only` | 15 | Unknown | — | Stale docs (12–18 = partial band), tier never strong |
+| 5 | `48f32d4d` | `limited_big4` | 4 | No | 8 | The aligned path on both gates |
+| 6 | `b01bb716` | `limited_partial` | 20 | Yes | 20 | Both gates failing: >18 months, qualifications present |
+
+These are synthetic, like every other value in this fixture set. They are chosen to put each
+gate on both sides of its threshold across the four records, not to describe any real
+assurance engagement.
+
+**They do not move a verdict today, and the reason is worth knowing.** c9 and c10 are Article
+9 criteria, so #3 and #4 never reach them. On #5 and #6, criterion 8 (SI objective
+qualification) is `not_aligned`, and c9's Art 2(17) cascade turns any `not_aligned` upstream
+into `not_aligned` for c9 before the recency gate is consulted. So the values sit there
+correctly and are currently unreachable.
+
+That also means **fixture #5 does not behave as this README says it should.** The table above
+promises "Mostly `aligned`, c8 aligned with sub-case (a)"; c8 actually scores `not_aligned`,
+which cascades. That predates the c9 work and has not been changed — flagged here rather than
+quietly corrected, because fixing it means altering fixture data to make c8 pass, which is a
+decision about what the fixture is for.
+
+---
+
 Each engagement is configured with `STATUS=active`, `ISSUED_AT=2026-06-03T00:00:00.000Z`,
 `EXPIRES_AT=2026-09-03T00:00:00.000Z` (90-day window). Engagement letters are marked signed.
 
