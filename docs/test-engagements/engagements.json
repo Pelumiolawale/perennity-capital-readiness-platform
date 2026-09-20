@@ -212,7 +212,9 @@
       "fldu2L8EYHf07AjpL": true,
       "fld0w2xxvpFtgQOlJ": true,
       "fldn3fXTvGl8gciFm": true,
-      "fldJSLW9dBx0YM4ZC": "gri"
+      "fldJSLW9dBx0YM4ZC": "gri",
+      "fldmRavTL1YuUsgCc": 6,
+      "fldvvZGYaSK7ZX73W": "No"
     }
   },
   {
@@ -290,7 +292,9 @@
       "fld1Wqu4NuFdamzgK": 15000000,
       "fldJ8ffkihsDokUw7": "https://najd-data.example/sustainability/pai-2024.pdf",
       "fldbmYuT5phWjRhwB": "2024-09-12",
-      "fld4lun18zlJQpUzD": false
+      "fld4lun18zlJQpUzD": false,
+      "fldmRavTL1YuUsgCc": 15,
+      "fldvvZGYaSK7ZX73W": "Unknown"
     }
   },
   {
@@ -397,7 +401,10 @@
       "fldXxHlUoFRKJcV6h": true,
       "fld2FSLCYaw27Vz5S": "2026-05-08",
       "fldZaUVd2DQB6P9ei": 88,
-      "fldOqqE0u9Ffunhbi": 4
+      "fldOqqE0u9Ffunhbi": 4,
+      "fldmRavTL1YuUsgCc": 4,
+      "fldvvZGYaSK7ZX73W": "No",
+      "fldgOY3Zetsd7OysA": 8
     }
   },
   {
@@ -489,7 +496,10 @@
       "fldbmYuT5phWjRhwB": "2025-12-15",
       "fld4lun18zlJQpUzD": false,
       "fldTgr6vvCqioE5Zc": "operational",
-      "fldeOrOsLRaYLqmDc": "2020-06-30"
+      "fldeOrOsLRaYLqmDc": "2020-06-30",
+      "fldmRavTL1YuUsgCc": 20,
+      "fldvvZGYaSK7ZX73W": "Yes",
+      "fldgOY3Zetsd7OysA": 20
     }
   },
   {
