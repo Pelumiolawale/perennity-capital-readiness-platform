@@ -21,6 +21,7 @@
 // migration path.
 
 import { CHILD_FIDS } from "./airtableEngagement.js";
+import { parseJurisdictionsUsed } from "./taxJurisdictions.js";
 
 /**
  * @typedef {Object} EngagementEntityRaw
@@ -105,10 +106,15 @@ function resolveEntityIdentity(engagement) {
 function buildGovernanceFromDiscrete(engagement) {
   const known = (v) => v !== undefined && v !== null;
 
-  const jurisdictionsRaw = engagement.c2_tax_jurisdictions_used;
-  const jurisdictions_used = typeof jurisdictionsRaw === "string"
-    ? jurisdictionsRaw.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
-    : [];
+  // ITEM-02: operators enter ISO codes ("DE, NL, FR"), as the runbook tells
+  // them to; the engine screens against the Council's official long forms
+  // ("Russian Federation"). Splitting on commas alone meant "RU" never matched
+  // and the Annex I screen never fired. parseJurisdictionsUsed translates the
+  // listed jurisdictions into the engine's vocabulary and passes everything
+  // else through untouched. See taxJurisdictions.js.
+  const jurisdictions_used = parseJurisdictionsUsed(
+    engagement.c2_tax_jurisdictions_used,
+  );
 
   const board = {
     independent_ned_count: engagement.c2_independent_ned_count,
