@@ -1,0 +1,109 @@
+{
+  "_note": "Snapshot of the Airtable select-option names that act as code values. Captured 2026-09-20 from base appasxX7eC3QsmxeM via the schema API. This is the OFFLINE half of the parity check in src/lib/airtableSchemaParity.test.js: it locks the contract in src/lib/airtableSchemaContract.js against accidental edits and against engine enum changes. It does NOT catch an operator renaming an option in the Airtable UI — only the live check does that, and it needs a PAT carrying the schema.bases:read scope. Refresh deliberately with scripts/refresh-airtable-schema.mjs when a field legitimately changes, and say why in the commit.",
+  "_captured": "2026-09-20",
+  "_base": "appasxX7eC3QsmxeM",
+  "fields": {
+    "fldX4ynEolKL4BnKX": ["draft", "active", "revoked", "expired"],
+    "fldDYxT0PxmhhJrsW": [
+      "eu_taxonomy_aligned_8_1",
+      "sfdr_article_8",
+      "sfdr_article_9",
+      "uk_sdr_focus",
+      "uk_sdr_improvers",
+      "uk_sdr_impact",
+      "uk_sdr_mixed_goals"
+    ],
+    "fldTgr6vvCqioE5Zc": ["operational", "pre_operational"],
+    "fld1LdHxujbiGgiyu": ["capex", "opex", "revenue"],
+    "fldLFXTGOM5n7fETe": [
+      "reasonable_big4",
+      "limited_big4",
+      "limited_partial",
+      "management_only"
+    ],
+    "fldJSLW9dBx0YM4ZC": ["gri", "tcfd", "ifrs_s1", "ifrs_s2", "efrag_esrs", "cdp"],
+    "fldTD5iMXyPxojoIy": [
+      "Low",
+      "Low - Medium",
+      "Medium - High",
+      "High",
+      "Extremely High"
+    ],
+    "fldhlCI68cqPZyzvb": [
+      "human_rights_policy_published",
+      "due_diligence_process_operational",
+      "grievance_mechanism_operational",
+      "ilo_core_conventions_compliance",
+      "no_ungc_violations_24m"
+    ],
+    "fldk44Pyugc1Rwv4X": [
+      "anti_bribery_policy_published",
+      "anti_bribery_training_programme",
+      "no_bribery_convictions_24m"
+    ],
+    "fldOvqxo1JYDtqGIu": [
+      "tax_governance_policy_published",
+      "no_tax_evasion_findings_24m",
+      "country_by_country_reporting_or_below_threshold"
+    ],
+    "fldq23xLBmqgSyNDZ": [
+      "competition_policy_published",
+      "no_competition_law_breaches_24m"
+    ],
+    "fldQWCWDGXyOhZKMM": [
+      "ecodesign_2009_125",
+      "rohs_2011_65",
+      "waste_management_plan",
+      "weee_endoflife_2012_19"
+    ],
+    "fldt3uBF2X9fTA8Ew": [
+      "EN_50600_4_2",
+      "ISO_IEC_30134_2",
+      "other_with_documentation",
+      "unspecified"
+    ],
+    "fldLR3EglrPW8km09": ["category_1", "category_2", "category_3", "unspecified"],
+    "fldv4ouVCZS1RaBin": ["annualised", "design_point_only"],
+    "fldqCCE6k8C0zyGdR": ["hyperscale", "colocation", "edge", "enterprise"],
+    "fldJEyPQoovMd8bC1": ["design", "construction", "operational"],
+    "fld771ulYlnwmZZbT": ["annual", "semi_annual", "quarterly"],
+    "fldMHcQV5YWYuMfZP": ["eu_taxonomy_8_1", "leed_platinum", "other", "sbti"],
+    "fldVPq9x6wuULQ0id": ["Environmental", "Social", "Mixed"],
+    "fldJ01YejLamlwxN2": [
+      "pue",
+      "renewable_energy_pct",
+      "ghg_emissions",
+      "wue",
+      "pue",
+      ""
+    ],
+    "fldEyhNIThlbB4I2G": ["Yes", "No", "Unknown"],
+    "fldKet7AlpF1Tfwfd": ["Yes", "No", "Unknown"],
+    "fld7amd191pUsqv2I": ["Yes", "No", "Unknown"],
+    "fldKJdixJ5jmEAcRx": ["Yes", "No", "Unknown"],
+    "fldhcrC3nBtyBxARu": ["Yes", "No", "Unknown"],
+    "fldFgwYltnGbCNCy9": ["Yes", "No", "Unknown"],
+    "fldp3FLhBjp8zUT9K": ["Yes", "No", "Unknown"],
+    "fldkFOwp0xa582adT": ["Yes", "No", "Unknown"],
+    "fldD9c8w5vDNXgtmi": ["Yes", "No", "Unknown"],
+    "fldUyZSyGFiS9OOw1": ["Yes", "No", "Unknown"],
+    "fld0BctdyUmTPIqj0": ["Yes", "No", "Unknown"],
+    "fldkrdg8HKAB8jAUf": ["Yes", "No", "Unknown"],
+    "fldDZcacqTnser8uP": [
+      "energy_efficiency",
+      "water_stewardship",
+      "land_use_biodiversity",
+      "community_local_impact"
+    ],
+    "fldntLJtw5b4TnNUN": ["art_2_17_example", "l2_rts_annex_i_pai"],
+    "fldVbdnEcmD6sesAd": ["covered_specific", "covered_generic", "absent"],
+    "fld5L3pQEGrKgh91v": ["gri", "tcfd", "ifrs_s1", "ifrs_s2", "efrag_esrs", "cdp"],
+    "fldroOPT2etcTjJLP": [
+      "Third-party assured",
+      "Management attested",
+      "Unverified",
+      "Not applicable"
+    ],
+    "fld7QbaJ5zn0ezpsS": ["applicable", "not_applicable"]
+  }
+}
