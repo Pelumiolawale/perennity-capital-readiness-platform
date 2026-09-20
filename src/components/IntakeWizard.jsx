@@ -7,7 +7,10 @@ import {
   DEFAULT_TARGET_LABEL,
 } from "../lib/targetLabels.js";
 import { SFDRPAITable, emptyPAIRows } from "./SFDRPAITable.jsx";
-import { buildSnapshotDataPoints } from "../lib/snapshotIntakeInputs.js";
+import {
+  buildSnapshotDataPoints,
+  INITIAL_INTAKE_ANSWERS,
+} from "../lib/snapshotIntakeInputs.js";
 
 // v3.2 safeguards canonical item identifiers. Must match the engine's
 // EXPECTED_*_ITEMS arrays at src/logic/safeguards_*.ts in the engine repo
@@ -87,16 +90,13 @@ export function IntakeWizard({ onSubmit }) {
     jurisdiction: "DE",
     facility_status: "operational",
     build_completion_year: 2020,
-    annualised_pue: 1.4,
-    wue_annualised: 0.3,
-    site_water_stress_classification: "Low",
-    climate_risk_assessment_completed: false,
-    climate_risk_assessment_methodology: "",
-    pue_measurement_compliance_attested: false,
-    human_rights_compliance_items: HUMAN_RIGHTS_ITEMS.map((i) => i.id),
-    bribery_corruption_compliance_items: BRIBERY_CORRUPTION_ITEMS.map((i) => i.id),
-    taxation_compliance_items: TAXATION_ITEMS.map((i) => i.id),
-    fair_competition_compliance_items: FAIR_COMPETITION_ITEMS.map((i) => i.id),
+    // Every answer-bearing field starts unanswered, and the opening values
+    // live in snapshotIntakeInputs.js beside the rule they follow, so a test
+    // can drive the real thing rather than restate it. Before the sweep this
+    // block arrived as PUE 1.4, WUE 0.3, water stress "Low" and all four
+    // safeguards groups fully ticked — an untouched form scored as a
+    // compliant project.
+    ...INITIAL_INTAKE_ANSWERS,
     // v0.5.0-alpha.8 (Phase 1, commit 1.5a Phase B-2): SFDR Specifics
     // section. Rendered conditionally based on target_label. The free
     // Snapshot path's runSnapshot() ignores these fields; the paid
@@ -114,10 +114,12 @@ export function IntakeWizard({ onSubmit }) {
     // them into ProjectUKSDRInputs. Always-shown for any uk_sdr_* label;
     // sub-section visibility for improvers/impact is conditioned in JSX.
     uk_sdr_standard_claimed: "eu_taxonomy_8_1",
-    uk_sdr_kpis_pue: true,
-    uk_sdr_kpis_renewable: true,
-    uk_sdr_kpis_ghg: true,
-    uk_sdr_kpis_wue: true,
+    // Unticked, like the Article 18 safeguards above and for the same reason:
+    // a pre-ticked box is a commitment the prospect never made.
+    uk_sdr_kpis_pue: false,
+    uk_sdr_kpis_renewable: false,
+    uk_sdr_kpis_ghg: false,
+    uk_sdr_kpis_wue: false,
     uk_sdr_reporting_frequency: "annual",
     // Improvers — baseline + strategy + targets
     uk_sdr_baseline_pue: "",
@@ -138,9 +140,9 @@ export function IntakeWizard({ onSubmit }) {
     uk_sdr_impact_theory_of_change: "",
     uk_sdr_impact_indicators: "",
     uk_sdr_impact_additionality: "",
-    uk_sdr_impact_annual_cadence: true,
-    uk_sdr_impact_reports_against_indicators: true,
-    uk_sdr_impact_outcome_level: true,
+    uk_sdr_impact_annual_cadence: false,
+    uk_sdr_impact_reports_against_indicators: false,
+    uk_sdr_impact_outcome_level: false,
     uk_sdr_impact_verification: "third_party_audit",
   });
 
@@ -174,15 +176,23 @@ export function IntakeWizard({ onSubmit }) {
     const v =
       e.target.type === "checkbox"
         ? e.target.checked
+        // An empty number box stays empty. This used to be
+        // `Number(e.target.value)`, and `Number("")` is 0 — so clearing the
+        // PUE field submitted a PUE of zero, which clears every efficiency
+        // threshold in the methodology. snapshotIntakeInputs.js drops the key
+        // when it is not a finite number.
         : e.target.type === "number"
-        ? Number(e.target.value)
+        ? (e.target.value === "" ? "" : Number(e.target.value))
         : e.target.value;
     setForm((s) => ({ ...s, [k]: v }));
   };
 
+  // Safeguards groups start undefined ("not answered") and become an array on
+  // first touch. Unticking back to empty leaves [], which is the prospect
+  // saying "none of these" — deliberately not the same as never having looked.
   const toggleItem = (key, id) => () => {
     setForm((s) => {
-      const arr = s[key];
+      const arr = Array.isArray(s[key]) ? s[key] : [];
       return {
         ...s,
         [key]: arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id],
@@ -212,6 +222,14 @@ export function IntakeWizard({ onSubmit }) {
       // Without this, runSnapshot falls back to BUNDLED_ACTIVITIES (EU Tax
       // 8.1 only) regardless of the wizard's framework dropdown.
       target_label: form.target_label,
+      // NOTE, and it is a real gap rather than a design: nothing the prospect
+      // enters in the SFDR Specifics or UK SDR sections is submitted. Only
+      // data_points and the scalars above reach the engine. So choosing a
+      // uk_sdr_* label loads those frameworks and scores every criterion
+      // data_missing, on a form where the prospect has just filled in KPIs,
+      // baselines and targets. The adapters that would carry them
+      // (buildSFDRInputs / buildUKSDRInputs) take the Airtable engagement
+      // shape, not this form, so wiring them up is its own piece of work.
     };
     onSubmit(input);
   };
@@ -407,7 +425,7 @@ export function IntakeWizard({ onSubmit }) {
             </Field>
             <Field
               label="KPIs committed to annual disclosure"
-              helper="PB methodology v3.5 requires PUE, renewable energy %, GHG Scope 1+2, and WUE for the Sustainability Focus label. All four are pre-checked; untick any the developer does not commit to reporting annually."
+              helper="PB methodology v3.5 requires PUE, renewable energy %, GHG Scope 1+2, and WUE for the Sustainability Focus label. Tick each one the developer commits to reporting annually."
             >
               <div className="space-y-1">
                 {[
@@ -616,6 +634,7 @@ export function IntakeWizard({ onSubmit }) {
             onChange={update("site_water_stress_classification")}
             className="w-full h-[44px] px-3 border border-[#D8DCDF] rounded-[4px] bg-[#F8F6F2] font-['Source_Serif_4'] text-[15px] text-[#0B1F2A] placeholder:text-[#8A949B] focus:outline-none focus:ring-2 focus:ring-[#0B1F2A] focus:ring-offset-0 focus:border-[#0B1F2A]"
           >
+            <option value="">Not assessed</option>
             <option value="Low">Low</option>
             <option value="Low-Medium">Low-Medium</option>
             <option value="Medium-High">Medium-High</option>
@@ -676,31 +695,31 @@ export function IntakeWizard({ onSubmit }) {
                 Minimum safeguards (Article 18)
               </h2>
               <p className="font-['Source_Serif_4'] text-[14px] leading-[20px] text-[#4A5760] mb-6">
-                Pre-checked attestations. Un-tick any item that does not apply to your organisation. The snapshot heatmap renders the rollup verdict only; the paid Report surfaces each pillar individually.
+                Tick each item your organisation can attest to. A pillar you leave untouched is reported as not assessed, not as a pass or a failure — we would rather return less than assume something on your behalf. The snapshot heatmap renders the rollup verdict only; the paid Report surfaces each pillar individually.
               </p>
 
               <SafeguardsPillar
                 title="Human rights"
                 items={HUMAN_RIGHTS_ITEMS}
-                selected={form.human_rights_compliance_items}
+                selected={form.human_rights_compliance_items ?? []}
                 onToggle={(id) => toggleItem("human_rights_compliance_items", id)}
               />
               <SafeguardsPillar
                 title="Bribery & corruption"
                 items={BRIBERY_CORRUPTION_ITEMS}
-                selected={form.bribery_corruption_compliance_items}
+                selected={form.bribery_corruption_compliance_items ?? []}
                 onToggle={(id) => toggleItem("bribery_corruption_compliance_items", id)}
               />
               <SafeguardsPillar
                 title="Taxation"
                 items={TAXATION_ITEMS}
-                selected={form.taxation_compliance_items}
+                selected={form.taxation_compliance_items ?? []}
                 onToggle={(id) => toggleItem("taxation_compliance_items", id)}
               />
               <SafeguardsPillar
                 title="Fair competition"
                 items={FAIR_COMPETITION_ITEMS}
-                selected={form.fair_competition_compliance_items}
+                selected={form.fair_competition_compliance_items ?? []}
                 onToggle={(id) => toggleItem("fair_competition_compliance_items", id)}
               />
             </div>

@@ -26,6 +26,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
 import { IntakeWizard } from "./IntakeWizard.jsx";
+import { DRAFT_SCHEMA_VERSION } from "../hooks/useAssessmentStore.js";
 
 // DRAFT_KEY from src/hooks/useAssessmentStore.js — must match exactly
 // (it's a private constant in the store module; mirroring here to seed
@@ -79,6 +80,7 @@ describe("IntakeWizard — hotfix: stale saved draft + SFDR label select", () =>
     localStorage.setItem(
       DRAFT_KEY,
       JSON.stringify({
+        v: DRAFT_SCHEMA_VERSION,
         wizardData: {
           target_label: "eu_taxonomy_aligned_8_1",
           project_id: "PB-LEGACY-001",
@@ -119,6 +121,7 @@ describe("IntakeWizard — hotfix: stale saved draft + SFDR label select", () =>
     localStorage.setItem(
       DRAFT_KEY,
       JSON.stringify({
+        v: DRAFT_SCHEMA_VERSION,
         wizardData: {
           target_label: "eu_taxonomy_aligned_8_1",
           project_id: "PB-WITH-SAVED-PROJECT-ID",
@@ -130,5 +133,43 @@ describe("IntakeWizard — hotfix: stale saved draft + SFDR label select", () =>
     const projectIdInput = root.querySelector('input[placeholder="PB-..."]');
     expect(projectIdInput).toBeTruthy();
     expect(projectIdInput.value).toBe("PB-WITH-SAVED-PROJECT-ID");
+  });
+
+  // The wizard auto-saves on mount, so every visitor who ever loaded the page
+  // before 20 Sep 2026 has a draft asserting full safeguards compliance and a
+  // passing PUE — values they never entered, written by the old defaults.
+  // Merging one of those over the swept defaults would restore exactly the
+  // flattering state the sweep removed, so an unversioned draft is discarded.
+  it("discards a pre-v2 draft rather than restoring the old pre-ticked defaults", () => {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        // No `v` — this is what every pre-sweep draft looks like.
+        wizardData: {
+          project_id: "PB-STALE-001",
+          annualised_pue: 1.4,
+          wue_annualised: 0.3,
+          site_water_stress_classification: "Low",
+          human_rights_compliance_items: [
+            "human_rights_policy_published",
+            "due_diligence_process_operational",
+            "grievance_mechanism_operational",
+            "ilo_core_conventions_compliance",
+            "no_ungc_violations_24m",
+          ],
+        },
+        savedAt: "2026-05-15T00:00:00Z",
+      }),
+    );
+
+    const root = mount(<IntakeWizard onSubmit={() => {}} />);
+
+    // Nothing from the stale draft survives: the project id is back to blank
+    // and the PUE box is empty rather than carrying a passing 1.4.
+    const projectIdInput = root.querySelector('input[placeholder="PB-..."]');
+    expect(projectIdInput.value).toBe("");
+    const numbers = [...root.querySelectorAll('input[type="number"]')].map((i) => i.value);
+    expect(numbers).not.toContain("1.4");
+    expect(numbers).not.toContain("0.3");
   });
 });
