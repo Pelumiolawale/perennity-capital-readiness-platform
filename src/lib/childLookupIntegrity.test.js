@@ -169,15 +169,87 @@ describe("a broken child lookup refuses the report (item 17)", () => {
 describe("a renamed lookup field fails legibly (item 17, the loud half)", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("a 422 on the parent lookup names the field, not just the status", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async () => ({
-      ok: false,
-      status: 422,
-      json: async () => ({}),
-    }));
-    await expect(fetchEngagement(REF, CONFIG)).rejects.toThrow(
+  // This used to assert that a 422 on the parent lookup THREW with a message
+  // naming the renamed field. It now degrades instead — an approved change, so
+  // the test moves with it rather than being deleted. filterByFormula is the
+  // one Airtable call that cannot address a field by id, so `{Engagement
+  // Reference}` is the last name dependency in the system and taking every
+  // client's report down over it was disproportionate.
+  it("a renamed reference field degrades to a field-id scan instead of failing", async () => {
+    let scanned = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const href = String(url);
+      if (href.includes("filterByFormula") && href.includes("/tbl_test")) {
+        // The formula names a field that no longer exists under that name.
+        return /** @type {any} */ ({ ok: false, status: 422, json: async () => ({}) });
+      }
+      if (href.includes("/tbl_test")) {
+        scanned = true;
+        return /** @type {any} */ ({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            records: [
+              { id: "recOTHER", fields: { [FID.STATUS]: "active", [FID.ENGAGEMENT_REF]: "not-this-one" } },
+              { id: "recTEST", fields: { [FID.STATUS]: "active", [FID.ENGAGEMENT_REF]: REF } },
+            ],
+          }),
+        });
+      }
+      return /** @type {any} */ ({ ok: true, status: 200, json: async () => ({ records: [] }) });
+    });
+
+    const r = await fetchEngagement(REF, CONFIG);
+    expect(scanned, "the fallback scan should have run").toBe(true);
+    expect(r.ok).toBe(true);
+    // It must match on the field id, not just take the first record back.
+    expect(r.engagement.run_id).toBe(REF);
+  });
+
+  it("the degraded lookup is never silent — it raises a banner", async () => {
+    // A fallback that quietly works forever is how a rename never gets fixed.
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const href = String(url);
+      if (href.includes("filterByFormula") && href.includes("/tbl_test")) {
+        return /** @type {any} */ ({ ok: false, status: 422, json: async () => ({}) });
+      }
+      if (href.includes("/tbl_test")) {
+        return /** @type {any} */ ({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            records: [{ id: "recTEST", fields: { [FID.STATUS]: "active", [FID.ENGAGEMENT_REF]: REF } }],
+          }),
+        });
+      }
+      return /** @type {any} */ ({ ok: true, status: 200, json: async () => ({ records: [] }) });
+    });
+
+    const r = await fetchEngagement(REF, CONFIG);
+    expect(r.ok).toBe(true);
+    expect((r.engagement.schema_warnings ?? []).join("\n")).toMatch(
       /Engagement Reference.*renamed/s,
     );
+  });
+
+  it("a healthy lookup uses the formula and raises no warning", async () => {
+    let usedFormula = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const href = String(url);
+      if (href.includes("filterByFormula") && href.includes("/tbl_test")) {
+        usedFormula = true;
+        return /** @type {any} */ ({
+          ok: true,
+          status: 200,
+          json: async () => ({ records: [{ id: "recTEST", fields: { [FID.STATUS]: "active" } }] }),
+        });
+      }
+      return /** @type {any} */ ({ ok: true, status: 200, json: async () => ({ records: [] }) });
+    });
+    const r = await fetchEngagement(REF, CONFIG);
+    expect(usedFormula).toBe(true);
+    expect(r.ok).toBe(true);
+    expect(r.engagement.schema_warnings).toBeUndefined();
   });
 
   // There used to be a test here asserting that a 422 on a CHILD lookup named

@@ -22,7 +22,57 @@
 
 import { airtableConfigFromEnv } from "../src/lib/listEngagements.js";
 
-export const LEADS_TABLE = "Leads";
+// ITEM-17. This was the table's DISPLAY NAME, "Leads", and every field below
+// was written by display name too — the only place in the codebase that did
+// either, and the only one without a comment acknowledging it. Renaming the
+// table, or any of thirteen columns, in the Airtable UI would have stopped
+// inbound leads landing. Every other table access in this repo already uses
+// immutable ids; this now does the same.
+//
+// Verified that Airtable accepts field ids on write, not just on read: a POST
+// naming a real field id alongside a bogus field rejects only the bogus one.
+export const LEADS_TABLE = "tbl3KXEJJ7P4dxr6q";
+
+/**
+ * Payload key -> immutable Airtable field id, for the Leads table.
+ *
+ * A key missing from this map is never written, which is the safe direction:
+ * a field we forgot to map is dropped rather than silently addressed by a name
+ * that might not exist. leads.test.js asserts every key sanitizeLead can emit
+ * has an id here, so the two cannot drift apart.
+ */
+export const LEAD_FIELD_IDS = Object.freeze({
+  name: "flds123YM2v9sgaKb",
+  email: "fldLTNSqSdqwoTibL",
+  company: "fldBrjNAyqMqOLdDK",
+  phone: "fldSMKmpaPOMEEST0",
+  message: "fldMs0bGBaSO32U6B",
+  snapshot_run_id: "fld5egRFib3zmelwt",
+  indicative_score: "fldVnJPMXRwdUTQe4",
+  indicative_band: "flda79KmMu9ttLqiw",
+  target_label: "fldaoSzLrohiA04EZ",
+  jurisdiction: "fldibS0Fqj9krYMZL",
+  facility_type: "fldzTm52VQdPuK2oE",
+  cta_value: "fldLs5CLuxFIMAoiP",
+  status: "fldfB5lIvmI64DDs0",
+  honeypot_tripped: "fldMWARozX9kZxXyl",
+});
+
+/**
+ * Translate a validated lead into an Airtable write payload keyed by field id.
+ *
+ * @param {Record<string, string|number|boolean>} fields
+ * @returns {Record<string, string|number|boolean>}
+ */
+export function toAirtableFields(fields) {
+  /** @type {Record<string, string|number|boolean>} */
+  const out = {};
+  for (const [key, value] of Object.entries(fields)) {
+    const fieldId = LEAD_FIELD_IDS[key];
+    if (fieldId) out[fieldId] = value;
+  }
+  return out;
+}
 
 // Same pattern as LeadCaptureModal.jsx so the server never rejects a lead the
 // form accepted.
@@ -125,14 +175,14 @@ export default async function handler(req, res, deps = {}) {
   try {
     const { pat, baseId } = airtableConfigFromEnv(deps.env ?? process.env);
     const upstream = await fetchImpl(
-      `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(LEADS_TABLE)}`,
+      `https://api.airtable.com/v0/${baseId}/${LEADS_TABLE}`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${pat}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ fields: lead.fields }),
+        body: JSON.stringify({ fields: toAirtableFields(lead.fields) }),
       },
     );
     if (!upstream.ok) {
