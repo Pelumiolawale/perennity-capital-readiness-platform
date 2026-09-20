@@ -135,7 +135,7 @@ wrong and have been corrected.
 | Paid PDF | `src/export/reportPDF.js` |
 | Operator runbook | `docs/runbook-paid-reports.md` |
 | Call checklist | `docs/engagement-call-checklist.md` |
-| Base fixes outstanding | `docs/airtable-schema-corrections-pending.md` |
+| Base schema changes | `docs/airtable-schema-corrections.md` |
 
 Re-pin the engine by commit SHA, never by tag or branch.
 
