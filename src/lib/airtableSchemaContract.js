@@ -366,3 +366,20 @@ export const KNOWN_GAPS = [
       "the Airtable UI. Must be merged by hand in the editor, which shows usage.",
   },
 ];
+
+/**
+ * The option names accepted for a field, or null when the field is not under
+ * contract. Used at runtime by airtableEngagement.js to catch a value that is
+ * valid-shaped but unrecognised, rather than forwarding it to the engine —
+ * the same list the parity test checks, so the guard and the test can never
+ * disagree about what "accepted" means.
+ *
+ * @param {string} fieldId
+ * @returns {string[] | null}
+ */
+export function acceptedOptionsFor(fieldId) {
+  const contract = FIELD_CONTRACTS.find((c) => c.field === fieldId);
+  if (contract) return contract.required;
+  if (TRI_STATE_FIELDS.some(([id]) => id === fieldId)) return TRI_STATE_OPTIONS;
+  return null;
+}

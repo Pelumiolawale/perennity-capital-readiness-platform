@@ -26,7 +26,7 @@ import {
   buildRenderContract,
 } from "@perennity/engine";
 import { fetchEngagementFromApi } from "../lib/engagementApi.js";
-import { frameworksForLabel } from "../lib/engineClient.js";
+import { frameworksForLabel, isRoutableTargetLabel } from "../lib/engineClient.js";
 import {
   buildSFDRInputs,
   c6ClaimIncompleteWarning,
@@ -40,6 +40,8 @@ import {
 import {
   ARTICLE_26_DISCLAIMER,
   ENTITLEMENT_ERROR_COPY,
+  DATA_INCOMPLETE_COPY,
+  UNSUPPORTED_LABEL_COPY,
   ENGINE_ERROR_COPY,
 } from "../lib/disclaimers.js";
 import { generateReportPDF } from "../export/reportPDF.js";
@@ -157,12 +159,49 @@ export default function ReportRoute() {
       if (cancelled) return;
 
       if (!entitlement.ok) {
+        // ITEM-17: child_data_incomplete is not an entitlement failure — the
+        // reference was recognised, active and in date. It means a child fetch
+        // returned fewer rows than the parent record says exist, so evidence
+        // on file was not read. Keep it out of the opaque entitlement copy,
+        // which exists to stop this route being a probe for "does this
+        // engagement exist"; that concern does not apply once entitlement has
+        // already passed. console.error rather than warn, with the table names
+        // and counts, because somebody needs to go and look.
+        if (entitlement.reason === "child_data_incomplete") {
+          console.error(
+            "[ReportRoute] child row shortfall — refusing to render. " +
+              "The parent record links more rows than the child fetch returned. " +
+              "Likely causes: `Engagement Reference` is no longer the primary " +
+              "field on Engagements, a child table's `engagement` link field was " +
+              "renamed, or a table now holds more than 100 linked rows (the " +
+              "fetch does not paginate). Shortfalls:",
+            entitlement.shortfalls,
+          );
+          setState("data_incomplete");
+          return;
+        }
         console.warn(`[ReportRoute] entitlement failed: ${entitlement.reason}`);
         setState("entitlement_failed");
         return;
       }
 
       setEngagement(entitlement.engagement);
+
+      // ITEM-17 (B5): check the label BEFORE the engine run. frameworksForLabel
+      // throws for an unroutable label, and that throw used to land in the
+      // generic engine-error handler, telling the client to try again shortly —
+      // advice that could never work, on a failure nobody was told the cause of.
+      const label = entitlement.engagement.target_label;
+      if (!isRoutableTargetLabel(label)) {
+        console.error(
+          `[ReportRoute] unsupported target_label "${label}" on engagement ` +
+            `${ref}. The Airtable Target Label field offers options the SPA ` +
+            "cannot route (uk_sdr_mixed_goals is selectable but not built). " +
+            "Re-scope the engagement or build the framework set.",
+        );
+        setState("unsupported_label");
+        return;
+      }
 
       // Engine render.
       try {
@@ -261,6 +300,30 @@ export default function ReportRoute() {
         <div className="max-w-md w-full bg-white border border-[#DDD5CA] rounded-lg p-8 shadow-sm text-center">
           <p className="text-base leading-relaxed">
             {ENTITLEMENT_ERROR_COPY.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "unsupported_label") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 font-sans text-[#0B1F2A]">
+        <div className="max-w-md w-full bg-white border border-[#DDD5CA] rounded-lg p-8 shadow-sm text-center">
+          <p className="text-base leading-relaxed">
+            {UNSUPPORTED_LABEL_COPY.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "data_incomplete") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 font-sans text-[#0B1F2A]">
+        <div className="max-w-md w-full bg-white border border-[#DDD5CA] rounded-lg p-8 shadow-sm text-center">
+          <p className="text-base leading-relaxed">
+            {DATA_INCOMPLETE_COPY.message}
           </p>
         </div>
       </div>
@@ -385,6 +448,14 @@ export default function ReportRoute() {
           review and must not be issued to a client.
         </div>
       )}
+      {(engagement?.schema_warnings ?? []).map((w, i) => (
+        <div
+          key={i}
+          className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900"
+        >
+          <strong>Airtable schema warning:</strong> {w}
+        </div>
+      ))}
       {c6ClaimIncompleteWarning(engagement) && (
         <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-900">
           <strong>Taxonomy claim incomplete:</strong>{" "}

@@ -11,6 +11,8 @@
 // variable is set. The FID / CHILD_FIDS maps are still imported by browser
 // code (entity adapters); they are field IDs, not secrets.
 
+import { acceptedOptionsFor } from "./airtableSchemaContract.js";
+
 // UUID v4 strict format — variant bit forced to one of 8/9/a/b.
 const UUID_V4_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -175,6 +177,22 @@ export const FID = {
   CLIMATE_RISK_COMPLETED_TRI: "fldkrdg8HKAB8jAUf",
 };
 
+// Parent-side linked-record fields, one per child table (ITEM-17 / ITEM-18).
+//
+// These sit on the Engagements record itself and hold an array of the linked
+// child record ids, so the parent we have already fetched tells us exactly how
+// many rows each child fetch OUGHT to return. That is the only independent
+// check available on a lookup that otherwise cannot fail visibly — see
+// assertChildRowIntegrity.
+export const CHILD_LINK_FIDS = {
+  ES_CHARACTERISTICS: "fldyzlPWUeJeKMSwd",
+  PAI_COVERAGE: "fldPmiMmXOhkkOoYa",
+  ANNEX_II_COVERAGE: "fldIpTKLhkHo6vvN1",
+  PROJECT_REPORTS: "fldQm9vAXnsjDZ6ia",
+  PARENT_PORTFOLIO_REPORTS: "fldkJcz3s7t9mtoqt",
+  PROJECT_PAI_DATA: "fld0ap3OJxeT2zPUa",
+};
+
 // Child table IDs (PR A2 + A4). Each engagement record can have N linked
 // rows in each table. fetchEngagement issues parallel filterByFormula
 // queries against these tables to retrieve the rows for the engagement
@@ -272,6 +290,40 @@ export function triState(selectRaw, legacyCheckbox) {
   return coerceCheckbox(legacyCheckbox);
 }
 
+/**
+ * Check a single-select value against the option names the code actually
+ * accepts, and record a warning when it is neither empty nor recognised.
+ *
+ * ITEM-17 (B4). Several selects are forwarded to the engine verbatim. Rename
+ * `capex` to `CapEx`, or `operational` to `Operational`, and the value is not
+ * undefined — so every "is it missing?" guard passes it through — but it
+ * matches no branch inside the engine either. c7 in particular tests
+ * `operational_status === "operational"` and silently takes the
+ * pre-operational evidence path for anything else. Nothing surfaces.
+ *
+ * Deliberately a warning rather than a hard failure: the rest of the report is
+ * sound, and refusing it would be disproportionate to one drifted cell. The
+ * operator gets a banner naming the field and the value. The accepted list
+ * comes from the same contract the parity test uses, so the two cannot drift
+ * apart.
+ *
+ * @param {string} fieldId
+ * @param {string} label human name for the banner
+ * @param {unknown} value
+ * @param {string[]} warnings collected, mutated
+ */
+function warnOnUnrecognisedOption(fieldId, label, value, warnings) {
+  if (value === undefined || value === null || value === "") return;
+  const accepted = acceptedOptionsFor(fieldId);
+  if (!accepted || accepted.includes(String(value))) return;
+  warnings.push(
+    `"${label}" holds "${value}", which is not one of the values this report ` +
+      `understands (${accepted.join(", ")}). The option has probably been renamed ` +
+      `in Airtable. Airtable option names are code values, so the criterion fed ` +
+      `by this field is not being scored as intended.`,
+  );
+}
+
 function parseEvidenceDocuments(raw) {
   if (!raw || typeof raw !== "string") return [];
   return raw
@@ -304,6 +356,50 @@ function normalizeSignatoryOverrides(fields) {
 }
 
 /**
+ * Cross-check each child fetch against the parent's own link arrays.
+ *
+ * ITEM-17, the dangerous half. fetchChildRows matches rows with
+ * `SEARCH(<ref>, ARRAYJOIN({engagement}))`, and ARRAYJOIN on a linked-record
+ * field yields the PRIMARY FIELD of the linked records. That is correct only
+ * while `Engagement Reference` remains the primary field on Engagements.
+ * Re-order the table in the Airtable UI so that, say, Client Name becomes
+ * primary, and every SEARCH silently misses: all six calls return `[]` with
+ * HTTP 200, the report renders perfectly well, and SFDR c1, c3, c5, c7 and c10
+ * quietly drop to insufficient_evidence. A wrong opinion gets signed and sent
+ * and nothing anywhere complains.
+ *
+ * The parent record is the independent witness. Its linked-record fields hold
+ * the ids of exactly the rows that link back to it, so they say how many rows
+ * each fetch should have returned — and they arrive in the parent call we
+ * already make, for free.
+ *
+ * The same check catches two other defects for nothing:
+ *   - a renamed `engagement` link field on a child table, when Airtable
+ *     answers 200 rather than 422;
+ *   - ITEM-18, where fetchChildRows discards Airtable's `offset` token and
+ *     silently truncates at 100 rows. Expected 140, got 100.
+ *
+ * A shortfall is never benign: it means rows we know exist were not read, so
+ * the report would understate the evidence. That is refused rather than
+ * rendered — an absent report is recoverable, a signed and understated one is
+ * not.
+ *
+ * @param {Record<string, unknown>} fields Parent record fields, by field ID
+ * @param {Record<string, Array<unknown>>} fetched Child rows, keyed as CHILD_LINK_FIDS
+ * @returns {{ table: string, expected: number, actual: number }[]} shortfalls
+ */
+export function findChildRowShortfalls(fields, fetched) {
+  const shortfalls = [];
+  for (const [table, linkFid] of Object.entries(CHILD_LINK_FIDS)) {
+    const linked = fields[linkFid];
+    const expected = Array.isArray(linked) ? linked.length : 0;
+    const actual = Array.isArray(fetched[table]) ? fetched[table].length : 0;
+    if (actual < expected) shortfalls.push({ table, expected, actual });
+  }
+  return shortfalls;
+}
+
+/**
  * Fetch all rows from a child Airtable table linked to the given engagement
  * record. Returns the raw `fields` object per row (keyed by field ID since we
  * pass returnFieldsByFieldId=true). Empty array when the link has no rows.
@@ -332,8 +428,17 @@ async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
     headers: { Authorization: `Bearer ${pat}` },
   });
   if (!res.ok) {
+    // ITEM-17: a 422 here is almost always a renamed field. filterByFormula
+    // addresses fields by DISPLAY NAME, so renaming a child table's
+    // `engagement` link field makes Airtable reject the formula outright. Say
+    // so, because the generic status code sends the operator hunting for a
+    // network problem that isn't there.
+    const hint =
+      res.status === 422
+        ? ` — Airtable rejected the filter formula. The child table's \`engagement\` link field has probably been renamed; the formula addresses it by display name.`
+        : "";
     throw new Error(
-      `Airtable API error fetching child table ${childTableId}: ${res.status}`,
+      `Airtable API error fetching child table ${childTableId}: ${res.status}${hint}`,
     );
   }
   const body = await res.json();
@@ -344,7 +449,8 @@ async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
  * Fetch and validate an engagement record by its Engagement Reference (UUID v4).
  *
  * Return shape:
- *   { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired" }
+ *   { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired"
+ *                        | "child_data_incomplete" }
  *   { ok: true, engagement: <normalized object> }
  *
  * Throws on env misconfiguration or network/API failure. The caller (route)
@@ -359,6 +465,7 @@ async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
  *   never evaluated when config is given. See listEngagements.js.
  * @returns {Promise<
  *   | { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired" }
+ *   | { ok: false, reason: "child_data_incomplete", shortfalls: {table: string, expected: number, actual: number}[] }
  *   | { ok: true, engagement: object }
  * >}
  */
@@ -389,6 +496,15 @@ export async function fetchEngagement(engagementReference, config) {
 
   // 3. List-records call with filterByFormula on the primary field.
   // returnFieldsByFieldId=true gives us field IDs (stable) instead of names.
+  //
+  // ITEM-17: note the asymmetry the comment above glosses over. The READ is by
+  // immutable field ID, deliberately — but this FORMULA addresses the field by
+  // its DISPLAY NAME, because that is the only thing filterByFormula accepts.
+  // Rename `Engagement Reference` in the Airtable UI and every paid report for
+  // every client stops rendering at the same moment. The rule is stated
+  // correctly in listEngagements.js:83-86; this line is the exception to it,
+  // and it cannot be removed without giving up server-side filtering
+  // altogether. What it can do is fail legibly — see the 422 branch below.
   const formula = `{Engagement Reference}='${engagementReference}'`;
   const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
   url.searchParams.set("filterByFormula", formula);
@@ -410,6 +526,21 @@ export async function fetchEngagement(engagementReference, config) {
     // Includes 4xx (auth/permission) and 5xx (upstream). Neither maps to a
     // user-distinguishable reason — surface as a generic API error to the
     // route, which renders the opaque entitlement copy.
+    //
+    // ITEM-17: except 422, which is specific and worth naming. Airtable
+    // returns it when a formula references a field that does not exist, and
+    // the only field this formula names is `Engagement Reference`. The old
+    // generic message sent the operator to the runbook's failure table, which
+    // told them to check the UUID — a dead end, because the UUID is fine.
+    if (res.status === 422) {
+      throw new Error(
+        "Airtable rejected the engagement lookup formula (422). The " +
+          "`Engagement Reference` field has almost certainly been renamed: " +
+          "filterByFormula addresses fields by display name, so a rename " +
+          "breaks the lookup for EVERY engagement at once. Restore the field " +
+          "name, or update the formula in airtableEngagement.js.",
+      );
+    }
     throw new Error(`Airtable API error: ${res.status}`);
   }
 
@@ -644,6 +775,59 @@ export async function fetchEngagement(engagementReference, config) {
     fetchChildRows(baseId, CHILD_TABLES.PROJECT_PAI_DATA, engagementReference, pat),
   ]);
 
+  // ITEM-17 / ITEM-18: the parent's own link arrays say how many rows each of
+  // those calls should have returned. A shortfall means rows we know exist
+  // were not read, so every criterion fed by that table would understate the
+  // evidence. Refuse the report rather than issue an understated opinion —
+  // see findChildRowShortfalls for why this is the only available check.
+  const childShortfalls = findChildRowShortfalls(fields, {
+    ES_CHARACTERISTICS: es_characteristics_records,
+    PAI_COVERAGE: pai_coverage_records,
+    ANNEX_II_COVERAGE: annex_ii_coverage_records,
+    PROJECT_REPORTS: project_reports_records,
+    PARENT_PORTFOLIO_REPORTS: parent_portfolio_reports_records,
+    PROJECT_PAI_DATA: project_pai_data_records,
+  });
+  if (childShortfalls.length > 0) {
+    return { ok: false, reason: "child_data_incomplete", shortfalls: childShortfalls };
+  }
+
+  // ITEM-17 (B4): catch select values that are present but unrecognised, which
+  // every "is it missing?" guard waves through. Also flag a blank c7 status:
+  // entityInputAdapter defaults it to "pre_operational", which is
+  // scoring-neutral today (the engine tests `=== "operational"`, so undefined
+  // and "pre_operational" behave alike) but still puts a claim in the input
+  // shape that nobody made, and hides the fact that nobody answered.
+  /** @type {string[]} */
+  const schemaWarnings = [];
+  const c7StatusRaw = singleSelectValue(fields[FID.C7_OPERATIONAL_STATUS], undefined);
+  for (const [fid, label] of [
+    [FID.C6_METHODOLOGY, "c6 methodology"],
+    [FID.C7_OPERATIONAL_STATUS, "c7 operational status"],
+    [FID.TARGET_LABEL, "Target Label"],
+    [FID.SITE_WATER_STRESS, "Site Water Stress Classification"],
+    [FID.FACILITY_STATUS, "Facility Status"],
+    [FID.FACILITY_TYPE, "Facility Type"],
+    [FID.SFDR_ASSURANCE_TIER, "SFDR Assurance Tier"],
+    [FID.C7_REPORTING_NAMED_STANDARD, "c7 reporting named standard"],
+    [FID.UK_SDR_REPORTING_FREQUENCY, "UK SDR reporting frequency"],
+    [FID.UK_SDR_STANDARD_CLAIMED, "UK SDR standard claimed"],
+  ]) {
+    warnOnUnrecognisedOption(
+      fid,
+      label,
+      singleSelectValue(fields[fid], undefined),
+      schemaWarnings,
+    );
+  }
+  if (c7StatusRaw === undefined && fields[FID.C7_COMMISSIONING_DATE]) {
+    schemaWarnings.push(
+      '"c7 operational status" is blank although a commissioning date is recorded. ' +
+        "Criterion 7 is being scored on the pre-operational path, which nobody has " +
+        "stated. Set it to operational or pre_operational.",
+    );
+  }
+
   const engagement = {
     run_id: engagementReference,
     project_input,
@@ -729,6 +913,9 @@ export async function fetchEngagement(engagementReference, config) {
   }
   if (v32ParseWarning) {
     engagement.v32_parse_warning = v32ParseWarning;
+  }
+  if (schemaWarnings.length > 0) {
+    engagement.schema_warnings = schemaWarnings;
   }
 
   return { ok: true, engagement };
