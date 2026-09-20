@@ -42,11 +42,12 @@ const snapshot = JSON.parse(
  * Read one of the engine's published constant files off disk and return the
  * canonical id list. The package's exports map does not expose this path to
  * `import`, so resolve package.json and walk to it. Each file holds one array
- * under its own key, whose entries are objects carrying an `id` — the `id` is
- * the string the scoring code compares against, and therefore the string the
- * Airtable option name must equal.
+ * under its own key, whose entries are objects carrying an identifier — for
+ * most files that is `id`, the string the scoring code compares against and
+ * therefore the string an Airtable option name must equal. The material-PAI
+ * file keys its entries by `number` instead, hence the overridable field.
  */
-function readEngineConstantIds(filename, key) {
+function readEngineConstantIds(filename, key, field = "id") {
   const require = createRequire(import.meta.url);
   const pkgPath = require.resolve("@perennity/engine/package.json");
   const jsonPath = pkgPath.replace(
@@ -58,7 +59,7 @@ function readEngineConstantIds(filename, key) {
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error(`${filename}: no array at "${key}" (shape changed?)`);
   }
-  return rows.map((r) => (typeof r === "string" ? r : r.id));
+  return rows.map((r) => (typeof r === "string" ? r : r[field]));
 }
 
 /**
@@ -231,5 +232,60 @@ describe("known contract gaps stay visible", () => {
     const options = snapshot.fields["fldJ01YejLamlwxN2"];
     expect(options.filter((o) => o === "pue").length).toBe(2);
     expect(options).toContain("");
+  });
+});
+
+describe("the mirrors that remain, and why", () => {
+  // Three of the four hand-maintained copies of engine constants were retired
+  // when the engine started exporting its regulatory-knowledge directory
+  // (4.0.0-alpha.2): the Annex I jurisdictions, the recognised reporting
+  // standards and the sector-material categories are now read, not copied.
+  //
+  // The fourth cannot be, and it is worth recording exactly why — because the
+  // obvious "fix" is wrong in a way that would be hard to spot.
+  it("SFDRPAITable mirrors the CSV row order, NOT the material-PAI list", () => {
+    const materialPais = readEngineConstantIds(
+      "sfdr_v1_material_pais_data_centre.json",
+      "material_pais",
+      "number",
+    );
+    // The published JSON is the set criterion 10 SCORES against.
+    expect(materialPais.map(Number).sort((a, b) => a - b)).toEqual([
+      1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13,
+    ]);
+
+    // The wizard's PAI_DEFINITIONS is a different set — it matches
+    // PAI_ROW_ORDER in the engine's paiDataFile.ts, the order the client-facing
+    // CSV is written in. That constant lives only in TypeScript and is not
+    // published as data, so this mirror cannot be retired the way the other
+    // three were.
+    //
+    // Anyone pointing SFDRPAITable at sfdr_v1_material_pais_data_centre.json
+    // would silently change the free-tier form (adding PAIs 3 and 6, dropping
+    // PAI 4 and its not-applicable rationale) AND still not match the CSV the
+    // client receives. The two engine lists genuinely disagree — that is
+    // tracked as an engine ticket, and it has to be settled there first.
+    const csvRowOrder = [1, 2, 4, 5, 7, 8, 9, 10, 11, 13];
+    expect(csvRowOrder).not.toEqual(materialPais.map(Number).sort((a, b) => a - b));
+  });
+
+  it("the retired mirrors are genuinely reads, not copies", () => {
+    // If someone re-inlines one of these as a literal, the derived arrays stop
+    // tracking the engine and this stops being true.
+    const standards = readEngineConstantIds(
+      "recognised_sustainability_standards.json",
+      "standards",
+    );
+    const categories = readEngineConstantIds(
+      "data_centre_sector_material_categories.json",
+      "categories",
+    );
+    const byField = (id) => FIELD_CONTRACTS.find((c) => c.field === id).required;
+
+    // Same array identity for the two fields that carry the same engine list —
+    // only possible if both are the derived constant rather than two literals.
+    expect(byField("fldJSLW9dBx0YM4ZC")).toBe(byField("fld5L3pQEGrKgh91v"));
+    expect([...byField("fldJSLW9dBx0YM4ZC")].sort()).toEqual([...standards].sort());
+    expect([...byField("fldDZcacqTnser8uP")].sort()).toEqual([...categories].sort());
   });
 });

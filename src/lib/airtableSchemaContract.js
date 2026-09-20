@@ -59,6 +59,29 @@
  * @property {string} consumer    Where the value is read, and what breaks
  */
 
+import recognisedStandards from "@perennity/engine/regulatory-knowledge/constants/recognised_sustainability_standards.json" with { type: "json" };
+import sectorCategories from "@perennity/engine/regulatory-knowledge/constants/data_centre_sector_material_categories.json" with { type: "json" };
+
+// Read from the engine, not copied from it.
+//
+// These two lists used to be typed out below, in the `required` arrays, as a
+// mirror of constants the engine publishes — and the parity test existed
+// partly to notice when the copy drifted. The engine now exports its
+// regulatory-knowledge directory as a subpath (4.0.0-alpha.2), so the copy can
+// go: there is one list, it lives in the engine, and drift is no longer a
+// thing that can happen rather than a thing a test catches.
+//
+// The `with { type: "json" }` attribute is required, not decorative. This
+// module is loaded by api/engagement.js under Node ESM, which refuses a JSON
+// import without it; Vite and vitest accept it happily. All three were checked
+// before this was written.
+const RECOGNISED_STANDARD_IDS = Object.freeze(
+  recognisedStandards.standards.map((s) => s.id),
+);
+const SECTOR_MATERIAL_CATEGORY_IDS = Object.freeze(
+  sectorCategories.categories.map((c) => c.id),
+);
+
 const ENGAGEMENTS = "tblRnd8BdQ65kuaej";
 const ES_CHARACTERISTICS = "tbl5bnYyE8aMkOmXj";
 const ANNEX_II_COVERAGE = "tblmZcN78oQutgsyS";
@@ -156,7 +179,7 @@ export const FIELD_CONTRACTS = [
     table: ENGAGEMENTS,
     field: "fldJSLW9dBx0YM4ZC",
     label: "c7 reporting named standard",
-    required: ["gri", "tcfd", "ifrs_s1", "ifrs_s2", "efrag_esrs", "cdp"],
+    required: RECOGNISED_STANDARD_IDS,
     mode: "exact",
     consumer:
       "SFDR c5 and c7. Engine: RECOGNISED_STANDARDS, published in " +
@@ -298,12 +321,7 @@ export const FIELD_CONTRACTS = [
     table: ES_CHARACTERISTICS,
     field: "fldDZcacqTnser8uP",
     label: "ES Characteristics — category",
-    required: [
-      "energy_efficiency",
-      "water_stewardship",
-      "land_use_biodiversity",
-      "community_local_impact",
-    ],
+    required: SECTOR_MATERIAL_CATEGORY_IDS,
     mode: "exact",
     consumer:
       "SFDR c1 sector-material count. Engine: SECTOR_MATERIAL_CATEGORIES, published in " +
@@ -321,7 +339,7 @@ export const FIELD_CONTRACTS = [
     table: ANNEX_II_COVERAGE,
     field: "fld5L3pQEGrKgh91v",
     label: "Annex II — named_framework",
-    required: ["gri", "tcfd", "ifrs_s1", "ifrs_s2", "efrag_esrs", "cdp"],
+    required: RECOGNISED_STANDARD_IDS,
     mode: "exact",
     consumer: "SFDR c5 elements 4 and 6. Same RECOGNISED_STANDARDS set.",
   },

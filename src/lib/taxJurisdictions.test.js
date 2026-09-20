@@ -12,12 +12,12 @@
 // base off disk rather than trusting a copy.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import annexIJson from "@perennity/engine/regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json";
 import {
   normaliseJurisdiction,
   parseJurisdictionsUsed,
   canonicalAnnexINames,
+  annexINamesWithoutAliases,
 } from "./taxJurisdictions.js";
 
 describe("normaliseJurisdiction", () => {
@@ -88,27 +88,34 @@ describe("parseJurisdictionsUsed", () => {
 });
 
 describe("parity with the engine's Annex I list", () => {
-  // Read the engine's own knowledge base rather than a copy. The package's
-  // exports map does not expose this path to `import`, so resolve the
-  // package.json and walk to the file.
-  const require = createRequire(import.meta.url);
-  const pkgPath = require.resolve("@perennity/engine/package.json");
-  const jsonPath = pkgPath.replace(
-    /package\.json$/,
-    "regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json",
-  );
-  const annexI = JSON.parse(readFileSync(jsonPath, "utf-8")).annex_i;
+  // The module now READS this list rather than copying it, so most of what
+  // this block used to guard cannot drift any more. What remains worth
+  // guarding: that every listed jurisdiction has aliases (otherwise an
+  // operator typing its ISO code slips past the screen), and that the JSON
+  // still has the shape the module destructures.
+  //
+  // Imported through the package specifier, not read off disk with a path
+  // walked from require.resolve — that workaround existed only because the
+  // engine's exports map blocked the subpath, and it no longer does.
+  const annexI = annexIJson.annex_i;
 
   it("the engine's list is non-empty (guards against reading the wrong file)", () => {
     expect(Array.isArray(annexI)).toBe(true);
     expect(annexI.length).toBeGreaterThan(0);
   });
 
-  it("every Annex I jurisdiction is reachable from the alias map", () => {
-    // If this fails, the pinned engine's list gained a jurisdiction and
-    // taxJurisdictions.js needs an ALIASES entry for it — otherwise operators
-    // typing its ISO code would silently slip past the screen again.
+  it("the canonical list IS the engine's list, not a copy of it", () => {
     expect([...canonicalAnnexINames()].sort()).toEqual([...annexI].sort());
+  });
+
+  it("every Annex I jurisdiction has aliases — the gap that still matters", () => {
+    // The list can no longer drift, but an engine bump can add a jurisdiction
+    // with no ISO aliases here. An operator typing its code would then slip
+    // past the c2 tax screen exactly as they did before ITEM-02.
+    expect(
+      annexINamesWithoutAliases(),
+      "these jurisdictions need ALIASES entries in taxJurisdictions.js",
+    ).toEqual([]);
   });
 
   it("each canonical name is a fixed point of normalisation", () => {
