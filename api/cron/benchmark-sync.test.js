@@ -14,10 +14,15 @@ import v31Fixture from "../../src/__fixtures__/v3.1-assessment.json";
 const GOOD_SALT = "a-production-grade-salt-value";
 const SECRET = "cron-secret-value";
 
+// The names the deploy actually uses. These were VITE_-prefixed until Sep
+// 2026, which only worked because airtableConfigFromEnv accepted the legacy
+// spelling — the same spelling vite.config.js fails the build on, because the
+// PAT once shipped in the public bundle under it. A test seeding the forbidden
+// names was quietly documenting the wrong configuration.
 const AIRTABLE_ENV = {
-  VITE_AIRTABLE_PAT: "pat_test",
-  VITE_AIRTABLE_BASE_ID: "app_test",
-  VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID: "tbl_test",
+  AIRTABLE_PAT: "pat_test",
+  AIRTABLE_BASE_ID: "app_test",
+  AIRTABLE_ENGAGEMENTS_TABLE_ID: "tbl_test",
 };
 
 const ENV = { ...AIRTABLE_ENV, PERENNITY_BENCHMARK_SALT: GOOD_SALT };

@@ -52,10 +52,16 @@ const MAX_PAGES = 100;
  * @returns {AirtableConfig}
  */
 export function airtableConfigFromEnv(env = process.env) {
-  const pat = env.AIRTABLE_PAT ?? env.VITE_AIRTABLE_PAT;
-  const baseId = env.AIRTABLE_BASE_ID ?? env.VITE_AIRTABLE_BASE_ID;
-  const tableId =
-    env.AIRTABLE_ENGAGEMENTS_TABLE_ID ?? env.VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID;
+  // DELETED (Sep 2026): `?? env.VITE_AIRTABLE_*` fallbacks on all three. They
+  // were the last place in the codebase that ACCEPTED the VITE_-prefixed
+  // names, and they contradicted the guard in vite.config.js, which refuses to
+  // build when a secret-looking VITE_ variable is set — the guard that exists
+  // because the PAT once shipped in the public bundle through exactly that
+  // name. Keeping a server-side reader that quietly accepts the forbidden
+  // spelling kept it alive as a plausible thing to configure.
+  const pat = env.AIRTABLE_PAT;
+  const baseId = env.AIRTABLE_BASE_ID;
+  const tableId = env.AIRTABLE_ENGAGEMENTS_TABLE_ID;
   const missing = [
     ["AIRTABLE_PAT", pat],
     ["AIRTABLE_BASE_ID", baseId],
