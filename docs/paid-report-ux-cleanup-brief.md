@@ -218,6 +218,13 @@ B) Leave the placeholder in place but make it explicitly visible — show "Signa
 
 The parallel session should NOT pick a signatory; route this back to the founder.
 
+> **Resolved 20 Sep 2026, and not by either option above.** Reports are signed in wet ink:
+> the PDF is printed, signed by hand, and the signed copy is what is issued. So option A's
+> embedded signature image was never needed and option B's "pending" treatment described a
+> state that is now permanent. The signature page leaves a blank rule to sign on, the
+> placeholder and the image path are gone, and `Signatory Signature Block URI` is no longer
+> read. See `drawSignatureBlock` in `src/export/reportPDF.js`.
+
 ### C3: IC Defence Pack `questions[]` (low priority)
 
 **File:** `src/export/reportPDF.js:887-895`. The pack currently renders an empty

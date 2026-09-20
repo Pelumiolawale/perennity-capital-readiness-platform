@@ -16,8 +16,15 @@ A React/Vite SPA on Vercel with two tiers:
 - **Free** — `/assessment/snapshot`. A self-serve wizard producing an indicative snapshot
   and a lead-generation PDF. Explicitly **not** assurance.
 - **Paid** — `/assessment/report`. An £85k investor-grade Project Readiness Report,
-  signed, generated from data an operator enters in Airtable and scored by a pinned
-  engine repo (`@perennity/engine`, pinned by commit SHA in `package.json`).
+  generated from data an operator enters in Airtable and scored by a pinned engine repo
+  (`@perennity/engine`, pinned by commit SHA in `package.json`).
+
+**Reports are signed in wet ink.** The PDF is printed, signed by hand, and that copy is the
+issued opinion. There is no signature asset and no digital signing path — the signature page
+leaves a rule to sign on, and a caption stating that an unsigned copy is a draft. So nothing
+in the app should claim a report is "signed", and nothing should warn that it is not: the
+download never is, by design. An earlier version stamped NOT YET COUNTERSIGNED in red on
+every report, which is what a permanent warning always becomes — invisible.
 
 The engine is the methodology. This repo reads it, renders it, and must never restate it.
 

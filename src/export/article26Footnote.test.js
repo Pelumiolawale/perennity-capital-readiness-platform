@@ -63,7 +63,6 @@ function outputFixture(overrides = {}) {
     signatory: {
       name: "Dolapo Faseun",
       title: "Chief Executive Officer, Perennity Bridge",
-      signature_block_uri: "PLACEHOLDER_DEFER_TO_COMMIT_3",
     },
     knowledge_base_hash: "sha256:abc",
     engine_commit_sha: "deadbeef",

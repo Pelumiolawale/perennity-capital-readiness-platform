@@ -22,7 +22,7 @@ starting — the engine version affects what verdicts are produced.
 ## Prerequisites (one-time setup)
 
 1. **Airtable access:** request collaborator access to base `appasxX7eC3QsmxeM` from
-   Bolu. Verify you can open the `Engagements` table at
+   Pels. Verify you can open the `Engagements` table at
    `https://airtable.com/appasxX7eC3QsmxeM/tblRnd8BdQ65kuaej`.
 2. **Repo clone:**
    ```
@@ -53,7 +53,7 @@ starting — the engine version affects what verdicts are produced.
    form both call `/api` serverless functions; plain `npm run dev` serves only the Vite
    front end on `:5173` and every one of those calls fails. See README.md.
 5. **Test fixtures:** confirm the 12 test engagements in `docs/test-engagements/` are
-   seeded in Airtable (they are as of 2026-06-03; ask Bolu if unsure). Use engagement #1
+   seeded in Airtable (they are as of 2026-06-03; ask Pels if unsure). Use engagement #1
    (UUID `6239c407-a1fa-4335-86fb-5cdda3e480cb`) for the smoke test below.
 
 **Smoke test before first real engagement:** open
@@ -203,11 +203,22 @@ Open the PDF. Confirm each of:
    until 20 Sep 2026; the title was confirmed as Chief Executive Officer and the code is
    correct.)
 
-   If the page carries a red **NOT YET COUNTERSIGNED** notice, no signature asset has
-   been loaded for the engagement. That is the correct behaviour, not a bug — the
-   document is a draft for internal review and **must not be sent**. The raw
-   `PLACEHOLDER_DEFER_TO_COMMIT_3` token should never appear on the page; if it does,
-   something has regressed.
+   **The signature rule is blank, and that is correct.** PB reports are signed in wet
+   ink: print the report, sign the rule by hand, and issue that signed copy. The PDF you
+   download is never signed and is not meant to be.
+
+   Below the rule the page reads *"This report is issued under manuscript signature. It
+   takes effect only as a copy signed above by the named signatory; an unsigned copy is a
+   draft and is not an issued opinion."* That sentence is what makes an unsigned copy
+   unmistakable, so do not remove it.
+
+   Changed 20 Sep 2026. Until then the page stamped a red **NOT YET COUNTERSIGNED**
+   notice whenever no signature image was found — which, under hand signing, is always.
+   A warning that fires on every document teaches people to ignore it, so it was removed
+   in favour of the blank rule, which says the same thing by being blank. There is no
+   longer any signature asset, placeholder token, or `Signatory Signature Block URI`
+   value in play; if you see a `PLACEHOLDER_` token anywhere on the page, something has
+   regressed badly.
 6. **Heatmap** — rows for each scored framework. Verdicts read sensibly given the inputs
    (a developer with sparse SFDR fields should show many `insufficient_evidence` rows; a
    developer with strong inputs should show many `aligned` rows). If every row is blanket
@@ -288,7 +299,7 @@ deliverable. If you have a SFDR Art 9 engagement and the CSV is still empty, che
 
 ---
 
-## When to escalate to engineering (Bolu)
+## When to escalate to engineering (Pels)
 
 - Engine throws an exception (red error in console; route doesn't load at all)
 - Snapshot allowlist gate test fails on engine update (pre-deploy block)

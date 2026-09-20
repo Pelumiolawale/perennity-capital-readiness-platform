@@ -10,12 +10,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import {
-  generateReportPDF,
-  signatureBlockIsReal,
-  icDefencePackHasContent,
-} from "./reportPDF.js";
-import { resolveSignatory, hasRealSignatureBlock } from "../routes/ReportRoute.jsx";
+import { generateReportPDF, icDefencePackHasContent } from "./reportPDF.js";
+import { resolveSignatory } from "../routes/ReportRoute.jsx";
 
 // The font embedder fetches TTFs through the Vite asset pipeline, which is
 // not available under vitest's node environment. Stub it; nothing under test
@@ -61,7 +57,6 @@ function minimalOutput(overrides = {}) {
     signatory: {
       name: "Test Signatory",
       title: "Test Title, Perennity Bridge",
-      signature_block_uri: "PLACEHOLDER_DEFER_TO_COMMIT_3",
     },
     knowledge_base_hash: "sha256:abc",
     engine_commit_sha: "deadbeef",
@@ -100,52 +95,54 @@ describe("the signature block is actually drawn (item 11)", () => {
     expect(all).toContain("Engagement reference");
   });
 
-  it("an unsigned report says so, unmistakably", async () => {
+  // Reports are signed in wet ink, so the PDF is never signed when it is
+  // generated. What the page must do is leave somewhere to sign and say what
+  // makes a copy binding — the old red "NOT YET COUNTERSIGNED" stamp is gone,
+  // because under this process it would have appeared on every report ever
+  // issued and taught readers to ignore it.
+  it("states what makes a copy binding, rather than warning on every report", async () => {
     const { all } = await renderText(minimalOutput());
-    expect(all).toContain("NOT YET COUNTERSIGNED");
-    // The explanatory note is wrapped by splitTextToSize, so assert on a
-    // fragment that survives on a single line.
-    expect(all).toContain("relied upon by a third party until it is signed");
+    expect(all).not.toContain("NOT YET COUNTERSIGNED");
+    // Wrapped by splitTextToSize, so assert on fragments that survive on one
+    // visual line.
+    expect(all).toContain("issued under manuscript signature");
+    expect(all).toContain("is not an issued opinion");
   });
 
-  it("the raw placeholder token never reaches the page", async () => {
+  it("no placeholder token is left to leak onto the page", async () => {
     const { all } = await renderText(minimalOutput());
     expect(all).not.toContain("PLACEHOLDER_DEFER_TO_COMMIT_3");
+    expect(all).not.toContain("data:image");
   });
 
-  it("a real signature asset suppresses the pending notice", async () => {
+  it("a signature_block_uri left on an engagement changes nothing", async () => {
+    // The Airtable column still exists and an operator may have something in
+    // it. Nothing reads it any more, and a stale value must not resurrect the
+    // old image path or print itself onto an audit-bearing page.
     const output = minimalOutput({
       signatory: {
         name: "Test Signatory",
-        title: "Test Title",
-        // 1x1 transparent PNG.
+        title: "Test Title, Perennity Bridge",
         signature_block_uri:
           "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
       },
     });
     const { all } = await renderText(output);
-    expect(all).not.toContain("NOT YET COUNTERSIGNED");
-  });
-
-  it("signatureBlockIsReal distinguishes the placeholder from an asset", () => {
-    expect(signatureBlockIsReal({ signature_block_uri: "PLACEHOLDER_DEFER_TO_COMMIT_3" })).toBe(false);
-    expect(signatureBlockIsReal({ signature_block_uri: "" })).toBe(false);
-    expect(signatureBlockIsReal({ signature_block_uri: null })).toBe(false);
-    expect(signatureBlockIsReal(null)).toBe(false);
-    expect(signatureBlockIsReal({ signature_block_uri: "data:image/png;base64,AAAA" })).toBe(true);
+    expect(all).toContain("issued under manuscript signature");
+    expect(all).not.toContain("data:image");
   });
 });
 
 describe("signatory overrides fall back field by field (item 13)", () => {
   it("a title-only override keeps the default name", () => {
-    const s = resolveSignatory({ name: null, title: "Managing Director", signature_block_uri: null });
+    const s = resolveSignatory({ name: null, title: "Managing Director" });
     expect(s.title).toBe("Managing Director");
     expect(s.name).toBeTruthy();
     expect(s.name).not.toBeNull();
   });
 
   it("a name-only override keeps the default title", () => {
-    const s = resolveSignatory({ name: "A. Person", title: null, signature_block_uri: null });
+    const s = resolveSignatory({ name: "A. Person", title: null });
     expect(s.name).toBe("A. Person");
     expect(s.title).toBeTruthy();
   });
@@ -154,24 +151,11 @@ describe("signatory overrides fall back field by field (item 13)", () => {
     const s = resolveSignatory(null);
     expect(s.name).toBeTruthy();
     expect(s.title).toBeTruthy();
-    expect(s.signature_block_uri).toBeTruthy();
   });
 
   it("every field of a full override is honoured", () => {
-    const s = resolveSignatory({
-      name: "A. Person",
-      title: "Director",
-      signature_block_uri: "data:image/png;base64,AAAA",
-    });
-    expect(s).toEqual({
-      name: "A. Person",
-      title: "Director",
-      signature_block_uri: "data:image/png;base64,AAAA",
-    });
-  });
-
-  it("the default signatory is not treated as signed", () => {
-    expect(hasRealSignatureBlock(resolveSignatory(null))).toBe(false);
+    const s = resolveSignatory({ name: "A. Person", title: "Director" });
+    expect(s).toEqual({ name: "A. Person", title: "Director" });
   });
 });
 
