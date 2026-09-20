@@ -7,6 +7,7 @@ import {
   DEFAULT_TARGET_LABEL,
 } from "../lib/targetLabels.js";
 import { SFDRPAITable, emptyPAIRows } from "./SFDRPAITable.jsx";
+import { buildSnapshotDataPoints } from "../lib/snapshotIntakeInputs.js";
 
 // v3.2 safeguards canonical item identifiers. Must match the engine's
 // EXPECTED_*_ITEMS arrays at src/logic/safeguards_*.ts in the engine repo
@@ -191,29 +192,10 @@ export function IntakeWizard({ onSubmit }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const data_points = {
-      annualised_pue: form.annualised_pue,
-      wue_annualised: form.wue_annualised,
-      site_water_stress_classification: form.site_water_stress_classification,
-      climate_risk_assessment_completed: form.climate_risk_assessment_completed,
-      climate_risk_assessment_methodology:
-        form.climate_risk_assessment_methodology,
-      // Day 3 not yet collected — engine returns "data_missing" for these.
-      ecocc_practices_implemented: [],
-      human_rights_compliance_items: form.human_rights_compliance_items,
-      bribery_corruption_compliance_items: form.bribery_corruption_compliance_items,
-      taxation_compliance_items: form.taxation_compliance_items,
-      fair_competition_compliance_items: form.fair_competition_compliance_items,
-    };
-
-    // PUE measurement: only populate keys when attested. Unchecked = no claim =
-    // data_missing (the engine's correct verdict; we don't fabricate failure).
-    if (form.pue_measurement_compliance_attested) {
-      data_points.pue_measurement_methodology_declared = "EN_50600_4_2";
-      data_points.pue_measurement_category = "category_2";
-      data_points.pue_measurement_boundary_documented = true;
-      data_points.pue_reporting_basis = "annualised";
-    }
+    // Built by src/lib/snapshotIntakeInputs.js, which is where the rule lives
+    // and where it is tested against the real engine. See that file for why a
+    // blank answer must never be sent as false, "" or [].
+    const data_points = buildSnapshotDataPoints(form);
 
     /** @type {ProjectInput & { target_label?: string }} */
     const input = {
