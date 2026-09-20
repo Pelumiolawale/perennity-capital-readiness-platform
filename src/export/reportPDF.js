@@ -157,6 +157,12 @@ export async function generateReportPDF(
   requireField(output, "signatory");
   requireField(output, "knowledge_base_hash");
   requireField(output, "engine_commit_sha");
+  // Drawn on the cover and beside the signature, and until now required by
+  // nothing. A missing one printed an invalid cover date and "—" as the date
+  // of issue onto a document carrying a signature, with no error anywhere —
+  // the inverse of the run_id defect, and just as quiet. snapshotPDF has
+  // always required it; this is the report catching up.
+  requireField(output, "generated_at");
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   // 1.4d: embed Source Serif 4 (body) and Source Sans 3 (headings, exposed
@@ -1252,6 +1258,18 @@ function drawIcDefencePackPage(
   doc.text(`Engine commit: ${output.engine_commit_sha}`, MARGIN_MM, y);
   y += 4;
   doc.text(`Knowledge base hash: ${output.knowledge_base_hash}`, MARGIN_MM, y);
+  y += 4;
+  // The engine's per-render serial. requireField has demanded this since the
+  // first version of this generator and nothing ever drew it — the same shape
+  // as the signatory and the Article 26 footnote: a field the generator
+  // refuses to run without, appearing on no page.
+  //
+  // Drawn rather than un-required, because Provenance is exactly where it
+  // belongs: methodology version, engine commit and knowledge-base hash say
+  // WHAT produced the verdicts, and the run id says WHICH run, so a PDF in
+  // someone's inbox can be matched back to an engine execution. Distinct from
+  // the engagement reference above it, which is the Airtable key.
+  doc.text(`Engine run: ${output.run_id}`, MARGIN_MM, y);
 }
 
 /* -------------------------------------------------------------------------- */
