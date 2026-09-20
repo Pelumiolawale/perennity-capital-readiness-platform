@@ -264,6 +264,46 @@ function optionalKey(key, value) {
   return { [key]: value };
 }
 
+/**
+ * Strip keys whose value is blank, so a cell nobody filled in never reaches the
+ * engine as an answer.
+ *
+ * THE RULE, IN ONE PLACE. The engine treats `undefined` as "no input" and every
+ * other value as an answer. That single fact has produced the same defect over
+ * and over — a blank WUE read as 0 and passing a regulated water threshold, a
+ * blank ECoCC list read as a finding of zero practices, an unticked checkbox
+ * read as a definite No — and each time it was fixed by remembering to use
+ * optionalKey at one more call site. That is discipline, not design: it works
+ * until somebody adds a field and does not know the rule.
+ *
+ * Applying this once to the finished object makes forgetting harmless.
+ *
+ * WHAT IT STRIPS: `undefined`, `null`, and `""`. Airtable returns null or omits
+ * a cell entirely when it is empty, and an empty string is never a meaningful
+ * answer here.
+ *
+ * WHAT IT DELIBERATELY DOES NOT STRIP: empty arrays. `[]` is genuinely
+ * ambiguous — for a multi-select the operator may have looked at five
+ * safeguards items and ticked none, which is a real answer the engine should
+ * score as such. Where an empty array means "not collected" rather than "none",
+ * that has to be decided at the field, as it is for ECoCC practices above.
+ *
+ * Nor does it strip `false` or `0`. Both are answers.
+ *
+ * @template {Record<string, unknown>} T
+ * @param {T} obj
+ * @returns {Partial<T>}
+ */
+export function omitBlanks(obj) {
+  /** @type {Record<string, unknown>} */
+  const out = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined || value === null || value === "") continue;
+    out[key] = value;
+  }
+  return /** @type {Partial<T>} */ (out);
+}
+
 // Airtable checkbox semantics: true when ticked, undefined when not.
 // We need an explicit boolean only when the cell has been touched, since
 // undefined here means "leave the key out and let the engine return
@@ -723,6 +763,19 @@ export async function fetchEngagement(engagementReference, config) {
     ...optionalKey("circular_economy_compliance_items", fields[FID.CIRCULAR_ECONOMY_ITEMS]),
   };
 
+  // The rule applied once, rather than remembered at each field above. Two
+  // keys still reached the engine as null after the ITEM-01 sweep —
+  // last_independent_audit_date and site_water_stress_classification — and
+  // both are removed by this without anyone having had to notice them. See
+  // omitBlanks.
+  //
+  // Scoped to data_points deliberately. project_input's own scalars are left
+  // alone here because project_id feeds the benchmark's asset hash, and
+  // changing it from null to absent would change that hash — a new identity
+  // for an existing series in an append-only table. That belongs with the
+  // ITEM-15 fix, which has to decide the hashing question properly.
+  const cleaned_data_points = omitBlanks(data_points);
+
   const evidence_documents = parseEvidenceDocuments(
     fields[FID.EVIDENCE_DOCUMENTS] ?? "",
   );
@@ -734,7 +787,7 @@ export async function fetchEngagement(engagementReference, config) {
     jurisdiction: fields[FID.JURISDICTION] ?? null,
     facility_status: fields[FID.FACILITY_STATUS] ?? null,
     build_completion_year: fields[FID.BUILD_COMPLETION_YEAR] ?? undefined,
-    data_points,
+    data_points: cleaned_data_points,
     evidence_documents,
   };
 
