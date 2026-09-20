@@ -215,3 +215,22 @@ describe("an empty IC Defence Pack is not published (item 12)", () => {
     expect(icDefencePackHasContent({})).toBe(false);
   });
 });
+
+describe("the default signatory is the right person", () => {
+  // Confirmed by the founder on 20 Sep 2026. The surname had been "Olawale"
+  // in code while the runbook and the company mailbox both said Faseun; the
+  // title was deliberately kept as it stood.
+  it("signs as Dolapo Faseun", () => {
+    expect(resolveSignatory(null).name).toBe("Dolapo Faseun");
+  });
+
+  it("carries the Chief Executive Officer title", () => {
+    expect(resolveSignatory(null).title).toBe(
+      "Chief Executive Officer, Perennity Bridge",
+    );
+  });
+
+  it("an Airtable override still wins over the default name", () => {
+    expect(resolveSignatory({ name: "Someone Else" }).name).toBe("Someone Else");
+  });
+});

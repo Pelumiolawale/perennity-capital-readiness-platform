@@ -46,16 +46,16 @@ import { generateReportPDF } from "../export/reportPDF.js";
 
 // Default signatory when the engagement record has no overrides set.
 //
-// ITEM-11 / ITEM-13 (Sep 2026). Two things were wrong here.
+// ITEM-11 / ITEM-13 (Sep 2026).
 //
-// The name disagrees with docs/runbook-paid-reports.md, which says the
-// report is signed by "Dolapo Faseun, Founder/Managing Director". The
-// runbook and the company mailbox (dfaseun@) agree with each other and
-// disagree with this constant. Changing a signatory on an
-// audit-bearing document is the founder's call, not a code cleanup, so
-// the name is left exactly as it was and flagged rather than silently
-// corrected. See docs/paid-report-ux-cleanup-brief.md C2: "The parallel
-// session should NOT pick a signatory; route this back to the founder."
+// The surname was wrong. This constant read "Dolapo Olawale", while
+// docs/runbook-paid-reports.md and the company mailbox (dfaseun@) both say
+// Faseun. Confirmed by the founder on 20 Sep 2026 and corrected here.
+//
+// The TITLE was left as it stands, also on the founder's instruction: the
+// runbook says "Founder/Managing Director", and the answer was to keep
+// "Chief Executive Officer". The runbook is the one that is now out of date
+// on this point, not the code.
 //
 // SIGNATURE_PENDING_URI is the literal placeholder that has been in
 // place since commit 3 was deferred. It is exported so the PDF can
@@ -65,7 +65,7 @@ import { generateReportPDF } from "../export/reportPDF.js";
 export const SIGNATURE_PENDING_URI = "PLACEHOLDER_DEFER_TO_COMMIT_3";
 
 const DEFAULT_SIGNATORY = {
-  name: "Dolapo Olawale",
+  name: "Dolapo Faseun",
   title: "Chief Executive Officer, Perennity Bridge",
   signature_block_uri: SIGNATURE_PENDING_URI,
 };
