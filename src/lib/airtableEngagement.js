@@ -417,32 +417,69 @@ export function findChildRowShortfalls(fields, fetched) {
  * @param {string} pat
  * @returns {Promise<Array<{id: string, fields: Record<string, unknown>}>>}
  */
-async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
-  // Filter by the linked engagement record. SEARCH({rec...}, ARRAYJOIN({engagement}))
-  // is the canonical way to match a single linked record from the parent side.
-  const formula = `SEARCH('${engagementRecordId}', ARRAYJOIN({engagement}))`;
-  const url = new URL(`https://api.airtable.com/v0/${baseId}/${childTableId}`);
-  url.searchParams.set("filterByFormula", formula);
-  url.searchParams.set("returnFieldsByFieldId", "true");
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${pat}` },
-  });
-  if (!res.ok) {
-    // ITEM-17: a 422 here is almost always a renamed field. filterByFormula
-    // addresses fields by DISPLAY NAME, so renaming a child table's
-    // `engagement` link field makes Airtable reject the formula outright. Say
-    // so, because the generic status code sends the operator hunting for a
-    // network problem that isn't there.
-    const hint =
-      res.status === 422
-        ? ` — Airtable rejected the filter formula. The child table's \`engagement\` link field has probably been renamed; the formula addresses it by display name.`
-        : "";
-    throw new Error(
-      `Airtable API error fetching child table ${childTableId}: ${res.status}${hint}`,
-    );
+// Airtable returns at most 100 records per page. Requesting 50 ids at a time
+// guarantees at most 50 records come back, so a chunk can never be truncated
+// and no `offset` token can ever be dropped — which is how ITEM-18 stops being
+// a defect that needs detecting and becomes one that cannot occur. 50 ids is
+// also a ~1.6 KB formula; 120 ids (5.4 KB) was verified to work, so this is
+// well inside what Airtable accepts.
+const CHILD_ID_CHUNK = 50;
+
+/**
+ * Fetch child rows BY RECORD ID.
+ *
+ * This replaces `SEARCH(<ref>, ARRAYJOIN({engagement}))`, and the difference
+ * is the whole point of ITEM-17.
+ *
+ * That formula named two things a non-developer can change in the Airtable UI:
+ * the child table's `engagement` link field, by display name; and — less
+ * obviously — the Engagements table's PRIMARY field, because ARRAYJOIN on a
+ * linked-record field returns the primary field values of the linked records.
+ * Drag a different column to first position and every SEARCH silently missed:
+ * six calls returning [] with HTTP 200, a report that rendered and signed
+ * cleanly, and five SFDR criteria reported as unevidenced while their evidence
+ * sat in Airtable, fully populated.
+ *
+ * `RECORD_ID()` is a built-in. It names no field, so neither rename nor
+ * re-order can reach it. The guard added alongside the previous fix
+ * (findChildRowShortfalls) is kept, but it now watches this function rather
+ * than Airtable's behaviour.
+ *
+ * The ids come from the parent record's own linked-record fields, which arrive
+ * in the call we already make — so this costs no extra request. It saves them:
+ * a table the engagement links nothing in is not queried at all, and most
+ * engagements link nothing in any of the six.
+ *
+ * @param {string} baseId
+ * @param {string} childTableId
+ * @param {string[]} recordIds  ids from the parent's linked-record field
+ * @param {string} pat
+ * @returns {Promise<Array<{id: string, fields: Record<string, unknown>}>>}
+ */
+async function fetchChildRowsByIds(baseId, childTableId, recordIds, pat) {
+  if (!Array.isArray(recordIds) || recordIds.length === 0) return [];
+
+  /** @type {Array<{id: string, fields: Record<string, unknown>}>} */
+  const rows = [];
+  for (let i = 0; i < recordIds.length; i += CHILD_ID_CHUNK) {
+    const chunk = recordIds.slice(i, i + CHILD_ID_CHUNK);
+    const formula = `OR(${chunk.map((id) => `RECORD_ID()='${id}'`).join(",")})`;
+    const url = new URL(`https://api.airtable.com/v0/${baseId}/${childTableId}`);
+    url.searchParams.set("filterByFormula", formula);
+    url.searchParams.set("returnFieldsByFieldId", "true");
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${pat}` },
+    });
+    if (!res.ok) {
+      throw new Error(
+        `Airtable API error fetching child table ${childTableId}: ${res.status}`,
+      );
+    }
+    const body = await res.json();
+    for (const record of (body && body.records) || []) rows.push(record);
   }
-  const body = await res.json();
-  return (body && body.records) || [];
+  return rows;
 }
 
 /**
@@ -759,6 +796,15 @@ export async function fetchEngagement(engagementReference, config) {
   // linked-record field returns the primary field values of the linked records
   // — which for the Engagements table is the "Engagement Reference" UUID. So
   // the SEARCH formula must use the UUID, not the rec... record ID.
+  // The parent record carries the ids of its own child rows, so fetch those
+  // directly rather than searching each table for rows that point back. See
+  // fetchChildRowsByIds. A table the engagement links nothing in is not
+  // queried at all — on current data that is six requests saved for most
+  // engagements, and it is why this is faster as well as safer.
+  const linkedIds = (name) => {
+    const v = fields[CHILD_LINK_FIDS[name]];
+    return Array.isArray(v) ? v : [];
+  };
   const [
     es_characteristics_records,
     pai_coverage_records,
@@ -767,12 +813,12 @@ export async function fetchEngagement(engagementReference, config) {
     parent_portfolio_reports_records,
     project_pai_data_records,
   ] = await Promise.all([
-    fetchChildRows(baseId, CHILD_TABLES.ES_CHARACTERISTICS, engagementReference, pat),
-    fetchChildRows(baseId, CHILD_TABLES.PAI_COVERAGE, engagementReference, pat),
-    fetchChildRows(baseId, CHILD_TABLES.ANNEX_II_COVERAGE, engagementReference, pat),
-    fetchChildRows(baseId, CHILD_TABLES.PROJECT_REPORTS, engagementReference, pat),
-    fetchChildRows(baseId, CHILD_TABLES.PARENT_PORTFOLIO_REPORTS, engagementReference, pat),
-    fetchChildRows(baseId, CHILD_TABLES.PROJECT_PAI_DATA, engagementReference, pat),
+    fetchChildRowsByIds(baseId, CHILD_TABLES.ES_CHARACTERISTICS, linkedIds("ES_CHARACTERISTICS"), pat),
+    fetchChildRowsByIds(baseId, CHILD_TABLES.PAI_COVERAGE, linkedIds("PAI_COVERAGE"), pat),
+    fetchChildRowsByIds(baseId, CHILD_TABLES.ANNEX_II_COVERAGE, linkedIds("ANNEX_II_COVERAGE"), pat),
+    fetchChildRowsByIds(baseId, CHILD_TABLES.PROJECT_REPORTS, linkedIds("PROJECT_REPORTS"), pat),
+    fetchChildRowsByIds(baseId, CHILD_TABLES.PARENT_PORTFOLIO_REPORTS, linkedIds("PARENT_PORTFOLIO_REPORTS"), pat),
+    fetchChildRowsByIds(baseId, CHILD_TABLES.PROJECT_PAI_DATA, linkedIds("PROJECT_PAI_DATA"), pat),
   ]);
 
   // ITEM-17 / ITEM-18: the parent's own link arrays say how many rows each of
