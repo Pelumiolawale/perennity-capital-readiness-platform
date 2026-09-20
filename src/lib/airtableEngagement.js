@@ -11,6 +11,8 @@
 // variable is set. The FID / CHILD_FIDS maps are still imported by browser
 // code (entity adapters); they are field IDs, not secrets.
 
+import { acceptedOptionsFor } from "./airtableSchemaContract.js";
+
 // UUID v4 strict format — variant bit forced to one of 8/9/a/b.
 const UUID_V4_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -286,6 +288,40 @@ export function triState(selectRaw, legacyCheckbox) {
   if (v === "Yes") return true;
   if (v === "No") return false;
   return coerceCheckbox(legacyCheckbox);
+}
+
+/**
+ * Check a single-select value against the option names the code actually
+ * accepts, and record a warning when it is neither empty nor recognised.
+ *
+ * ITEM-17 (B4). Several selects are forwarded to the engine verbatim. Rename
+ * `capex` to `CapEx`, or `operational` to `Operational`, and the value is not
+ * undefined — so every "is it missing?" guard passes it through — but it
+ * matches no branch inside the engine either. c7 in particular tests
+ * `operational_status === "operational"` and silently takes the
+ * pre-operational evidence path for anything else. Nothing surfaces.
+ *
+ * Deliberately a warning rather than a hard failure: the rest of the report is
+ * sound, and refusing it would be disproportionate to one drifted cell. The
+ * operator gets a banner naming the field and the value. The accepted list
+ * comes from the same contract the parity test uses, so the two cannot drift
+ * apart.
+ *
+ * @param {string} fieldId
+ * @param {string} label human name for the banner
+ * @param {unknown} value
+ * @param {string[]} warnings collected, mutated
+ */
+function warnOnUnrecognisedOption(fieldId, label, value, warnings) {
+  if (value === undefined || value === null || value === "") return;
+  const accepted = acceptedOptionsFor(fieldId);
+  if (!accepted || accepted.includes(String(value))) return;
+  warnings.push(
+    `"${label}" holds "${value}", which is not one of the values this report ` +
+      `understands (${accepted.join(", ")}). The option has probably been renamed ` +
+      `in Airtable. Airtable option names are code values, so the criterion fed ` +
+      `by this field is not being scored as intended.`,
+  );
 }
 
 function parseEvidenceDocuments(raw) {
@@ -756,6 +792,42 @@ export async function fetchEngagement(engagementReference, config) {
     return { ok: false, reason: "child_data_incomplete", shortfalls: childShortfalls };
   }
 
+  // ITEM-17 (B4): catch select values that are present but unrecognised, which
+  // every "is it missing?" guard waves through. Also flag a blank c7 status:
+  // entityInputAdapter defaults it to "pre_operational", which is
+  // scoring-neutral today (the engine tests `=== "operational"`, so undefined
+  // and "pre_operational" behave alike) but still puts a claim in the input
+  // shape that nobody made, and hides the fact that nobody answered.
+  /** @type {string[]} */
+  const schemaWarnings = [];
+  const c7StatusRaw = singleSelectValue(fields[FID.C7_OPERATIONAL_STATUS], undefined);
+  for (const [fid, label] of [
+    [FID.C6_METHODOLOGY, "c6 methodology"],
+    [FID.C7_OPERATIONAL_STATUS, "c7 operational status"],
+    [FID.TARGET_LABEL, "Target Label"],
+    [FID.SITE_WATER_STRESS, "Site Water Stress Classification"],
+    [FID.FACILITY_STATUS, "Facility Status"],
+    [FID.FACILITY_TYPE, "Facility Type"],
+    [FID.SFDR_ASSURANCE_TIER, "SFDR Assurance Tier"],
+    [FID.C7_REPORTING_NAMED_STANDARD, "c7 reporting named standard"],
+    [FID.UK_SDR_REPORTING_FREQUENCY, "UK SDR reporting frequency"],
+    [FID.UK_SDR_STANDARD_CLAIMED, "UK SDR standard claimed"],
+  ]) {
+    warnOnUnrecognisedOption(
+      fid,
+      label,
+      singleSelectValue(fields[fid], undefined),
+      schemaWarnings,
+    );
+  }
+  if (c7StatusRaw === undefined && fields[FID.C7_COMMISSIONING_DATE]) {
+    schemaWarnings.push(
+      '"c7 operational status" is blank although a commissioning date is recorded. ' +
+        "Criterion 7 is being scored on the pre-operational path, which nobody has " +
+        "stated. Set it to operational or pre_operational.",
+    );
+  }
+
   const engagement = {
     run_id: engagementReference,
     project_input,
@@ -841,6 +913,9 @@ export async function fetchEngagement(engagementReference, config) {
   }
   if (v32ParseWarning) {
     engagement.v32_parse_warning = v32ParseWarning;
+  }
+  if (schemaWarnings.length > 0) {
+    engagement.schema_warnings = schemaWarnings;
   }
 
   return { ok: true, engagement };

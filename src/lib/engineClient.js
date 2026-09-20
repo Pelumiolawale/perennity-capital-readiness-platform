@@ -92,6 +92,30 @@ export { ENGINE_COMMIT_SHA, KB_HASH, METHODOLOGY_VERSION, BUNDLED_ACTIVITIES };
  * @param {TargetLabel | string} targetLabel
  * @returns {AnyFramework[]}
  */
+/**
+ * Is this target label one the SPA can actually route to a framework set?
+ *
+ * ITEM-17 (B5). `uk_sdr_mixed_goals` is still selectable on the Airtable
+ * Target Label field — it is a roadmap signal, and targetLabels.js already
+ * marks it `enabled: false` — but frameworksForLabel throws for it. The route
+ * caught the throw as a generic engine failure and showed the client "We hit
+ * a problem generating your Report. Please try again shortly", which is wrong
+ * twice over: trying again will never help, and nobody, operator included, is
+ * told what is actually wrong. Callers use this to fail with a message that
+ * names the label instead.
+ *
+ * @param {string | null | undefined} targetLabel
+ * @returns {boolean}
+ */
+export function isRoutableTargetLabel(targetLabel) {
+  try {
+    frameworksForLabel(targetLabel ?? "");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function frameworksForLabel(targetLabel) {
   const euTax = BUNDLED_ACTIVITIES[0];
   switch (targetLabel) {

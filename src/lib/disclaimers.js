@@ -36,6 +36,17 @@ export const DATA_INCOMPLETE_COPY = {
     "urgently.",
 };
 
+// ITEM-17 (B5): shown when the engagement's Target Label is one the SPA cannot
+// route — today only uk_sdr_mixed_goals, which is selectable in Airtable but
+// not built. The generic engine-error copy invited the reader to "try again
+// shortly", which would never have worked.
+export const UNSUPPORTED_LABEL_COPY = {
+  message:
+    "This engagement is scoped to a framework we do not yet issue Reports " +
+    "against. Nothing is wrong with your engagement reference. Please contact " +
+    "hello@perennitybridge.com and we will confirm the right scope with you.",
+};
+
 export const ENGINE_ERROR_COPY = {
   message:
     "We hit a problem generating your Report. Please try again shortly, or " +
