@@ -35,12 +35,29 @@
 
 /**
  * Canonical Annex I name → the spellings an operator might reasonably type.
- * Keys MUST match the engine's EU_NON_COOPERATIVE_JURISDICTIONS entries
- * exactly; the parity test enforces that.
+ *
+ * The KEYS are no longer the source of truth for which jurisdictions are
+ * listed — annexI.annex_i is, read from the engine below. This map now carries
+ * only the part the engine does not publish and should not: what a human might
+ * type into an Airtable cell. The engine owns "which jurisdictions"; the app
+ * owns "what an operator calls them".
  *
  * Each entry lists ISO 3166-1 alpha-2, alpha-3, and the common short names
- * and punctuation variants seen in corporate disclosure.
+ * and punctuation variants seen in corporate disclosure. A jurisdiction the
+ * engine lists with no entry here is a real gap — an operator typing its ISO
+ * code would slip past the screen — and the parity test fails on it.
  */
+import annexI from "@perennity/engine/regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json" with { type: "json" };
+
+/**
+ * The EU Council Annex I list, read from the engine rather than copied.
+ *
+ * The `with { type: "json" }` attribute is required: this module is reachable
+ * from api/engagement.js under Node ESM, which refuses a JSON import without
+ * it. Vite and vitest accept it. All three were checked.
+ */
+const ANNEX_I_NAMES = Object.freeze([...annexI.annex_i]);
+
 const ALIASES = {
   "American Samoa": ["AS", "ASM", "American Samoa"],
   Anguilla: ["AI", "AIA", "Anguilla"],
@@ -91,12 +108,30 @@ const LOOKUP = (() => {
 })();
 
 /**
- * The canonical Annex I names this module knows how to reach. Exported for the
- * parity test, which checks it against the engine's knowledge base.
+ * The canonical Annex I names, read from the engine's published list.
+ *
+ * This used to return `Object.keys(ALIASES)` — a hand-maintained copy of the
+ * engine's list, kept honest by a parity test that read the same JSON off disk
+ * with fs. The engine now exports regulatory-knowledge as a subpath, so the
+ * copy is gone and the list is simply read. The refresh cycle (ECOFIN,
+ * February and October) lands here the moment the engine pin moves.
+ *
  * @returns {string[]}
  */
 export function canonicalAnnexINames() {
-  return Object.keys(ALIASES);
+  return [...ANNEX_I_NAMES];
+}
+
+/**
+ * Annex I names with no alias entry. Non-empty means an operator typing that
+ * jurisdiction's ISO code would slip past the c2 tax screen unnoticed, which
+ * is the exact defect ITEM-02 fixed. Exported so the parity test can assert
+ * it stays empty across an engine bump.
+ *
+ * @returns {string[]}
+ */
+export function annexINamesWithoutAliases() {
+  return ANNEX_I_NAMES.filter((name) => !(name in ALIASES));
 }
 
 /**
