@@ -8,7 +8,10 @@
 /**
  * Per-tab required-field registry.
  *
- * `key`    — matches the state key in INITIAL_PROJECT (src/App.jsx).
+ * `key`    — matches the state key in the intake wizard's form state
+ *            (src/components/IntakeWizard.jsx). It used to say INITIAL_PROJECT
+ *            in src/App.jsx; that constant and the 2,105-line prototype it
+ *            belonged to were deleted, and App.jsx is now eight lines.
  * `label`  — user-facing label (kept in sync with the <FormField>).
  * `type`   — one of "string", "number", "boolean". Drives the
  *            `isFilled` predicate:

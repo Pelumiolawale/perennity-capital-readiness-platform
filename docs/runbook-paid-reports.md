@@ -8,8 +8,14 @@ of this repo.
 paid Project Readiness Report PDF, verify it, and send it to the client. End-to-end this
 takes 30-90 minutes per engagement once you are comfortable with the steps.
 
-**Engine pin:** `@perennity/engine#v0.6.0` (UK SDR Phase 2). Confirm this in `package.json`
-before starting — engine versions affect what verdicts are produced.
+**Engine pin:** a 40-character commit SHA in `package.json`, currently
+`#60feda0` (package version `4.0.0-alpha.2`, methodology v3.5). Confirm it before
+starting — the engine version affects what verdicts are produced.
+
+> **Last corrected 20 September 2026.** This runbook previously told operators to put
+> `VITE_AIRTABLE_PAT` in `.env.local` and to re-pin the engine to a tag. Both now break
+> the build. If you are reading a printed or cached copy from before that date, stop and
+> get the current one.
 
 ---
 
@@ -26,15 +32,26 @@ before starting — engine versions affect what verdicts are produced.
    ```
 3. **`.env.local`:** create at the repo root with:
    ```
-   VITE_AIRTABLE_PAT=<your Airtable Personal Access Token>
-   VITE_AIRTABLE_BASE_ID=appasxX7eC3QsmxeM
-   VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID=tblRnd8BdQ65kuaej
+   AIRTABLE_PAT=<your Airtable Personal Access Token>
+   AIRTABLE_BASE_ID=appasxX7eC3QsmxeM
+   AIRTABLE_ENGAGEMENTS_TABLE_ID=tblRnd8BdQ65kuaej
    ```
-   Get the PAT from Airtable: Account → Developer hub → Personal access tokens → create
-   token with `data.records:read` scope on the `appasxX7eC3QsmxeM` base.
-   The `VITE_ENGINE_COMMIT_SHA` build-time variable is set automatically by `vite.config.js`
-   from `package-lock.json` — no action needed.
-4. **Dev server:** `npm run dev`. Confirm it boots on `http://localhost:5173/`.
+   **Never prefix these with `VITE_`.** Vite inlines every `VITE_*` value into the public
+   JavaScript bundle, which is how the Airtable token was once published to the internet.
+   `vite.config.js` now refuses to build if a secret-looking `VITE_` variable is set, so
+   the old instruction does not merely fail — it stops you building at all.
+
+   Get the PAT from Airtable: Account → Developer hub → Personal access tokens → create a
+   token with **`data.records:read` and `data.records:write`** on the `appasxX7eC3QsmxeM`
+   base. Write is needed for lead capture. If you also want the Airtable schema parity
+   test to run, add `schema.bases:read`.
+
+   The `VITE_ENGINE_COMMIT_SHA` build-time variable is set automatically by
+   `vite.config.js` from `package-lock.json` — no action needed. (It is a commit hash,
+   not a secret, which is why that one is allowed a `VITE_` prefix.)
+4. **Dev server:** `vercel dev`, **not** `npm run dev`. The report route and the lead
+   form both call `/api` serverless functions; plain `npm run dev` serves only the Vite
+   front end on `:5173` and every one of those calls fails. See README.md.
 5. **Test fixtures:** confirm the 12 test engagements in `docs/test-engagements/` are
    seeded in Airtable (they are as of 2026-06-03; ask Bolu if unsure). Use engagement #1
    (UUID `6239c407-a1fa-4335-86fb-5cdda3e480cb`) for the smoke test below.
@@ -42,7 +59,9 @@ before starting — engine versions affect what verdicts are produced.
 **Smoke test before first real engagement:** open
 `http://localhost:5173/assessment/report?ref=6239c407-a1fa-4335-86fb-5cdda3e480cb`. The
 page should load, show the client/project summary card, and offer a "Download PDF" button.
-If you instead see an entitlement error, check `.env.local` and your PAT permissions.
+If you instead see an entitlement error: check you are running `vercel dev` rather than
+`npm run dev`, then check `.env.local` and your PAT scopes. Do **not** add a `VITE_`
+prefix to anything — see step 3.
 
 ---
 
@@ -145,12 +164,15 @@ UK SDR engagements do NOT use these child tables.
 
 ### 9. Generate the PDF
 
-Open `http://localhost:5173/assessment/report?ref=<your-uuid>`. The page loads, shows the
+Open `http://localhost:3000/assessment/report?ref=<your-uuid>` (the port `vercel dev`
+reports — `npm run dev`'s `:5173` will not serve `/api`). The page loads, shows the
 engagement summary, and offers "Download PDF" and (for SFDR engagements) "Download PAI
 Data (CSV)" buttons.
 
 Click "Download PDF". The PDF is generated client-side via jsPDF; it downloads to your
-default downloads folder named like `Perennity_Bridge_Report_<short-uuid>.pdf`.
+default downloads folder named like `perennity-report-<short-uuid>-<YYYY-MM-DD>.pdf` —
+lowercase, hyphenated, with the issue date. (Verify against
+`pdf.save(...)` in `src/routes/ReportRoute.jsx` if it looks different.)
 
 ### 10. Verify the PDF + send to client
 
@@ -167,7 +189,8 @@ Open the PDF. Confirm each of:
 1. **Cover page** — client name, project name, target label all correct. Subtitle matches
    the chosen framework (e.g. "SFDR Article 9 (sustainable investment objective)" or
    "UK SDR — Sustainability Focus").
-2. **Article 26 footer** — present on every page. Reads (paraphrased): "This document is
+2. **Article 26 footnote** — footnote 1 at the foot of every non-cover page, above the
+   folio band, with a hairline rule above it. Reads (paraphrased): "This document is
    advisory in nature. It does not constitute regulatory assurance, audit, or verification
    within the meaning of Article 26 of Regulation (EU) 2020/852 or under any equivalent
    regime in the United Kingdom or any other jurisdiction." This is a regulatory invariant
@@ -175,9 +198,16 @@ Open the PDF. Confirm each of:
 3. **Methodology version stamp** — currently `v3.5`. Visible in cover-page subtitle or
    footer.
 4. **Engagement reference** — visible on every page (short form of the UUID).
-5. **Signatory block** — Dolapo Faseun, Founder/Managing Director of Perennity Bridge,
-   with signature image. If the block reads `PLACEHOLDER_DEFER_TO_COMMIT_3`, the
-   signatory swap-in hasn't shipped yet — flag to Bolu and do not send.
+5. **Signature page** — sits after Residual Disclosure. Reads **Dolapo Faseun, Chief
+   Executive Officer, Perennity Bridge**. (This runbook said "Founder/Managing Director"
+   until 20 Sep 2026; the title was confirmed as Chief Executive Officer and the code is
+   correct.)
+
+   If the page carries a red **NOT YET COUNTERSIGNED** notice, no signature asset has
+   been loaded for the engagement. That is the correct behaviour, not a bug — the
+   document is a draft for internal review and **must not be sent**. The raw
+   `PLACEHOLDER_DEFER_TO_COMMIT_3` token should never appear on the page; if it does,
+   something has regressed.
 6. **Heatmap** — rows for each scored framework. Verdicts read sensibly given the inputs
    (a developer with sparse SFDR fields should show many `insufficient_evidence` rows; a
    developer with strong inputs should show many `aligned` rows). If every row is blanket
@@ -225,14 +255,21 @@ Most common causes:
   which falls back to `undefined` on malformed input. Validate with
   `node -e 'JSON.parse(require("fs").readFileSync("/tmp/blob.txt","utf8"))'` — fix any
   parse errors, paste back into Airtable.
-- **Engine pin mismatch.** Confirm `package.json` shows `@perennity/engine#v0.6.0` and
-  `node_modules/@perennity/engine/package.json` shows version `0.6.0`. If they diverge,
-  run `npm install @perennity/engine` to refresh.
+- **Engine pin mismatch.** Confirm `package.json` shows
+  `@perennity/engine#60feda0` and `node_modules/@perennity/engine/package.json` shows
+  version `4.0.0-alpha.2`. (This said `v0.6.0` / version `0.6.0` until 20 Sep 2026, which
+  made a correct install look broken.) If they genuinely diverge, run
+  `npm install @perennity/engine` to refresh.
 - **Child rows not linked (SFDR only).** SFDR c1 / c3 / c5 / c7 / c10 read child tables
   via linked-record field. If the child rows exist but aren't linked to the parent
-  engagement, the adapter returns no data and the relevant criteria resolve to
-  `insufficient_evidence`. Open each child row and confirm the `engagement` field points at
-  the right parent.
+  engagement, the relevant criteria resolve to `insufficient_evidence`. Open each child
+  row and confirm the `engagement` field points at the right parent.
+
+  Since 20 Sep 2026 the app also cross-checks this: the parent record lists the child rows
+  that link back to it, so if a fetch returns fewer rows than the parent claims, the report
+  is **refused** rather than issued understating the evidence. If you see "We cannot issue
+  this Report right now", that is what happened — check the browser console, which names
+  the table and the counts.
 
 ### PDF generation throws / hangs
 
@@ -268,14 +305,43 @@ deliverable. If you have a SFDR Art 9 engagement and the CSV is still empty, che
 
 - **App repo:** `https://github.com/Pelumiolawale/perennity-capital-readiness-platform`
 - **Engine repo:** `https://github.com/Pelumiolawale/Perennity_regulatory_frameworks`
-- **Engine pin:** `package.json` → `dependencies.@perennity/engine`. To bump (Bolu only):
-  edit the URL fragment from `#v0.6.0` to `#v0.7.0` (or whatever new tag), then
-  `npm install`. Confirm `node_modules/@perennity/engine/package.json` version matches
-  before any client-facing report.
+- **Engine pin:** `package.json` → `dependencies.@perennity/engine`. To bump (engineering
+  only): edit the URL fragment to the new **commit SHA**, then
+  `npm install @perennity/engine`.
+
+  **Not a tag.** This said "edit the fragment from `#v0.6.0` to `#v0.7.0` (or whatever new
+  tag)" until 20 Sep 2026. Following it breaks every subsequent build: `vite.config.js`
+  parses the lockfile for a full 40-character hash and throws "Expected full 40-char hash
+  at end of git URL" if it finds a tag.
+
+  After bumping, confirm `node_modules/@perennity/engine/package.json` shows the expected
+  version, then **re-score the live engagements and diff the verdicts** before any
+  client-facing report. An engine bump that changes a verdict is a methodology change and
+  needs founder review, not a silent deploy.
 - **Engagement schema source of truth:** `src/lib/airtableEngagement.js` `FID` constant.
-  Every Airtable field used by the engine is keyed by an immutable Airtable field ID
-  (`fld...`). Renaming a field name in Airtable does NOT break the parser; renaming an
-  option value (e.g. `eu_taxonomy_aligned_8_1` → `eu_tax_8_1`) WILL break scoring.
+  Every Airtable field the engine uses is keyed by an immutable field ID (`fld...`).
+
+  **Renaming things in Airtable — corrected 20 Sep 2026.** This section used to say a
+  field rename was safe. It is not, in two specific places, and the difference matters:
+
+  - **Renaming an OPTION** (e.g. `eu_taxonomy_aligned_8_1` → `eu_tax_8_1`, or a Yes/No/?
+    option, or a safeguards item) breaks scoring. Option names are code values: the engine
+    compares against them literally. Most of these fail **silently** and some fail in the
+    client's favour — rename a tri-state's "No" and a recorded finding is read as "not
+    answered". A parity test now catches this, but only once the PAT carries
+    `schema.bases:read`.
+  - **Renaming the `Engagement Reference` field** takes every client's report down at
+    once. Airtable's `filterByFormula` can only address fields by display name, so this is
+    the one unavoidable name dependency in the system. Since 20 Sep 2026 the app degrades
+    to a slower field-ID scan and shows a warning banner rather than failing outright —
+    but restore the name.
+  - **Re-ordering the Engagements table so a different column is first** used to be the
+    most dangerous edit available: child-row lookups resolved through the primary field,
+    so making something else primary silently emptied five SFDR criteria on a
+    report that still rendered and signed. Since 20 Sep 2026 child rows are fetched by
+    record ID, which depends on no name or position, so this is now safe.
+  - **Renaming any other field is genuinely safe** — those reads go through the `FID`
+    map.
 - **Test engagements:** `docs/test-engagements/`. 12 engagements covering all 6 labels ×
   2 tiers. Use these as worked examples when building real engagements.
 

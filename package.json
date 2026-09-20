@@ -6,10 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "wiring:day2": "node scripts/day2-wiring-proof.mjs",
     "schema:refresh": "node scripts/refresh-airtable-schema.mjs"
   },
   "dependencies": {

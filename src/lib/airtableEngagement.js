@@ -697,11 +697,9 @@ async function fetchChildRowsByIds(baseId, childTableId, recordIds, pat) {
  *
  * @param {string} engagementReference
  * @param {{pat?: string, baseId?: string, tableId?: string}} [config]
- *   Optional explicit credentials. Omit in the browser — the VITE_* reads below
- *   are what Vite statically replaces at build time, and they stay the default
- *   path. Supply it from a Node context (serverless function), where
- *   `import.meta.env` does not exist; `??` short-circuits so the VITE_ reads are
- *   never evaluated when config is given. See listEngagements.js.
+ *   Required. Supplied by api/engagement.js from server-side env vars; there
+ *   is no browser path and no VITE_* fallback, deliberately. See
+ *   listEngagements.js and airtableConfigFromEnv.
  * @returns {Promise<
  *   | { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired" }
  *   | { ok: false, reason: "child_data_incomplete", shortfalls: {table: string, expected: number, actual: number}[] }
@@ -715,21 +713,31 @@ export async function fetchEngagement(engagementReference, config) {
   }
 
   // 2. Env preconditions — misconfiguration, throw loudly.
-  const pat = config?.pat ?? import.meta.env.VITE_AIRTABLE_PAT;
-  const baseId = config?.baseId ?? import.meta.env.VITE_AIRTABLE_BASE_ID;
-  const tableId = config?.tableId ?? import.meta.env.VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID;
+  //
+  // DELETED (Sep 2026): a `?? import.meta.env.VITE_AIRTABLE_*` fallback on each
+  // of these three. It was dead — api/engagement.js has injected config
+  // explicitly since the token moved server-side — and actively harmful,
+  // because the error it raised named the VITE_ variables and told the
+  // operator to "set these in .env.local". Doing that is now the one action
+  // guaranteed to break the build: vite.config.js refuses to compile when a
+  // secret-looking VITE_ variable is set, which is the guard that exists
+  // because the PAT once shipped in the public bundle through exactly that
+  // name. The error message was instructing people to reintroduce the leak.
+  const { pat, baseId, tableId } = config ?? {};
   if (!pat || !baseId || !tableId) {
     const missing = [
-      ["VITE_AIRTABLE_PAT", pat],
-      ["VITE_AIRTABLE_BASE_ID", baseId],
-      ["VITE_AIRTABLE_ENGAGEMENTS_TABLE_ID", tableId],
+      ["AIRTABLE_PAT", pat],
+      ["AIRTABLE_BASE_ID", baseId],
+      ["AIRTABLE_ENGAGEMENTS_TABLE_ID", tableId],
     ]
       .filter(([, v]) => !v)
       .map(([k]) => k)
       .join(", ");
     throw new Error(
-      `Airtable env vars missing: ${missing}. Set these in .env.local. ` +
-        "This is a build/deploy misconfiguration, not a runtime user error.",
+      `Airtable config missing: ${missing}. These are server-side env vars, ` +
+        "read by the /api functions — never prefix them with VITE_, which " +
+        "would inline them into the public bundle. This is a build/deploy " +
+        "misconfiguration, not a runtime user error.",
     );
   }
 
