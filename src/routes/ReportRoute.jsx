@@ -132,6 +132,11 @@ export default function ReportRoute() {
   const [engagement, setEngagement] = useState(null);
   const [reportOutput, setReportOutput] = useState(null);
   const [renderContract, setRenderContract] = useState(null);
+  // The engine's own per-framework overall_verdict, keyed by activity_id.
+  // Captured here because `run` is local to the effect and the PDF is built
+  // later, on click. The PDF must report the engine's verdict rather than
+  // derive one — deriving it is what produced the false "aligned".
+  const [frameworkVerdicts, setFrameworkVerdicts] = useState(null);
   // Dev-mode diagnostic: capture the raw error so the failing-engagement
   // view can show it inline (gated to import.meta.env.DEV in the JSX). In
   // production the friendly ENGINE_ERROR_COPY is the only visible surface;
@@ -272,6 +277,13 @@ export default function ReportRoute() {
         if (cancelled) return;
         setReportOutput(output);
         setRenderContract(contract);
+        setFrameworkVerdicts(
+          Object.fromEntries(
+            (run.framework_results ?? [])
+              .filter((f) => f && f.activity_id)
+              .map((f) => [f.activity_id, f.overall_verdict]),
+          ),
+        );
         setState("entitlement_valid");
       } catch (engineErr) {
         if (cancelled) return;
@@ -368,6 +380,7 @@ export default function ReportRoute() {
           target_label: engagement?.target_label ?? null,
         },
         renderContract,
+        frameworkVerdicts,
       );
       const shortRef = (reportOutput.engagement_reference || "report").slice(0, 8);
       const date = new Date().toISOString().slice(0, 10);

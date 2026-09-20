@@ -24,6 +24,7 @@ import { resolve } from "node:path";
 import {
   generateReportPDF,
   summariseCriterionVerdicts,
+  FRAMEWORK_FINDING_ACTIVITY_IDS,
 } from "./reportPDF.js";
 
 vi.mock("./reportTypography.js", async (importOriginal) => {
@@ -86,7 +87,7 @@ function outputFixture() {
  * mean quietly weakening any assertion whose phrase happens to straddle a
  * line break.
  */
-async function renderWith(criteria) {
+async function renderWith(criteria, frameworkVerdicts) {
   const contract = {
     framework_findings: [{ framework: "sfdr_art8", criteria }],
   };
@@ -94,6 +95,7 @@ async function renderWith(criteria) {
     outputFixture(),
     { target_label: "sfdr_article_8" },
     contract,
+    frameworkVerdicts,
   );
   const raw = [];
   for (let n = 1; n <= doc.internal.getNumberOfPages(); n++) {
@@ -155,10 +157,14 @@ describe("the Conclusions page states no invented verdict (principle 3)", () => 
     expect(text).not.toMatch(/indicative score/);
   });
 
-  it("the document says the single-figure verdict is pending, not absent", async () => {
+  it("the SCORE is described as pending — not the verdict", async () => {
+    // Only indicative_score is calibration-pending. The engine does compute a
+    // per-framework verdict, so claiming the verdict is pending would be a
+    // false statement about our own methodology.
     const text = await renderWith(crit("aligned", 4));
+    expect(text).toMatch(/calibrated numerical score/);
     expect(text).toMatch(/pending/);
-    expect(text).toMatch(/methodology calibration/);
+    expect(text).not.toMatch(/verdict .{0,20}pending/);
   });
 
   it("a mixed framework reports every band it contains", async () => {
@@ -177,6 +183,66 @@ describe("the Conclusions page states no invented verdict (principle 3)", () => 
       "1 not applicable",
     ]) {
       expect(text, fragment).toContain(fragment);
+    }
+  });
+});
+
+describe("the verdict comes from the engine, never from the renderer", () => {
+  // The engine's aggregateProductLabelVerdict already ranks the bands, and it
+  // handles insufficient_evidence explicitly. The renderer's own copy of that
+  // ladder was missing exactly that rung, which is what produced the false
+  // "aligned". So the renderer no longer ranks anything — it reports what the
+  // engine decided.
+  it("prints the engine's verdict when one is supplied", async () => {
+    const text = await renderWith(crit("aligned", 7), {
+      sfdr_v1_article_8: "aligned",
+    });
+    expect(text).toMatch(/overall verdict aligned/);
+    expect(text).toContain("7 aligned");
+  });
+
+  it("prints insufficient evidence when that is what the engine said", async () => {
+    // The exact case the old ternary turned into "aligned".
+    const text = await renderWith(crit("insufficient_evidence", 7), {
+      sfdr_v1_article_8: "insufficient_evidence",
+    });
+    expect(text).toMatch(/overall verdict insufficient evidence/);
+    expect(text).not.toMatch(/verdict aligned/);
+  });
+
+  it("does not contradict the engine when criteria and verdict differ", async () => {
+    // A not_aligned framework whose criteria are mostly aligned must still
+    // report not_aligned — the engine's cascade rules are not re-litigated
+    // here.
+    const text = await renderWith(
+      [...crit("aligned", 6), ...crit("not_aligned", 1)],
+      { sfdr_v1_article_8: "not_aligned" },
+    );
+    expect(text).toMatch(/overall verdict not aligned/);
+  });
+
+  it("states no verdict at all when the engine supplied none", async () => {
+    const text = await renderWith(crit("aligned", 3), undefined);
+    expect(text).toContain("3 aligned");
+    expect(text).not.toMatch(/overall verdict/);
+  });
+
+  it("passes an unknown band through verbatim rather than reshaping it", async () => {
+    const text = await renderWith(crit("aligned", 2), {
+      sfdr_v1_article_8: "some_future_band",
+    });
+    expect(text).toMatch(/overall verdict some_future_band/);
+  });
+
+  it("every framework the contract can emit has an activity id to join on", () => {
+    // If the engine gains a framework and only one of the two maps is updated,
+    // that framework silently loses its verdict. Fail here instead.
+    expect(Object.keys(FRAMEWORK_FINDING_ACTIVITY_IDS).sort()).toEqual(
+      ["sfdr_art8", "sfdr_art9", "uk_sdr_focus", "uk_sdr_impact", "uk_sdr_improvers"].sort(),
+    );
+    for (const id of Object.values(FRAMEWORK_FINDING_ACTIVITY_IDS)) {
+      expect(typeof id).toBe("string");
+      expect(id.length).toBeGreaterThan(0);
     }
   });
 });
