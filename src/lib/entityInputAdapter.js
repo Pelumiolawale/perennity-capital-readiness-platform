@@ -20,7 +20,7 @@
 // are populated — gives engagements seeded under the old schema a clean
 // migration path.
 
-import { CHILD_FIDS } from "./airtableEngagement.js";
+import { CHILD_FIDS, omitBlanks } from "./airtableEngagement.js";
 import { parseJurisdictionsUsed } from "./taxJurisdictions.js";
 
 /**
@@ -73,17 +73,22 @@ function tryParseJSON(raw, fallback) {
   }
 }
 
+// Identity, with nothing invented to fill a gap.
+//
+// This used to fall back to "unknown_entity", "Developer entity" and
+// "unknown". No engine code reads any of the three — they are carried in the
+// EntityInput shape and never scored — so none of them was moving a verdict.
+// They were still three sentences we were writing on the developer's behalf in
+// an audit-bearing input, and "Developer entity" in particular is the kind of
+// placeholder that reads like a real answer. A blank is now a blank.
 function resolveEntityIdentity(engagement) {
   const projectInput = /** @type {any} */ (engagement).project_input ?? {};
-  return {
-    entity_id: engagement.run_id ?? "unknown_entity",
+  return omitBlanks({
+    entity_id: engagement.run_id,
     legal_name:
-      engagement.report_metadata?.client_name ??
-      engagement.legal_name ??
-      "Developer entity",
-    jurisdiction:
-      projectInput.jurisdiction ?? engagement.jurisdiction ?? "unknown",
-  };
+      engagement.report_metadata?.client_name ?? engagement.legal_name,
+    jurisdiction: projectInput.jurisdiction ?? engagement.jurisdiction,
+  });
 }
 
 /**
@@ -351,11 +356,7 @@ export function buildEntityInputs(engagement) {
 
   if (!hasAny) return undefined;
 
-  const identity = resolveEntityIdentity(engagement);
-  return {
-    entity_id: identity.entity_id,
-    legal_name: identity.legal_name,
-    jurisdiction: identity.jurisdiction,
-    sfdr,
-  };
+  // Spread, so an identity field we do not have is absent rather than present
+  // and undefined. resolveEntityIdentity has already dropped the blanks.
+  return { ...resolveEntityIdentity(engagement), sfdr };
 }

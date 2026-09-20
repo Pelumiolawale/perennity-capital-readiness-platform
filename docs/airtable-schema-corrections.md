@@ -4,8 +4,8 @@ Changes to the **Airtable base itself** (`appasxX7eC3QsmxeM`), not to the repo. 
 here because nothing in the codebase would otherwise show them, and because two of them
 document defects worth remembering rather than just fixing.
 
-Eighteen description edits and one option merge were applied, each verified by reading the
-schema back afterwards. Nothing on the base is outstanding.
+Eighteen description edits, one option merge and four new fields were applied, each
+verified by reading the schema back afterwards. Nothing on the base is outstanding.
 
 None of these edits changes a verdict by itself. They matter because each one was an
 instruction an operator follows, and following it produced a wrong engagement — which
@@ -113,6 +113,38 @@ path is a new feature rather than a switch to flip back on.
 
 The column is kept rather than deleted so anything already typed into it is not destroyed.
 `Signatory Name` and `Signatory Title` remain live overrides.
+
+---
+
+## 7. Four new fields, replacing values the app was inventing ✅
+
+Added 20 Sep 2026 as part of retiring the paid-path fabrications. The SFDR adapter used to
+send the engine constants that no operator had supplied, two of which reach a verdict.
+
+| Field | Type | Replaces |
+|---|---|---|
+| `c9 Operational doc age (months)` | number | `operational_doc_age_months: 6` |
+| `c9 Design stage doc age (months)` | number | — (new; the 24-month pre-operational path) |
+| `c9 Material qualifications present (Y/N/?)` | Yes/No/Unknown | `material_qualifications_present: false` |
+| `c10 Data recency (months)` | number | `data_recency_months: 6` |
+
+All four are read and omitted when blank. Two consequences worth knowing:
+
+- **Leaving both c9 doc ages blank means c9 cannot reach aligned.** The engine's recency
+  gate requires at least one to be present and within threshold, so omitting is not
+  neutral here. That is deliberate: an evidence pack whose age nobody has established
+  should not clear a recency gate.
+- **`c10 Data recency` blank is neutral** — the engine treats an absent value as no
+  recency concern. The hardcoded 6 was not moving a verdict on its own; what it did was
+  submit a twenty-month-old dataset as a six-month-old one.
+
+`c9 Material qualifications present` is registered in `TRI_STATE_FIELDS` and in the
+committed schema snapshot, so the parity test covers its option names.
+
+Rescored all 15 live engagements before and after: **no verdict moved.** Both Art 9
+engagements are already `not_aligned` on c9 through the Art 2(17) cascade, which
+short-circuits before the recency gate is evaluated — so the fabrications were latent
+rather than live, the same shape as the defects in the first half of the plan.
 
 ---
 
