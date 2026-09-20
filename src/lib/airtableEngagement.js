@@ -175,6 +175,22 @@ export const FID = {
   CLIMATE_RISK_COMPLETED_TRI: "fldkrdg8HKAB8jAUf",
 };
 
+// Parent-side linked-record fields, one per child table (ITEM-17 / ITEM-18).
+//
+// These sit on the Engagements record itself and hold an array of the linked
+// child record ids, so the parent we have already fetched tells us exactly how
+// many rows each child fetch OUGHT to return. That is the only independent
+// check available on a lookup that otherwise cannot fail visibly — see
+// assertChildRowIntegrity.
+export const CHILD_LINK_FIDS = {
+  ES_CHARACTERISTICS: "fldyzlPWUeJeKMSwd",
+  PAI_COVERAGE: "fldPmiMmXOhkkOoYa",
+  ANNEX_II_COVERAGE: "fldIpTKLhkHo6vvN1",
+  PROJECT_REPORTS: "fldQm9vAXnsjDZ6ia",
+  PARENT_PORTFOLIO_REPORTS: "fldkJcz3s7t9mtoqt",
+  PROJECT_PAI_DATA: "fld0ap3OJxeT2zPUa",
+};
+
 // Child table IDs (PR A2 + A4). Each engagement record can have N linked
 // rows in each table. fetchEngagement issues parallel filterByFormula
 // queries against these tables to retrieve the rows for the engagement
@@ -304,6 +320,50 @@ function normalizeSignatoryOverrides(fields) {
 }
 
 /**
+ * Cross-check each child fetch against the parent's own link arrays.
+ *
+ * ITEM-17, the dangerous half. fetchChildRows matches rows with
+ * `SEARCH(<ref>, ARRAYJOIN({engagement}))`, and ARRAYJOIN on a linked-record
+ * field yields the PRIMARY FIELD of the linked records. That is correct only
+ * while `Engagement Reference` remains the primary field on Engagements.
+ * Re-order the table in the Airtable UI so that, say, Client Name becomes
+ * primary, and every SEARCH silently misses: all six calls return `[]` with
+ * HTTP 200, the report renders perfectly well, and SFDR c1, c3, c5, c7 and c10
+ * quietly drop to insufficient_evidence. A wrong opinion gets signed and sent
+ * and nothing anywhere complains.
+ *
+ * The parent record is the independent witness. Its linked-record fields hold
+ * the ids of exactly the rows that link back to it, so they say how many rows
+ * each fetch should have returned — and they arrive in the parent call we
+ * already make, for free.
+ *
+ * The same check catches two other defects for nothing:
+ *   - a renamed `engagement` link field on a child table, when Airtable
+ *     answers 200 rather than 422;
+ *   - ITEM-18, where fetchChildRows discards Airtable's `offset` token and
+ *     silently truncates at 100 rows. Expected 140, got 100.
+ *
+ * A shortfall is never benign: it means rows we know exist were not read, so
+ * the report would understate the evidence. That is refused rather than
+ * rendered — an absent report is recoverable, a signed and understated one is
+ * not.
+ *
+ * @param {Record<string, unknown>} fields Parent record fields, by field ID
+ * @param {Record<string, Array<unknown>>} fetched Child rows, keyed as CHILD_LINK_FIDS
+ * @returns {{ table: string, expected: number, actual: number }[]} shortfalls
+ */
+export function findChildRowShortfalls(fields, fetched) {
+  const shortfalls = [];
+  for (const [table, linkFid] of Object.entries(CHILD_LINK_FIDS)) {
+    const linked = fields[linkFid];
+    const expected = Array.isArray(linked) ? linked.length : 0;
+    const actual = Array.isArray(fetched[table]) ? fetched[table].length : 0;
+    if (actual < expected) shortfalls.push({ table, expected, actual });
+  }
+  return shortfalls;
+}
+
+/**
  * Fetch all rows from a child Airtable table linked to the given engagement
  * record. Returns the raw `fields` object per row (keyed by field ID since we
  * pass returnFieldsByFieldId=true). Empty array when the link has no rows.
@@ -332,8 +392,17 @@ async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
     headers: { Authorization: `Bearer ${pat}` },
   });
   if (!res.ok) {
+    // ITEM-17: a 422 here is almost always a renamed field. filterByFormula
+    // addresses fields by DISPLAY NAME, so renaming a child table's
+    // `engagement` link field makes Airtable reject the formula outright. Say
+    // so, because the generic status code sends the operator hunting for a
+    // network problem that isn't there.
+    const hint =
+      res.status === 422
+        ? ` — Airtable rejected the filter formula. The child table's \`engagement\` link field has probably been renamed; the formula addresses it by display name.`
+        : "";
     throw new Error(
-      `Airtable API error fetching child table ${childTableId}: ${res.status}`,
+      `Airtable API error fetching child table ${childTableId}: ${res.status}${hint}`,
     );
   }
   const body = await res.json();
@@ -344,7 +413,8 @@ async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
  * Fetch and validate an engagement record by its Engagement Reference (UUID v4).
  *
  * Return shape:
- *   { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired" }
+ *   { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired"
+ *                        | "child_data_incomplete" }
  *   { ok: true, engagement: <normalized object> }
  *
  * Throws on env misconfiguration or network/API failure. The caller (route)
@@ -359,6 +429,7 @@ async function fetchChildRows(baseId, childTableId, engagementRecordId, pat) {
  *   never evaluated when config is given. See listEngagements.js.
  * @returns {Promise<
  *   | { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired" }
+ *   | { ok: false, reason: "child_data_incomplete", shortfalls: {table: string, expected: number, actual: number}[] }
  *   | { ok: true, engagement: object }
  * >}
  */
@@ -389,6 +460,15 @@ export async function fetchEngagement(engagementReference, config) {
 
   // 3. List-records call with filterByFormula on the primary field.
   // returnFieldsByFieldId=true gives us field IDs (stable) instead of names.
+  //
+  // ITEM-17: note the asymmetry the comment above glosses over. The READ is by
+  // immutable field ID, deliberately — but this FORMULA addresses the field by
+  // its DISPLAY NAME, because that is the only thing filterByFormula accepts.
+  // Rename `Engagement Reference` in the Airtable UI and every paid report for
+  // every client stops rendering at the same moment. The rule is stated
+  // correctly in listEngagements.js:83-86; this line is the exception to it,
+  // and it cannot be removed without giving up server-side filtering
+  // altogether. What it can do is fail legibly — see the 422 branch below.
   const formula = `{Engagement Reference}='${engagementReference}'`;
   const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
   url.searchParams.set("filterByFormula", formula);
@@ -410,6 +490,21 @@ export async function fetchEngagement(engagementReference, config) {
     // Includes 4xx (auth/permission) and 5xx (upstream). Neither maps to a
     // user-distinguishable reason — surface as a generic API error to the
     // route, which renders the opaque entitlement copy.
+    //
+    // ITEM-17: except 422, which is specific and worth naming. Airtable
+    // returns it when a formula references a field that does not exist, and
+    // the only field this formula names is `Engagement Reference`. The old
+    // generic message sent the operator to the runbook's failure table, which
+    // told them to check the UUID — a dead end, because the UUID is fine.
+    if (res.status === 422) {
+      throw new Error(
+        "Airtable rejected the engagement lookup formula (422). The " +
+          "`Engagement Reference` field has almost certainly been renamed: " +
+          "filterByFormula addresses fields by display name, so a rename " +
+          "breaks the lookup for EVERY engagement at once. Restore the field " +
+          "name, or update the formula in airtableEngagement.js.",
+      );
+    }
     throw new Error(`Airtable API error: ${res.status}`);
   }
 
@@ -643,6 +738,23 @@ export async function fetchEngagement(engagementReference, config) {
     fetchChildRows(baseId, CHILD_TABLES.PARENT_PORTFOLIO_REPORTS, engagementReference, pat),
     fetchChildRows(baseId, CHILD_TABLES.PROJECT_PAI_DATA, engagementReference, pat),
   ]);
+
+  // ITEM-17 / ITEM-18: the parent's own link arrays say how many rows each of
+  // those calls should have returned. A shortfall means rows we know exist
+  // were not read, so every criterion fed by that table would understate the
+  // evidence. Refuse the report rather than issue an understated opinion —
+  // see findChildRowShortfalls for why this is the only available check.
+  const childShortfalls = findChildRowShortfalls(fields, {
+    ES_CHARACTERISTICS: es_characteristics_records,
+    PAI_COVERAGE: pai_coverage_records,
+    ANNEX_II_COVERAGE: annex_ii_coverage_records,
+    PROJECT_REPORTS: project_reports_records,
+    PARENT_PORTFOLIO_REPORTS: parent_portfolio_reports_records,
+    PROJECT_PAI_DATA: project_pai_data_records,
+  });
+  if (childShortfalls.length > 0) {
+    return { ok: false, reason: "child_data_incomplete", shortfalls: childShortfalls };
+  }
 
   const engagement = {
     run_id: engagementReference,

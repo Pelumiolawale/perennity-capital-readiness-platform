@@ -21,6 +21,21 @@ export const ENTITLEMENT_ERROR_COPY = {
     "engagement reference.",
 };
 
+// ITEM-17: shown when the engagement itself is valid — reference recognised,
+// status active, not expired — but a child-table fetch came back short of the
+// rows the parent record says exist. That means evidence we know is on file
+// was not read, so any report we rendered would understate it. We refuse
+// rather than issue an understated opinion, and we say so plainly instead of
+// implying a transient glitch the reader should retry through.
+export const DATA_INCOMPLETE_COPY = {
+  message:
+    "We cannot issue this Report right now. Some of the evidence recorded " +
+    "against your engagement could not be read, and we will not issue an " +
+    "opinion that understates it. This is our problem, not yours — we have " +
+    "been alerted. Please contact hello@perennitybridge.com if you need it " +
+    "urgently.",
+};
+
 export const ENGINE_ERROR_COPY = {
   message:
     "We hit a problem generating your Report. Please try again shortly, or " +

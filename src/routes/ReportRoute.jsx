@@ -40,6 +40,7 @@ import {
 import {
   ARTICLE_26_DISCLAIMER,
   ENTITLEMENT_ERROR_COPY,
+  DATA_INCOMPLETE_COPY,
   ENGINE_ERROR_COPY,
 } from "../lib/disclaimers.js";
 import { generateReportPDF } from "../export/reportPDF.js";
@@ -157,6 +158,27 @@ export default function ReportRoute() {
       if (cancelled) return;
 
       if (!entitlement.ok) {
+        // ITEM-17: child_data_incomplete is not an entitlement failure — the
+        // reference was recognised, active and in date. It means a child fetch
+        // returned fewer rows than the parent record says exist, so evidence
+        // on file was not read. Keep it out of the opaque entitlement copy,
+        // which exists to stop this route being a probe for "does this
+        // engagement exist"; that concern does not apply once entitlement has
+        // already passed. console.error rather than warn, with the table names
+        // and counts, because somebody needs to go and look.
+        if (entitlement.reason === "child_data_incomplete") {
+          console.error(
+            "[ReportRoute] child row shortfall — refusing to render. " +
+              "The parent record links more rows than the child fetch returned. " +
+              "Likely causes: `Engagement Reference` is no longer the primary " +
+              "field on Engagements, a child table's `engagement` link field was " +
+              "renamed, or a table now holds more than 100 linked rows (the " +
+              "fetch does not paginate). Shortfalls:",
+            entitlement.shortfalls,
+          );
+          setState("data_incomplete");
+          return;
+        }
         console.warn(`[ReportRoute] entitlement failed: ${entitlement.reason}`);
         setState("entitlement_failed");
         return;
@@ -261,6 +283,18 @@ export default function ReportRoute() {
         <div className="max-w-md w-full bg-white border border-[#DDD5CA] rounded-lg p-8 shadow-sm text-center">
           <p className="text-base leading-relaxed">
             {ENTITLEMENT_ERROR_COPY.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "data_incomplete") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 font-sans text-[#0B1F2A]">
+        <div className="max-w-md w-full bg-white border border-[#DDD5CA] rounded-lg p-8 shadow-sm text-center">
+          <p className="text-base leading-relaxed">
+            {DATA_INCOMPLETE_COPY.message}
           </p>
         </div>
       </div>
