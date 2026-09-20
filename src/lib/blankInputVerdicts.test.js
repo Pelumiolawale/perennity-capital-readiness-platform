@@ -206,3 +206,70 @@ describe("a blank ECoCC list is evidence missing, not a failure (item 3)", () =>
     expect(engagement.ecocc_parse_warning).toMatch(/must decode to a JSON array/);
   });
 });
+
+describe("an unanswered climate-risk question is not a No (item 4)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("nothing set → data_missing, not a failure", async () => {
+    const { engagement, run } = await scoreEUTax({});
+    const adaptation = criterion(run, "adaptation");
+    expect(adaptation.verdict).toBe("data_missing");
+    expect(adaptation.gap_summary).not.toMatch(/has not been completed/);
+    expect(
+      "climate_risk_assessment_completed" in engagement.project_input.data_points,
+    ).toBe(false);
+  });
+
+  it("a definite No still fails — the tri-state can express a real finding", async () => {
+    const { engagement, run } = await scoreEUTax({
+      [FID.CLIMATE_RISK_COMPLETED_TRI]: "No",
+    });
+    expect(engagement.project_input.data_points.climate_risk_assessment_completed)
+      .toBe(false);
+    const adaptation = criterion(run, "adaptation");
+    expect(adaptation.verdict).toBe("fail");
+    expect(adaptation.gap_summary).toMatch(/has not been completed/);
+  });
+
+  it("Yes with no methodology is partial, as before", async () => {
+    const { run } = await scoreEUTax({
+      [FID.CLIMATE_RISK_COMPLETED_TRI]: "Yes",
+    });
+    expect(criterion(run, "adaptation").verdict).toBe("partial");
+  });
+
+  it("Yes with a methodology passes, as before", async () => {
+    const { run } = await scoreEUTax({
+      [FID.CLIMATE_RISK_COMPLETED_TRI]: "Yes",
+      [FID.CLIMATE_RISK_METHODOLOGY]: "TCFD scenario analysis, RCP 8.5",
+    });
+    expect(criterion(run, "adaptation").verdict).toBe("pass");
+  });
+
+  it("Unknown is not an answer", async () => {
+    const { run } = await scoreEUTax({
+      [FID.CLIMATE_RISK_COMPLETED_TRI]: "Unknown",
+    });
+    expect(criterion(run, "adaptation").verdict).toBe("data_missing");
+  });
+
+  // The 14 records migrated on 20 Sep 2026 had the legacy box ticked and no
+  // select value; they must keep scoring exactly as they did.
+  it("a legacy ticked checkbox still reads as Yes", async () => {
+    const { engagement, run } = await scoreEUTax({
+      [FID.CLIMATE_RISK_COMPLETED]: true,
+      [FID.CLIMATE_RISK_METHODOLOGY]: "TCFD scenario analysis, RCP 8.5",
+    });
+    expect(engagement.project_input.data_points.climate_risk_assessment_completed)
+      .toBe(true);
+    expect(criterion(run, "adaptation").verdict).toBe("pass");
+  });
+
+  it("a definite No overrides a stale legacy tick", async () => {
+    const { run } = await scoreEUTax({
+      [FID.CLIMATE_RISK_COMPLETED_TRI]: "No",
+      [FID.CLIMATE_RISK_COMPLETED]: true,
+    });
+    expect(criterion(run, "adaptation").verdict).toBe("fail");
+  });
+});

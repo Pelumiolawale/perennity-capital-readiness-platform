@@ -166,6 +166,13 @@ export const FID = {
   C2_CEO_TO_MEDIAN_RATIO_DISCLOSED_TRI: "fldD9c8w5vDNXgtmi",
   C2_ESG_LINKED_VARIABLE_PAY_TRI: "fldUyZSyGFiS9OOw1",
   C2_TAX_POLICY_PUBLISHED_TRI: "fld0BctdyUmTPIqj0",
+
+  // ── ITEM-04 (Sep 2026) — climate-risk tri-state ─────────────────────
+  // Same root cause as BUG-01, one criterion over: a checkbox cannot tell
+  // "No, no assessment was done" from "nobody has answered yet", and
+  // dnsh_adaptation treats a definite false as a FAIL. Created 20 Sep 2026;
+  // the legacy CLIMATE_RISK_COMPLETED checkbox stays as a fallback.
+  CLIMATE_RISK_COMPLETED_TRI: "fldkrdg8HKAB8jAUf",
 };
 
 // Child table IDs (PR A2 + A4). Each engagement record can have N linked
@@ -515,9 +522,22 @@ export async function fetchEngagement(engagementReference, config) {
     ...optionalKey("ecocc_practices_implemented", ecoccValue),
     last_independent_audit_date: fields[FID.LAST_INDEPENDENT_AUDIT_DATE] ?? null,
     ...optionalKey("annualised_pue", fields[FID.ANNUALISED_PUE]),
-    climate_risk_assessment_completed: Boolean(fields[FID.CLIMATE_RISK_COMPLETED]),
-    climate_risk_assessment_methodology:
-      fields[FID.CLIMATE_RISK_METHODOLOGY] ?? null,
+    // ITEM-04: dnsh_adaptation has three distinct paths — undefined is
+    // data_missing, an explicit false is a FAIL ("Climate risk vulnerability
+    // assessment has not been completed"), and true passes or partials.
+    // Boolean(undefined) collapsed the first two, so an unticked box — which
+    // is the state of every record nobody has got to yet — published a DNSH
+    // adaptation failure against the developer on no evidence at all. The
+    // tri-state select now carries a real No when there is one; blank stays
+    // blank. Same shape as triState() for the c2 fields under BUG-01.
+    ...optionalKey(
+      "climate_risk_assessment_completed",
+      triState(fields[FID.CLIMATE_RISK_COMPLETED_TRI], fields[FID.CLIMATE_RISK_COMPLETED]),
+    ),
+    ...optionalKey(
+      "climate_risk_assessment_methodology",
+      fields[FID.CLIMATE_RISK_METHODOLOGY],
+    ),
     ...optionalKey("wue_annualised", fields[FID.WUE_ANNUALISED]),
     site_water_stress_classification: fields[FID.SITE_WATER_STRESS] ?? null,
     ...(v32Value ?? {}),
