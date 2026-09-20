@@ -13,6 +13,10 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  BUNDLED_SFDR_FRAMEWORKS,
+  BUNDLED_UK_SDR_FRAMEWORKS,
+} from "@perennity/engine";
+import {
   SNAPSHOT_PHRASES,
   SNAPSHOT_PHRASE_CRITERION_IDS,
   SNAPSHOT_PHRASE_BANDS,
@@ -40,6 +44,44 @@ function makeVerdict(criterion_id, verdict, overrides = {}) {
     ...overrides,
   };
 }
+
+describe("SNAPSHOT_PHRASES — coverage of the engine's actual criteria", () => {
+  // The count check below proves the table is internally consistent. It cannot
+  // prove the 25 IDs are the 25 the ENGINE emits, and that is the failure that
+  // matters: snapshotPhraseFor falls back to `verdict.band_rationale` for an
+  // unrecognised criterion_id, so a renamed or added engine criterion swaps
+  // the investor-grade phrase for raw engine prose in a paid report, silently.
+  //
+  // Enumerated from the bundles rather than restated, so the assertion cannot
+  // drift the way the table it is checking might.
+  const engineCriterionIds = new Set(
+    [BUNDLED_SFDR_FRAMEWORKS, BUNDLED_UK_SDR_FRAMEWORKS].flatMap((bundle) =>
+      Object.values(bundle).flatMap((fw) => Object.keys(fw.criteria ?? {})),
+    ),
+  );
+
+  it("every criterion the engine bundles has a phrase", () => {
+    const missing = [...engineCriterionIds].filter(
+      (id) => !SNAPSHOT_PHRASES[id],
+    );
+    expect(
+      missing,
+      "These engine criteria would render raw engine prose instead of the " +
+        "investor-grade phrase, in a paid report, with nothing to signal it:\n  " +
+        missing.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("no phrase is written for a criterion the engine does not have", () => {
+    // The inverse. A phrase for an ID the engine never emits is dead weight
+    // that reads as coverage — and usually means a criterion was renamed
+    // upstream and only half the rename landed here.
+    const orphaned = SNAPSHOT_PHRASE_CRITERION_IDS.filter(
+      (id) => !engineCriterionIds.has(id),
+    );
+    expect(orphaned, `Orphaned phrase IDs: ${orphaned.join(", ")}`).toEqual([]);
+  });
+});
 
 describe("SNAPSHOT_PHRASES — structural completeness", () => {
   it("covers 10 SFDR + 15 UK SDR criteria (25 total)", () => {

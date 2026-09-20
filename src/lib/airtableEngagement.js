@@ -999,7 +999,13 @@ export async function fetchEngagement(engagementReference, config) {
     if (raw && typeof raw === "object" && typeof raw.name === "string") return raw.name;
     return fallback;
   }
-  const target_label = singleSelectValue(fields[FID.TARGET_LABEL], "eu_taxonomy_aligned_8_1");
+  // No default. A blank Target Label used to become eu_taxonomy_aligned_8_1,
+  // so an engagement nobody had scoped was silently scoped to EU Taxonomy and
+  // a signed report issued against a framework the client never chose. It is
+  // now undefined, which isRoutableTargetLabel rejects — ReportRoute already
+  // refuses an unroutable label with a specific message, so the engagement
+  // stops rather than guessing.
+  const target_label = singleSelectValue(fields[FID.TARGET_LABEL], undefined);
 
   // v0.5.0-alpha.8 (Phase 1, commit 1.5a Phase B-2): SFDR Specifics raw
   // fields surfaced onto the engagement object. Mapped into the engine
@@ -1186,9 +1192,23 @@ export async function fetchEngagement(engagementReference, config) {
     c3_art_4_explicit_reference: Boolean(fields[FID.C3_ART_4_EXPLICIT_REFERENCE]),
     c7_operational_status: singleSelectValue(fields[FID.C7_OPERATIONAL_STATUS], undefined),
     c7_commissioning_date: fields[FID.C7_COMMISSIONING_DATE] ?? undefined,
-    c7_specifies_indicators: Boolean(fields[FID.C7_SPECIFIES_INDICATORS]),
-    c7_specifies_annual_cadence: Boolean(fields[FID.C7_SPECIFIES_ANNUAL_CADENCE]),
-    c7_specifies_assurance: Boolean(fields[FID.C7_SPECIFIES_ASSURANCE]),
+    // coerceCheckbox, not Boolean: ticked is true, unticked is undefined.
+    //
+    // Boolean() asserted that a commitment does NOT specify indicators /
+    // cadence / assurance whenever the box was untouched, which is the BUG-01
+    // shape — a scored claim manufactured from silence, and it reached the c7
+    // rationale as "incomplete".
+    //
+    // These do NOT need the tri-state treatment the c2 fields got. The engine
+    // uses all three only through `allSpecifiers`, which needs every one true;
+    // a definite No and an unanswered blank produce the identical band and the
+    // identical rationale. So a definite No adds nothing here, where for c2 it
+    // is the difference between a domain failing and returning insufficient
+    // evidence. Three Airtable fields nobody would gain anything from is not
+    // the same as the remedy ITEM-04 needed.
+    c7_specifies_indicators: coerceCheckbox(fields[FID.C7_SPECIFIES_INDICATORS]),
+    c7_specifies_annual_cadence: coerceCheckbox(fields[FID.C7_SPECIFIES_ANNUAL_CADENCE]),
+    c7_specifies_assurance: coerceCheckbox(fields[FID.C7_SPECIFIES_ASSURANCE]),
     c7_reporting_named_standard: singleSelectValue(fields[FID.C7_REPORTING_NAMED_STANDARD], undefined),
     // PR A3 — c6 taxonomy claim discrete columns
     c6_taxonomy_claim_made: Boolean(fields[FID.C6_TAXONOMY_CLAIM_MADE]),
