@@ -13,7 +13,7 @@
     "schema:refresh": "node scripts/refresh-airtable-schema.mjs"
   },
   "dependencies": {
-    "@perennity/engine": "github:Pelumiolawale/Perennity_regulatory_frameworks#6fcf87a",
+    "@perennity/engine": "github:Pelumiolawale/Perennity_regulatory_frameworks#60feda0",
     "@tailwindcss/postcss": "^4.2.1",
     "@vercel/postgres": "^0.10.0",
     "html2canvas": "^1.4.1",
