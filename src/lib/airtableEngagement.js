@@ -706,10 +706,14 @@ async function fetchChildRowsByIds(baseId, childTableId, recordIds, pat) {
  * catches throws and renders the opaque entitlement-error UI.
  *
  * @param {string} engagementReference
- * @param {{pat?: string, baseId?: string, tableId?: string}} [config]
+ * @param {{pat?: string, baseId?: string, tableId?: string, now?: number}} [config]
  *   Required. Supplied by api/engagement.js from server-side env vars; there
  *   is no browser path and no VITE_* fallback, deliberately. See
  *   listEngagements.js and airtableConfigFromEnv.
+ *   `now` (epoch ms) replaces the clock the expiry check reads. Only
+ *   scripts/rescore.mjs sets it, to score fixtures whose window has lapsed;
+ *   the API never does. It changes what "now" means, not whether expiry is
+ *   checked — see entitlementClock.test.js.
  * @returns {Promise<
  *   | { ok: false, reason: "invalid_format" | "not_found" | "not_active" | "expired" }
  *   | { ok: false, reason: "child_data_incomplete", shortfalls: {table: string, expected: number, actual: number}[] }
@@ -847,7 +851,7 @@ export async function fetchEngagement(engagementReference, config) {
   const expiresAt = fields[FID.EXPIRES_AT];
   if (expiresAt) {
     const expiresMs = Date.parse(expiresAt);
-    if (Number.isFinite(expiresMs) && expiresMs < Date.now()) {
+    if (Number.isFinite(expiresMs) && expiresMs < (config.now ?? Date.now())) {
       return { ok: false, reason: "expired" };
     }
   }

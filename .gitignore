@@ -14,3 +14,6 @@ src/regulations/proprietary/
 # Stray pnpm lockfile — this project uses npm (package-lock.json + `npm ci`).
 # A committed pnpm-lock.yaml makes Vercel switch package managers and fail.
 pnpm-lock.yaml
+
+# Rescore outputs (scripts/rescore.mjs) — engagement data, never commit
+rescore/

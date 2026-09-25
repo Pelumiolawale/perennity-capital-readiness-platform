@@ -17,22 +17,15 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  DeterministicEngine,
-  ReportRenderer,
-  BUNDLED_ACTIVITIES,
-  METHODOLOGY_VERSION,
-  computeKnowledgeBaseHash,
-  buildRenderContract,
-} from "@perennity/engine";
 import { fetchEngagementFromApi } from "../lib/engagementApi.js";
-import { frameworksForLabel, isRoutableTargetLabel } from "../lib/engineClient.js";
 import {
-  buildSFDRInputs,
-  c6ClaimIncompleteWarning,
-} from "../lib/sfdrInputAdapter.js";
-import { buildUKSDRInputs } from "../lib/ukSDRInputAdapter.js";
-import { buildEntityInputs } from "../lib/entityInputAdapter.js";
+  isRoutableTargetLabel,
+  ENGINE_COMMIT_SHA,
+  KB_HASH,
+  METHODOLOGY_VERSION,
+} from "../lib/engineClient.js";
+import { runReport } from "../lib/reportRun.js";
+import { c6ClaimIncompleteWarning } from "../lib/sfdrInputAdapter.js";
 import {
   serialisePAIDataFile,
   paiCsvFilename,
@@ -91,21 +84,6 @@ export function resolveSignatory(overrides) {
   };
 }
 
-// Engine commit SHA — injected at build time by vite.config.js's define
-// block, which parses it from package-lock.json's @perennity/engine entry.
-// Audit-bearing: missing SHA must fail loudly at module load.
-const ENGINE_COMMIT_SHA = import.meta.env.VITE_ENGINE_COMMIT_SHA;
-if (!ENGINE_COMMIT_SHA) {
-  throw new Error(
-    "VITE_ENGINE_COMMIT_SHA not defined. Check vite.config.js — this is an " +
-      "audit-bearing field and must always be set at build time.",
-  );
-}
-
-// Pre-compute the KB hash once per module load. Stable for the page's
-// lifetime; refreshed on next reload or engine version bump.
-const KB_HASH = computeKnowledgeBaseHash(BUNDLED_ACTIVITIES);
-
 export default function ReportRoute() {
   const [searchParams] = useSearchParams();
   const ref = searchParams.get("ref");
@@ -115,8 +93,7 @@ export default function ReportRoute() {
   const [reportOutput, setReportOutput] = useState(null);
   const [renderContract, setRenderContract] = useState(null);
   // The engine's own per-framework overall_verdict, keyed by activity_id.
-  // Captured here because `run` is local to the effect and the PDF is built
-  // later, on click. The PDF must report the engine's verdict rather than
+  // Held in state because the PDF is built later, on click. The PDF must report the engine's verdict rather than
   // derive one — deriving it is what produced the false "aligned".
   const [frameworkVerdicts, setFrameworkVerdicts] = useState(null);
   // Dev-mode diagnostic: capture the raw error so the failing-engagement
@@ -199,80 +176,23 @@ export default function ReportRoute() {
 
       // Engine render.
       try {
-        const engine = new DeterministicEngine({
-          engine_commit_sha: ENGINE_COMMIT_SHA,
-          knowledge_base_hash: KB_HASH,
-          methodology_version: METHODOLOGY_VERSION,
-        });
-        const renderer = new ReportRenderer({
-          activities: BUNDLED_ACTIVITIES,
-          signatory: resolveSignatory(
-            entitlement.engagement.signatory_overrides,
-          ),
-          disclaimer: ARTICLE_26_DISCLAIMER,
-          // Deliberately ignore the engine's run_id arg: the engine generates a
-          // fresh UUID per render (useful internal serial for replay/debug),
-          // but the public engagement_reference must be the stable Airtable
-          // UUID Dolapo issued — the same value the customer typed in ?ref=
-          // and the primary key of the Engagements row.
-          engagement_reference_for: () => entitlement.engagement.run_id,
-          ic_defence_pack_version: "v1",
-        });
-        // Resolve the framework set based on the engagement's target label.
-        // For eu_taxonomy_aligned_8_1 (current paid-flow default), this
-        // returns the single activity-aligned framework; for SFDR labels,
-        // it includes the corresponding product_label framework so the
-        // engine emits SFDR cells alongside the EU Tax 8.1 result.
-        const frameworks = frameworksForLabel(
-          entitlement.engagement.target_label ?? "eu_taxonomy_aligned_8_1",
-        );
-        // Merge SFDR inputs onto project_input when the engagement carries
-        // SFDR Specifics fields. Undefined when no SFDR fields populated —
-        // the engine cleanly resolves every SFDR criterion to
-        // insufficient_evidence in that case.
-        const sfdrInputs = buildSFDRInputs(entitlement.engagement);
-        // v0.6.0 (UK SDR Phase 2): merge UK SDR inputs onto project_input
-        // when the engagement carries UK SDR Specifics fields. Undefined
-        // when no UK SDR fields populated — engine resolves every UK SDR
-        // criterion to insufficient_evidence in that case.
-        const ukSDRInputs = buildUKSDRInputs(entitlement.engagement);
-        const projectInputBase = entitlement.engagement.project_input;
-        const projectInput = {
-          ...projectInputBase,
-          ...(sfdrInputs ? { sfdr: sfdrInputs } : {}),
-          ...(ukSDRInputs ? { uk_sdr: ukSDRInputs } : {}),
-        };
-        // Entity-level inputs from the new sfdr_entity_disclosures JSON
-        // blob field. Undefined when the field is missing / empty / not
-        // recognised, in which case the engine resolves c2/c3/c5/c7 to
-        // insufficient_evidence and reportPDF surfaces the "ENTITY-LEVEL
-        // DISCLOSURE REQUIRED" callout for those rows.
-        const entityInput = buildEntityInputs(entitlement.engagement);
-        const runInput = entityInput
-          ? { project: projectInput, entity: entityInput }
-          : projectInput;
-        const run = await engine.run(runInput, frameworks);
-        const output = await renderer.render(run);
-        // Build the v3.5 RenderContract alongside the legacy ReportOutput.
-        // The PDF generator reads ReportOutput for the EU Tax 8.1 sections
-        // (existing path) and the RenderContract for SFDR sections (new
-        // path). When no SFDR frameworks are loaded, framework_findings
-        // is empty and the SFDR section pages don't render.
-        const contract = buildRenderContract(run, {
-          project: {
-            project_name: entitlement.engagement?.report_metadata?.project_name ?? undefined,
+        // The engine run lives in src/lib/reportRun.js, shared with
+        // scripts/rescore.mjs so the rescore harness scores exactly what
+        // clients receive. The audit-bearing constants come from engineClient.
+        const { output, contract, frameworkVerdicts: verdicts } = await runReport(
+          entitlement.engagement,
+          {
+            engine_commit_sha: ENGINE_COMMIT_SHA,
+            knowledge_base_hash: KB_HASH,
+            methodology_version: METHODOLOGY_VERSION,
+            signatory: resolveSignatory(entitlement.engagement.signatory_overrides),
+            disclaimer: ARTICLE_26_DISCLAIMER,
           },
-        });
+        );
         if (cancelled) return;
         setReportOutput(output);
         setRenderContract(contract);
-        setFrameworkVerdicts(
-          Object.fromEntries(
-            (run.framework_results ?? [])
-              .filter((f) => f && f.activity_id)
-              .map((f) => [f.activity_id, f.overall_verdict]),
-          ),
-        );
+        setFrameworkVerdicts(verdicts);
         setState("entitlement_valid");
       } catch (engineErr) {
         if (cancelled) return;

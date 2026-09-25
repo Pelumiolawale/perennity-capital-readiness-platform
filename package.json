@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "schema:refresh": "node scripts/refresh-airtable-schema.mjs"
+    "schema:refresh": "node scripts/refresh-airtable-schema.mjs",
+    "rescore": "node scripts/rescore.mjs"
   },
   "dependencies": {
     "@perennity/engine": "github:Pelumiolawale/Perennity_regulatory_frameworks#60feda0",
