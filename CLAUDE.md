@@ -48,7 +48,7 @@ src/components/SFDRPAITable.jsx   src/lib/entityInputAdapter.js
 src/export/footnoteEngine.js      src/lib/paiCsvExport.js
 src/export/reportTypography.js    src/lib/sfdrInputAdapter.js
 src/lib/snapshotPhrases.js        src/lib/taxJurisdictions.js
-src/lib/ukSDRInputAdapter.js
+src/lib/ukSDRInputAdapter.js      src/lib/reportRun.js
 ```
 
 `src/lib/snapshotPhrases.js` is the one whose name invites the mistake. Despite "snapshot"
@@ -122,7 +122,11 @@ surfaces at `npm install` in this repo, not in the engine's own test run.
 
 **Verify against the live base before and after.** Structural changes to the Airtable read
 path must rescore all live engagements byte-identically. Anything else is a bug in the
-change, not a finding.
+change, not a finding. The tool is `npm run rescore -- --out rescore/before.json`, then
+again after the change, then `npm run rescore -- --diff rescore/before.json rescore/after.json`.
+It scores through `src/lib/reportRun.js`, the same function the paid route calls, so it
+cannot drift from what clients receive. Output goes to `rescore/`, which is gitignored —
+it holds engagement data.
 
 **Never put a credential in client code.** The Airtable PAT moved server-side to
 `api/leads.js` on 18 Sep 2026. `VITE_`-prefixed environment variables are compiled into the
@@ -138,7 +142,8 @@ wrong and have been corrected.
 | Airtable base | `appasxX7eC3QsmxeM` — Engagements `tblRnd8BdQ65kuaej` |
 | Schema contract | `src/lib/airtableSchemaContract.js` |
 | Airtable read path | `src/lib/airtableEngagement.js` |
-| Engine boundary | `src/lib/engineClient.js` — see the note below |
+| Engine boundary | `src/lib/engineClient.js` (free), `src/lib/reportRun.js` (paid) — see below |
+| Rescore harness | `npm run rescore` (`scripts/rescore.mjs`) |
 | Paid PDF | `src/export/reportPDF.js` |
 | Operator runbook | `docs/runbook-paid-reports.md` |
 | Call checklist | `docs/engagement-call-checklist.md` |
@@ -146,22 +151,19 @@ wrong and have been corrected.
 
 Re-pin the engine by commit SHA, never by tag or branch.
 
-### A note on the engine import boundary, because the comments overstate it
+### The engine import boundary
 
-`engineClient.js` describes itself as "the single engine import boundary" and says
-`ReportRoute` imports from it "not from `@perennity/engine` directly". That is the intent.
-It is not the current state, and it was not true when written.
+No route constructs the engine. The free Snapshot runs it through `runSnapshot` in
+`src/lib/engineClient.js`; the paid Report runs it through `runReport` in
+`src/lib/reportRun.js`, taking the audit-bearing constants (commit SHA, KB hash, methodology
+version) from `engineClient.js`. `src/lib/reportRun.test.js` pins this.
 
-Thirteen files reference the package today. Most are harmless — `@typedef` imports erase at
-build, and `airtableSchemaContract.js` and `taxJurisdictions.js` import regulatory-knowledge
-JSON deliberately, which is the "read the source of truth, don't mirror it" rule working as
-intended.
+They are two files, not one, on purpose. `engineClient.js` is imported by the free path, so
+it cannot import the paid-only adapters (rule 1). And `reportRun.js` reads no
+`import.meta.env`, so `scripts/rescore.mjs` can run it under plain Node.
 
-The real drift is `src/routes/ReportRoute.jsx`, which imports `DeterministicEngine`,
-`ReportRenderer` and `buildRenderContract` and constructs and runs the engine itself, for
-the paid report. So the boundary holds on the free path and is bypassed on the paid one —
-the reverse of where you would want it.
-
-Nothing is broken by this today. It is recorded here so the next person does not read the
-comment, believe the boundary is intact, and reason from it. Either route the paid path
-through `engineClient.js` or stop claiming the boundary exists.
+Until 25 Sep 2026 `ReportRoute.jsx` built and ran `DeterministicEngine` itself while
+`engineClient.js` claimed to be the single boundary. Other files still import the package —
+`@typedef` imports that erase at build, and regulatory-knowledge JSON read deliberately as
+the source of truth — and that is fine. Running the engine is what goes through the two
+entry points.
