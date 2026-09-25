@@ -38,15 +38,29 @@ function collector() {
   };
 }
 
-/** @param {string} ref */
-function engagement(ref) {
+const ISSUED_AT = "2026-06-03T00:00:00.000Z";
+
+/**
+ * @param {string} ref
+ * @param {{projectId?: string|null, issuedAt?: string|null}} [o]
+ */
+function engagement(ref, o = {}) {
+  const projectId = o.projectId === undefined ? ref : o.projectId;
+  const issuedAt = o.issuedAt === undefined ? ISSUED_AT : o.issuedAt;
   return {
     ok: true,
     engagement: {
       engagement_reference: ref,
       client_name: "ACME SECRET CORP",
       project_name: "Project Nightingale",
-      project_input: { ...structuredClone(v31Fixture.projectInput), project_id: ref },
+      // As fetchEngagement builds it: a blank Issued At becomes "now" on
+      // project_input, and only report_metadata keeps the raw value.
+      project_input: {
+        ...structuredClone(v31Fixture.projectInput),
+        project_id: projectId,
+        intake_timestamp: issuedAt ?? new Date().toISOString(),
+      },
+      report_metadata: { project_id: projectId, issued_at: issuedAt },
     },
   };
 }
@@ -236,6 +250,69 @@ describe("record content", () => {
     expect(second.records[0].assetHash).toBe(first.records[0].assetHash);
     expect(second.records[0].assessmentDate).toBe(first.records[0].assessmentDate);
     expect(second.records[0].configVersion).toBe(first.records[0].configVersion);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ITEM-14 / ITEM-15: an engagement without a stable identity writes nothing
+// ---------------------------------------------------------------------------
+
+describe("identity preconditions", () => {
+  it("ITEM-14: a blank Issued At writes nothing, and says why", async () => {
+    const adapter = collector();
+    const lines = [];
+    const result = await runBenchmarkSync(
+      deps({
+        storageAdapter: adapter,
+        logger: (m) => lines.push(m),
+        fetchEngagementImpl: async (ref) =>
+          engagement(ref, ref === "ref-1" ? { issuedAt: null } : {}),
+      }),
+    );
+    // A blank date used to become "now", so every nightly run was a new
+    // (hash, date) pair and ON CONFLICT never fired: one new permanent row
+    // per night for the same engagement.
+    expect(adapter.records).toHaveLength(1);
+    expect(result.ineligible).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(lines.join("\n")).toMatch(/ref-1.*no Issued At/);
+  });
+
+  it("ITEM-15: a blank Project ID writes nothing, and says why", async () => {
+    const adapter = collector();
+    const lines = [];
+    const result = await runBenchmarkSync(
+      deps({
+        storageAdapter: adapter,
+        logger: (m) => lines.push(m),
+        fetchEngagementImpl: async (ref) =>
+          engagement(ref, ref === "ref-2" ? { projectId: null } : {}),
+      }),
+    );
+    // A blank id hashed as the string "null", merging every such engagement
+    // into one asset in the benchmark set.
+    expect(adapter.records).toHaveLength(1);
+    expect(result.ineligible).toBe(1);
+    expect(lines.join("\n")).toMatch(/ref-2.*no Project ID/);
+  });
+
+  it("two engagements with blank Project IDs do not share a record", async () => {
+    const adapter = collector();
+    await runBenchmarkSync(
+      deps({
+        storageAdapter: adapter,
+        fetchEngagementImpl: async (ref) => engagement(ref, { projectId: null }),
+      }),
+    );
+    expect(adapter.records).toHaveLength(0);
+  });
+
+  it("the record's date is the engagement's Issued At, never the run time", async () => {
+    const adapter = collector();
+    await runBenchmarkSync(deps({ storageAdapter: adapter }));
+    for (const record of adapter.records) {
+      expect(String(record.assessmentDate)).toContain("2026-06-03");
+    }
   });
 });
 

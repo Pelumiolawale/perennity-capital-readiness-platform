@@ -115,10 +115,15 @@ nothing — not its own weighting. A figure the client cannot distinguish from m
 which exists in no methodology document, is the most damaging thing this codebase can emit.
 `computeProductLabelScore` was deleted for doing exactly that.
 
-**Run the build, not just the tests.** `npm test` runs under `tsx`, which is permissive;
-`npm run build` runs `tsc`, which is not. The engine package's `prepare` script runs its
-build, so a type error there makes the package uninstallable for everyone — and that
-surfaces at `npm install` in this repo, not in the engine's own test run.
+**Run the build, not just the tests.** `npm test` (vitest) only loads the files some test
+imports; `npm run build` (`vite build`) resolves every import the app actually ships, so it
+catches a broken import in a file no test touches. Neither type-checks: this repo has no
+TypeScript toolchain, and the `// @ts-check` headers are read by editors only.
+
+The engine repo is different. Its `build` is `tsc` and its `prepare` runs the build, so a
+type error there makes the package uninstallable — and that surfaces at `npm install` in
+this repo, not in the engine's own test run. *Corrected 25 Sep 2026: this said `npm test`
+here ran under `tsx` and `npm run build` ran `tsc`. Neither is true of this repo.*
 
 **Verify against the live base before and after.** Structural changes to the Airtable read
 path must rescore all live engagements byte-identically. Anything else is a bug in the

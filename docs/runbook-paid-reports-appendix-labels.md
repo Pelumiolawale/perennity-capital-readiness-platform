@@ -135,10 +135,13 @@ rows.
 - **c9 — SI-eligibility evidence pack** — cascades from c8 + c4 + c2. Any `not_aligned`
   upstream forces c9 `not_aligned`. Driven by `SFDR Assurance Tier` (`reasonable_big4` /
   `limited_big4` / `limited_partial` / `management_only` — see methodology v3.5 F7).
-- **c10 — Project PAI data provision** — driven by SFDR Project PAI Data child rows (10
-  rows per Annex I Table 1: PAIs 1, 2, 4, 5, 7, 8, 9, 10, 11, 13). c10 reads c3 result
-  for a verification gate: if c3 is `partially_aligned` or weaker, c10 requires ≥9 of 11
-  PAIs to be third-party-verified for aligned.
+- **c10 — Project PAI data provision** — driven by SFDR Project PAI Data child rows:
+  **11 rows, PAIs 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13** (the engine's
+  `MATERIAL_PAI_NUMBERS`). c10 reads c3 result for a verification gate: if c3 is
+  `partially_aligned` or weaker, c10 requires ≥9 of 11 PAIs to be third-party-verified
+  for aligned. *Corrected 25 Sep 2026: this said ten rows including PAI 4 and omitting 3
+  and 6, which capped c10 below aligned on every engagement. See
+  `engagement-call-checklist.md` for the full explanation.*
 
 **Common gotchas:**
 
@@ -155,9 +158,11 @@ rows.
   ```
   Validate with `node -e 'JSON.parse(...)'` before pasting into Airtable. Common failure:
   smart quotes instead of straight quotes if copy-pasted from Word.
-- **PAI 4 is always `not_applicable` for data centres** (fossil-fuel sector exposure;
-  doesn't apply). Always create the PAI 4 row with `applicability: not_applicable` and
-  a rationale string. Omitting PAI 4 entirely will count against you.
+- **Do not create a PAI 4 row in the Project PAI Data table.** PAI 4 (fossil-fuel
+  exposure) is not on the material list c10 scores, so the criterion never reads it.
+  Its `not_applicable` treatment belongs to the machine-readable PAI data *file*, not
+  this table. *Corrected 25 Sep 2026: this used to say always create it, and that
+  omitting it would count against you. Neither was true.*
 - **Indicator source on ES Characteristics.** For ES Characteristic child rows to double
   as c8 contribution indicators, the `indicator_source` field must be populated with one
   of `art_2_17_example`, `l2_rts_annex_i_pai`, or `bespoke`. Rows without it count for c1

@@ -32,30 +32,42 @@ import {
   airtableConfigFromEnv,
   listEngagementReferences,
 } from "../../src/lib/listEngagements.js";
-import { buildSFDRInputs } from "../../src/lib/sfdrInputAdapter.js";
-import { buildUKSDRInputs } from "../../src/lib/ukSDRInputAdapter.js";
-import { buildEntityInputs } from "../../src/lib/entityInputAdapter.js";
+import { assembleRunInput } from "../../src/lib/reportRun.js";
 
 /**
  * Compose the engine input from an engagement.
  *
- * Mirrors ReportRoute.jsx:141-161 exactly. If that assembly changes, this must
- * change with it — otherwise the benchmark record describes a different
- * assessment from the one the client was shown, which would quietly corrupt the
- * dataset rather than fail loudly.
- *
- * @param {object} engagement
+ * This was a hand-kept copy of ReportRoute's assembly, with a comment asking
+ * that the two be changed together — otherwise the benchmark record describes a
+ * different assessment from the one the client was shown. Since 25 Sep 2026
+ * both call the same function, so they cannot drift.
  */
-export function buildRunInput(engagement) {
-  const sfdrInputs = buildSFDRInputs(engagement);
-  const ukSDRInputs = buildUKSDRInputs(engagement);
-  const projectInput = {
-    ...engagement.project_input,
-    ...(sfdrInputs ? { sfdr: sfdrInputs } : {}),
-    ...(ukSDRInputs ? { uk_sdr: ukSDRInputs } : {}),
-  };
-  const entityInput = buildEntityInputs(engagement);
-  return entityInput ? { project: projectInput, entity: entityInput } : projectInput;
+export const buildRunInput = assembleRunInput;
+
+/**
+ * Why an entitled engagement still cannot be recorded, or null if it can.
+ *
+ * A benchmark record is keyed by (asset hash, assessment date, config version)
+ * and can never be removed. Both identity halves must therefore be real values
+ * the operator entered:
+ *
+ * - ITEM-14. A blank Issued At used to become "now" (fetchEngagement does that
+ *   so a report still renders). The date then changed every night, the unique
+ *   key never matched, and the sweep appended a fresh permanent row for the
+ *   same engagement on every run.
+ * - ITEM-15. A blank Project ID hashed as the string "null", so every such
+ *   engagement became one asset in the benchmark set.
+ *
+ * Skipping is the only safe answer. A fallback identity (the engagement
+ * reference, say) would be fixed forever the first night it was written.
+ *
+ * @param {any} engagement
+ * @returns {string | null}
+ */
+function missingIdentity(engagement) {
+  if (!engagement.report_metadata?.issued_at) return "no Issued At";
+  if (!engagement.project_input?.project_id) return "no Project ID";
+  return null;
 }
 
 /**
@@ -120,11 +132,20 @@ export async function runBenchmarkSync(deps = {}) {
         ineligible += 1;
         continue;
       }
+      const missing = missingIdentity(entitlement.engagement);
+      if (missing) {
+        ineligible += 1;
+        log(`[benchmark-sync] engagement ${reference} not recorded: ${missing}`);
+        continue;
+      }
       processed += 1;
       const result = await assess(buildRunInput(entitlement.engagement), {
         storageAdapter,
         env,
         benchmarkLogger: log,
+        // Explicit, so the record's date can only ever be the operator's
+        // Issued At — never project_input's render-time fallback.
+        assessmentDate: entitlement.engagement.report_metadata.issued_at,
       });
       if (result.benchmarkEmit?.emitted) emitted += 1;
     } catch (err) {
