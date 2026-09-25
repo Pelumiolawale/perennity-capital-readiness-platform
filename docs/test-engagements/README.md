@@ -62,7 +62,37 @@ decision about what the fixture is for.
 ---
 
 Each engagement is configured with `STATUS=active`, `ISSUED_AT=2026-06-03T00:00:00.000Z`,
-`EXPIRES_AT=2026-09-03T00:00:00.000Z` (90-day window). Engagement letters are marked signed.
+`EXPIRES_AT=2026-09-03T00:00:00.000Z` (90-day window). `engagements.json` marks engagement
+letters signed.
+
+**The live base does not match that last point.** Checked 25 Sep 2026: `Engagement Letter
+Signed` (`fldQYH3u8F46SlNhB`, a checkbox) is unticked on every record in the base, fixtures
+included. The benchmark sweep (`listEngagementReferences` in `src/lib/listEngagements.js`)
+requires `active` AND a signed letter, so it currently selects nothing. That is the safe
+direction — the benchmark table is append-only — but it means the sweep is exercising no
+live data, and items 14 and 15 of the fix plan (blank `Issued At` / `Project ID`) cannot
+bite yet.
+
+---
+
+### Non-fixture test records in the live base
+
+Three records in the Engagements table are not among the 12 above. They are test records,
+not client engagements (confirmed by Pels, 25 Sep 2026), and are kept deliberately:
+
+| Record | Ref | Client / project | Origin |
+|---|---|---|---|
+| `reccILCx0VfYGFBl5` | `b464da15-f122-4043-aa6d-f5720a0cc7f6` | Nordwind Digital GmbH / BER-HYP-002 Berlin | The original seed record (15 May). Used as the report URL for visual PDF checks in the May handovers; its ref appears as a literal in several unit tests. |
+| `recfTCng48P1TwXq2` | `b464da15-f122-4043-aa6d-f5720a0cc7f7` | TEST 2 / Day 6 verification | May day-6 verification record. |
+| `recoIUjTdcX69uHlK` | `6e36293f-b062-497a-a6fb-7373600fb834` | Riyadh Digital Infrastructure Partners / NEOM DC-Alpha | May Article 9 test record. |
+
+All three carry an `SFDR Assurance Tier` but **no c9/c10 evidence values, and that is
+intentional.** Those values are findings from reading a real assurance report. These records
+have no report behind them, so the fields stay blank and c9 falls out of `aligned` — the
+honest result. Do not fill them with plausible numbers to make a demo look better.
+
+The one blank row the base used to hold (`recZjQaihwCsYfzcx`, created 24 May, every field
+empty) was deleted on 25 Sep 2026.
 
 ---
 
