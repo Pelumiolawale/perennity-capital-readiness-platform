@@ -1241,6 +1241,11 @@ export async function fetchEngagement(engagementReference, config) {
       client_name: fields[FID.CLIENT_NAME] ?? null,
       project_name: fields[FID.PROJECT_NAME] ?? null,
       project_id: fields[FID.PROJECT_ID] ?? null,
+      // Raw, with no fallback. project_input.intake_timestamp substitutes
+      // "now" for a blank so a report still renders; the benchmark sweep must
+      // not, because its dedup key includes this date (ITEM-14). It reads
+      // this instead.
+      issued_at: fields[FID.ISSUED_AT] ?? null,
       engagement_letter_signed: Boolean(fields[FID.ENGAGEMENT_LETTER_SIGNED]),
       engagement_letter_date: fields[FID.ENGAGEMENT_LETTER_DATE] ?? null,
     },

@@ -24,7 +24,7 @@ An empty field is interpreted by the engine as "we don't know yet" — it does N
 | "What's the project name?" | `Project Name` |
 | "Project ID for internal reference?" | `Project ID` |
 | "Is the engagement letter signed? Date?" | `Engagement Letter Signed` (checkbox), `Engagement Letter Date` |
-| "Who signs the report on behalf of Perennity? Title? Path to signature block?" | `Signatory Name`, `Signatory Title`, `Signatory Signature Block URI` (override fields — defaults to app config if blank) |
+| "Who signs the report on behalf of Perennity? Title?" | `Signatory Name`, `Signatory Title` (override fields — each blank one falls back to the default on its own). Reports are signed in wet ink, so there is no signature image: leave `Signatory Signature Block URI` blank — the app no longer reads it. |
 | "Which regulatory framework should we report against?" | `Target Label` (single-select: `eu_taxonomy_aligned_8_1` / `sfdr_article_8` / `sfdr_article_9` / `uk_sdr_focus` / `uk_sdr_improvers` / `uk_sdr_impact`) |
 
 > **This field is now required.** Leaving it blank used to default the engagement to

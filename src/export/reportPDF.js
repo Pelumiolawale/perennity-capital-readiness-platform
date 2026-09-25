@@ -1510,12 +1510,27 @@ function filterConclusionsNarrative(narrative, targetLabel, renderContract, fram
 
 /**
  * Fetch the logo PNG from the Vite-resolved URL and return a base64
- * data-URI string suitable for jsPDF addImage().
+ * data-URI string suitable for jsPDF addImage(), or null if it cannot be had.
  *
- * @returns {Promise<string>}
+ * Never throws. The logo is decoration and the cover already skips it when
+ * this returns null; a failed fetch used to reject the whole generation, so the
+ * client got no report at all. A non-2xx response is also null — its body is
+ * an error page, which addImage would otherwise be handed as a PNG.
+ *
+ * @returns {Promise<string | null>}
  */
 async function loadLogoBase64() {
-  const resp = await fetch(logoUrl);
+  let resp;
+  try {
+    resp = await fetch(logoUrl);
+  } catch (err) {
+    console.warn("[reportPDF] cover logo not loaded; rendering without it:", err);
+    return null;
+  }
+  if (!resp.ok) {
+    console.warn(`[reportPDF] cover logo not loaded (HTTP ${resp.status}); rendering without it.`);
+    return null;
+  }
   const buf = await resp.arrayBuffer();
   const bytes = new Uint8Array(buf);
   let binary = "";
