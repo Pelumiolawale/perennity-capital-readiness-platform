@@ -145,6 +145,21 @@ export const FID = {
   C9_MATERIAL_QUALIFICATIONS_TRI: "fldvvZGYaSK7ZX73W",
   C10_DATA_RECENCY_MONTHS: "fldgOY3Zetsd7OysA",
 
+  // Workstream C. Added 25 Sep 2026: engine inputs no field used to feed.
+  // c9 PAI data file — one of c9's five evidence-pack components.
+  C9_PAI_DATA_FILE_REF: "fldNOctD71rPYRc0e",
+  // c8 climate-mitigation sub-case (a). Checkboxes, not Y/N/? selects: the
+  // engine reads each through Boolean(), so a definite No scores exactly like
+  // a blank and a third state would give the operator nothing (the same
+  // reasoning as the c7 specifiers). Read with coerceCheckbox.
+  C8_SBTI_VALIDATED_1_5C: "fldKLoDgA1XJICC6A",
+  C8_SBTI_INCLUDES_NET_ZERO: "fldjP14I4rvpNxjSV",
+  C8_EU_CTB_OR_PAB_ALIGNED: "flddcAF6U1M2mYETZ",
+  C8_IEA_NZE_COMPATIBLE: "fld9x1U3UFEZ5AGpr",
+  // UK SDR Improvers c8. Options are engine literals: third_party_audit /
+  // internal / none.
+  UK_SDR_VERIFICATION_METHOD: "fldJZqFDJZjyH14MS",
+
   // ── PR A3 — discrete c6 Taxonomy claim scalars ──────────────────────
   C6_TAXONOMY_CLAIM_MADE: "fldZof3buzHeCIMJC",
   C6_CLAIMED_PERCENTAGE: "fld9bOCmePEWMBGvA",
@@ -258,6 +273,8 @@ export const CHILD_FIDS = {
     ASSURANCE_STATUS: "fldroOPT2etcTjJLP",
     APPLICABILITY: "fld7QbaJ5zn0ezpsS",
     APPLICABILITY_RATIONALE: "fldPjkp4S8eAyWR0Z",
+    // c10: every PAI carrying a value needs one. Added 25 Sep 2026.
+    METHODOLOGY_REF: "fldGOkEQ9kVfTBXgv",
   },
 };
 
@@ -1049,6 +1066,10 @@ export async function fetchEngagement(engagementReference, config) {
     fields[FID.UK_SDR_REPORTING_FREQUENCY],
     undefined,
   );
+  const uk_sdr_verification_method = singleSelectValue(
+    fields[FID.UK_SDR_VERIFICATION_METHOD],
+    undefined,
+  );
   const uk_sdr_improvement_plan = fields[FID.UK_SDR_IMPROVEMENT_PLAN] ?? undefined;
   const uk_sdr_impact_plan = fields[FID.UK_SDR_IMPACT_PLAN] ?? undefined;
 
@@ -1130,6 +1151,7 @@ export async function fetchEngagement(engagementReference, config) {
     [FID.C7_REPORTING_NAMED_STANDARD, "c7 reporting named standard"],
     [FID.UK_SDR_REPORTING_FREQUENCY, "UK SDR reporting frequency"],
     [FID.UK_SDR_STANDARD_CLAIMED, "UK SDR standard claimed"],
+    [FID.UK_SDR_VERIFICATION_METHOD, "UK SDR verification method"],
   ]) {
     warnOnUnrecognisedOption(
       fid,
@@ -1162,6 +1184,7 @@ export async function fetchEngagement(engagementReference, config) {
     uk_sdr_standard_claimed,
     uk_sdr_kpis_committed,
     uk_sdr_reporting_frequency,
+    uk_sdr_verification_method,
     uk_sdr_improvement_plan,
     uk_sdr_impact_plan,
     // PR A1 — c2/c3/c7 discrete entity scalars (raw cell values; adapter
@@ -1191,6 +1214,12 @@ export async function fetchEngagement(engagementReference, config) {
     c9_design_stage_doc_age_months: fields[FID.C9_DESIGN_STAGE_DOC_AGE_MONTHS] ?? undefined,
     c9_material_qualifications_present: triState(fields[FID.C9_MATERIAL_QUALIFICATIONS_TRI], undefined),
     c10_data_recency_months: fields[FID.C10_DATA_RECENCY_MONTHS] ?? undefined,
+    // Workstream C (25 Sep 2026). undefined when blank / unticked.
+    c9_pai_data_file_ref: fields[FID.C9_PAI_DATA_FILE_REF] ?? undefined,
+    c8_sbti_validated_1_5c: coerceCheckbox(fields[FID.C8_SBTI_VALIDATED_1_5C]),
+    c8_sbti_includes_net_zero: coerceCheckbox(fields[FID.C8_SBTI_INCLUDES_NET_ZERO]),
+    c8_eu_ctb_or_pab_aligned: coerceCheckbox(fields[FID.C8_EU_CTB_OR_PAB_ALIGNED]),
+    c8_iea_nze_compatible: coerceCheckbox(fields[FID.C8_IEA_NZE_COMPATIBLE]),
     c3_statement_url: fields[FID.C3_STATEMENT_URL] ?? undefined,
     c3_statement_published_date: fields[FID.C3_STATEMENT_PUBLISHED_DATE] ?? undefined,
     c3_art_4_explicit_reference: Boolean(fields[FID.C3_ART_4_EXPLICIT_REFERENCE]),

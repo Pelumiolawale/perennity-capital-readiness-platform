@@ -143,6 +143,18 @@ export const FIELD_CONTRACTS = [
   },
   {
     table: ENGAGEMENTS,
+    field: "fldJZqFDJZjyH14MS",
+    label: "UK SDR verification method",
+    required: ["third_party_audit", "internal", "none"],
+    mode: "exact",
+    consumer:
+      "ukSDRInputAdapter.js → kpi_reporting_commitment.verification_method. Engine: " +
+      "src/sfdr/types.ts KPIReportingCommitment.verification_method, read by " +
+      "uk-sdr-scoring.ts uk_sdr_v1_progress_monitoring. A renamed option reaches the " +
+      "engine as an unknown string and Improvers c8 silently caps at partial.",
+  },
+  {
+    table: ENGAGEMENTS,
     field: "fldTgr6vvCqioE5Zc",
     label: "c7 operational status",
     required: ["operational", "pre_operational"],

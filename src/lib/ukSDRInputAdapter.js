@@ -71,23 +71,27 @@ export function buildUKSDRInputs(raw) {
     ? raw.uk_sdr_kpis_committed
     : undefined;
   const freq = raw.uk_sdr_reporting_frequency;
+  // Improvers c8. The engine counts "none" the same as absent, but it is still
+  // the operator's answer, so it is passed through rather than dropped here.
+  const verification = raw.uk_sdr_verification_method;
   const improvement = safeJsonParse(raw.uk_sdr_improvement_plan);
   const impact = safeJsonParse(raw.uk_sdr_impact_plan);
 
   // If every field is empty, return undefined so the engine takes the
   // insufficient_evidence path uniformly rather than carrying an empty
   // ProjectUKSDRInputs object.
-  if (!standard && !kpis && !freq && !improvement && !impact) {
+  if (!standard && !kpis && !freq && !verification && !improvement && !impact) {
     return undefined;
   }
 
   /** @type {ProjectUKSDRInputs} */
   const out = {};
   if (standard) out.sustainability_standard_claimed = standard;
-  if (kpis || freq) {
+  if (kpis || freq || verification) {
     out.kpi_reporting_commitment = {
       ...(kpis ? { kpis_committed: kpis } : {}),
       ...(freq ? { reporting_frequency: freq } : {}),
+      ...(verification ? { verification_method: verification } : {}),
     };
   }
   if (improvement) out.improvement_plan = /** @type {any} */ (improvement);

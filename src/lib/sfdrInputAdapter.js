@@ -148,6 +148,12 @@ function buildPerPaiRecordFromChildRows(rows) {
     else if (typeof textValue === "string" && textValue.length > 0) datum.value = textValue;
     if (f[CHILD_FIDS.PROJECT_PAI_DATA.UNIT]) datum.unit = f[CHILD_FIDS.PROJECT_PAI_DATA.UNIT];
     if (f[CHILD_FIDS.PROJECT_PAI_DATA.VERIFIER_IDENTITY]) datum.verifier_name = f[CHILD_FIDS.PROJECT_PAI_DATA.VERIFIER_IDENTITY];
+    // c10 needs this on every PAI that carries a value; without a field to
+    // feed it, c10 was not_aligned on every engagement. Absent when blank.
+    const methodologyRef = f[CHILD_FIDS.PROJECT_PAI_DATA.METHODOLOGY_REF];
+    if (typeof methodologyRef === "string" && methodologyRef.trim().length > 0) {
+      datum.methodology_ref = methodologyRef;
+    }
     if (verified) datum.assurance_level = "limited";
     out[String(paiNumber)] = datum;
   }
@@ -426,6 +432,23 @@ export function buildSFDRInputs(engagement) {
     if (quantifiedIndicators.length > 0) {
       siObjective.quantified_indicators = quantifiedIndicators;
     }
+    // c8 sub-case (a): the enhanced evidence a climate-mitigation objective
+    // needs (Environmental and Mixed both map to mitigation in mapSICategory).
+    // Nothing used to send it, so a fully evidenced objective fell through to
+    // the engine's final not_aligned branch. Only ticked boxes are sent, and
+    // sub_case_a is omitted entirely when none is: the engine reads each key
+    // through Boolean(), so an object of falses would say nothing an absent
+    // key does not — and would read, to anyone inspecting the input, as
+    // though someone had checked and found nothing.
+    const subCaseA = omitBlanks({
+      sbti_validated_1_5c: engagement.c8_sbti_validated_1_5c,
+      sbti_includes_net_zero: engagement.c8_sbti_includes_net_zero,
+      eu_ctb_or_pab_aligned_at_project_level: engagement.c8_eu_ctb_or_pab_aligned,
+      iea_nze_2050_compatible_with_trajectory: engagement.c8_iea_nze_compatible,
+    });
+    if (Object.keys(subCaseA).length > 0) {
+      siObjective.sub_case_a = subCaseA;
+    }
 
     art9.si_objective = siObjective;
     hasArt9 = true;
@@ -473,6 +496,8 @@ export function buildSFDRInputs(engagement) {
       material_qualifications_present: engagement.c9_material_qualifications_present,
       operational_doc_age_months: engagement.c9_operational_doc_age_months,
       design_stage_doc_age_months: engagement.c9_design_stage_doc_age_months,
+      // One of c9's five components; see the Airtable field description.
+      pai_data_file_ref: engagement.c9_pai_data_file_ref,
     });
     hasArt9 = true;
   }
