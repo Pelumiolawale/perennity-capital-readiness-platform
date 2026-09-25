@@ -65,13 +65,15 @@ Each engagement is configured with `STATUS=active`, `ISSUED_AT=2026-06-03T00:00:
 `EXPIRES_AT=2026-09-03T00:00:00.000Z` (90-day window). `engagements.json` marks engagement
 letters signed.
 
-**The live base does not match that last point.** Checked 25 Sep 2026: `Engagement Letter
-Signed` (`fldQYH3u8F46SlNhB`, a checkbox) is unticked on every record in the base, fixtures
-included. The benchmark sweep (`listEngagementReferences` in `src/lib/listEngagements.js`)
-requires `active` AND a signed letter, so it currently selects nothing. That is the safe
-direction — the benchmark table is append-only — but it means the sweep is exercising no
-live data, and items 14 and 15 of the fix plan (blank `Issued At` / `Project ID`) cannot
-bite yet.
+**The live base deliberately differs on that last point.** `Engagement Letter Signed`
+(`fldQYH3u8F46SlNhB`, a checkbox) is unticked on every record in the base, fixtures
+included (checked 25 Sep 2026). The last ones were unticked on purpose on 20 Sep 2026, so
+that test data stops feeding the benchmark sweep: `listEngagementReferences` in
+`src/lib/listEngagements.js` requires `active` AND a signed letter, and the benchmark table
+is append-only. So the sweep currently selects nothing. Re-seeding from `engagements.json`
+would tick the box again and put fixtures back into the benchmark set — untick it after any
+re-seed. Items 14 and 15 of the fix plan (blank `Issued At` / `Project ID`) cannot bite
+until a real signed engagement exists.
 
 ---
 
