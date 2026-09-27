@@ -214,7 +214,8 @@
       "fldn3fXTvGl8gciFm": true,
       "fldJSLW9dBx0YM4ZC": "gri",
       "fldmRavTL1YuUsgCc": 6,
-      "fldvvZGYaSK7ZX73W": "No"
+      "fldvvZGYaSK7ZX73W": "No",
+      "fldNOctD71rPYRc0e": "TEST FIXTURE — synthetic PAI data file (pai-FRA-HYP-01.csv)"
     }
   },
   {
@@ -294,7 +295,8 @@
       "fldbmYuT5phWjRhwB": "2024-09-12",
       "fld4lun18zlJQpUzD": false,
       "fldmRavTL1YuUsgCc": 15,
-      "fldvvZGYaSK7ZX73W": "Unknown"
+      "fldvvZGYaSK7ZX73W": "Unknown",
+      "fldNOctD71rPYRc0e": "TEST FIXTURE — synthetic PAI data file (pai-RUH-COL-004.csv)"
     }
   },
   {
@@ -404,7 +406,10 @@
       "fldOqqE0u9Ffunhbi": 4,
       "fldmRavTL1YuUsgCc": 4,
       "fldvvZGYaSK7ZX73W": "No",
-      "fldgOY3Zetsd7OysA": 8
+      "fldgOY3Zetsd7OysA": 8,
+      "fldKLoDgA1XJICC6A": true,
+      "fldjP14I4rvpNxjSV": true,
+      "fldNOctD71rPYRc0e": "TEST FIXTURE — synthetic PAI data file (pai-OSL-GRN-01.csv)"
     }
   },
   {
@@ -499,7 +504,8 @@
       "fldeOrOsLRaYLqmDc": "2020-06-30",
       "fldmRavTL1YuUsgCc": 20,
       "fldvvZGYaSK7ZX73W": "Yes",
-      "fldgOY3Zetsd7OysA": 20
+      "fldgOY3Zetsd7OysA": 20,
+      "fldNOctD71rPYRc0e": "TEST FIXTURE — synthetic PAI data file (pai-AMS-MIX-003.csv)"
     }
   },
   {
@@ -703,7 +709,8 @@
         "wue"
       ],
       "fld771ulYlnwmZZbT": "annual",
-      "fldugUZ2qX710zK9g": "{\"baseline_metrics\":{\"pue_current\":1.50,\"renewable_pct_current\":60,\"ghg_current\":12500,\"wue_current\":0.78},\"strategy\":{\"timeline_years\":3,\"actions\":[\"Migrate 100% of grid demand to renewable PPAs by 2027\",\"Deploy liquid cooling on next compute refresh cycle (2026 Q3)\",\"Implement site-level water recycling targeting 50% reduction by 2028\"],\"verification_method\":\"third_party_audit\"},\"targets\":{\"pue_target\":1.25,\"renewable_pct_target\":95,\"ghg_reduction_pct\":35,\"wue_target\":0.55}}"
+      "fldugUZ2qX710zK9g": "{\"baseline_metrics\":{\"pue_current\":1.50,\"renewable_pct_current\":60,\"ghg_current\":12500,\"wue_current\":0.78},\"strategy\":{\"timeline_years\":3,\"actions\":[\"Migrate 100% of grid demand to renewable PPAs by 2027\",\"Deploy liquid cooling on next compute refresh cycle (2026 Q3)\",\"Implement site-level water recycling targeting 50% reduction by 2028\"],\"verification_method\":\"third_party_audit\"},\"targets\":{\"pue_target\":1.25,\"renewable_pct_target\":95,\"ghg_reduction_pct\":35,\"wue_target\":0.55}}",
+      "fldJZqFDJZjyH14MS": "third_party_audit"
     }
   },
   {
@@ -766,7 +773,8 @@
         "renewable_energy_pct"
       ],
       "fld771ulYlnwmZZbT": "annual",
-      "fldugUZ2qX710zK9g": "{\"baseline_metrics\":{\"pue_current\":1.48},\"strategy\":{\"timeline_years\":5,\"actions\":[\"Procurement of renewable energy certificates\",\"Cooling efficiency review by 2028\"],\"verification_method\":\"none\"},\"targets\":{\"pue_target\":1.35,\"renewable_pct_target\":60}}"
+      "fldugUZ2qX710zK9g": "{\"baseline_metrics\":{\"pue_current\":1.48},\"strategy\":{\"timeline_years\":5,\"actions\":[\"Procurement of renewable energy certificates\",\"Cooling efficiency review by 2028\"],\"verification_method\":\"none\"},\"targets\":{\"pue_target\":1.35,\"renewable_pct_target\":60}}",
+      "fldJZqFDJZjyH14MS": "none"
     }
   },
   {

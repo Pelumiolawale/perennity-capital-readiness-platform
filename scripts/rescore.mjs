@@ -16,6 +16,13 @@
 // Expiry is ignored by passing fetchEngagement a clock set to the epoch —
 // fixtures' 90-day windows lapse, and a rescore still has to cover them. The
 // status check is NOT bypassed: a non-active record is reported, not scored.
+//
+// The engine's clock is pinned too (--as-of, default below). Several SFDR
+// criteria compute ages from `new Date()` directly — "statement age 253 days" —
+// and ignore the engine's own `now` dependency, so without this a baseline
+// taken on Monday and a rerun on Wednesday differ on every such rationale and
+// the diff cannot tell a real change from the calendar. Pinning is confined to
+// this script; the app always scores against the real date.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -34,6 +41,10 @@ const args = process.argv.slice(2);
 if (args[0] === "--diff") {
   process.exit(diff(args[1], args[2]));
 }
+
+const asOfIdx = args.indexOf("--as-of");
+const AS_OF = asOfIdx >= 0 ? args[asOfIdx + 1] : "2026-09-25";
+pinClock(AS_OF);
 
 const outIdx = args.indexOf("--out");
 const outPath = resolve(outIdx >= 0 ? args[outIdx + 1] : "rescore/latest.json");
@@ -73,13 +84,30 @@ for (const ref of refs.sort()) {
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify(result, null, 2) + "\n");
 const scored = Object.values(result).filter((r) => !(/** @type {any} */ (r).refused)).length;
-console.log(`Scored ${scored} of ${refs.length} engagements → ${outPath}`);
+console.log(`Scored ${scored} of ${refs.length} engagements as of ${AS_OF} → ${outPath}`);
 for (const [ref, r] of Object.entries(result)) {
   const x = /** @type {any} */ (r);
   if (x.refused) console.log(`  not scored: ${ref} (${x.refused})`);
 }
 
 // ---------------------------------------------------------------------------
+
+/** Replace the global clock with a fixed instant. Script-only; see header. */
+function pinClock(isoDate) {
+  const fixed = Date.parse(`${isoDate}T12:00:00.000Z`);
+  if (!Number.isFinite(fixed)) throw new Error(`--as-of must be YYYY-MM-DD, got "${isoDate}"`);
+  const RealDate = Date;
+  class PinnedDate extends RealDate {
+    constructor(...args) {
+      // @ts-ignore — forwarding whatever the caller passed
+      super(...(args.length ? args : [fixed]));
+    }
+    static now() {
+      return fixed;
+    }
+  }
+  globalThis.Date = /** @type {DateConstructor} */ (/** @type {unknown} */ (PinnedDate));
+}
 
 function loadEnvLocal() {
   const path = resolve(".env.local");

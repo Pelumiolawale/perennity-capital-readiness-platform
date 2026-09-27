@@ -357,6 +357,18 @@ export const FIELD_CONTRACTS = [
     consumer: "SFDR c5 elements 4 and 6. Same RECOGNISED_STANDARDS set.",
   },
   {
+    table: ES_CHARACTERISTICS,
+    field: "fldntLJtw5b4TnNUN",
+    label: "ES Characteristics — indicator_source",
+    required: ["art_2_17_example", "l2_rts_annex_i_pai", "bespoke"],
+    mode: "exact",
+    consumer:
+      "sfdrInputAdapter.js buildQuantifiedIndicatorsFromChildRows → c8 " +
+      "quantified_indicators[].source. Engine: src/sfdr/types.ts " +
+      "QuantifiedIndicatorSource; art9-scoring.ts counts only the first two as " +
+      "recognised sources.",
+  },
+  {
     table: PROJECT_PAI_DATA,
     field: "fld7QbaJ5zn0ezpsS",
     label: "Project PAI Data — applicability",
@@ -377,12 +389,13 @@ export const KNOWN_GAPS = [
   {
     field: "fldntLJtw5b4TnNUN",
     label: "ES Characteristics — indicator_source",
-    missing: ["bespoke"],
+    missing: [],
     why:
-      "QuantifiedIndicatorSource has three values; the field offers two. A bespoke " +
-      "indicator therefore cannot be tagged at all, so it never counts toward the " +
-      "engine's designated 'partially_aligned — bespoke metrics' path for Art 9 c8. " +
-      "Scheduled with the c8 sub-case work.",
+      "RESOLVED 25 Sep 2026 with the c8 sub-case work. QuantifiedIndicatorSource " +
+      "has three values and the field offered two, so a bespoke indicator could not " +
+      "be tagged and never reached the engine's 'partially_aligned — bespoke " +
+      "metrics' path for Art 9 c8. 'bespoke' was added in the Airtable UI (the API " +
+      "cannot add select options), and the field now has an exact contract above.",
   },
   {
     field: "fldJ01YejLamlwxN2",

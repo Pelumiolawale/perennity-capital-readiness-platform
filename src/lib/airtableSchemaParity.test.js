@@ -222,10 +222,10 @@ describe("live Airtable still matches the contract", () => {
 describe("known contract gaps stay visible", () => {
   // These are real defects, deliberately not fixed yet. Asserting on them means
   // closing one has to be a conscious edit here rather than a silent drift.
-  it("indicator_source is still missing 'bespoke'", () => {
+  it("indicator_source gained 'bespoke' on 25 Sep 2026, and the gap is recorded as closed", () => {
     const gap = KNOWN_GAPS.find((g) => g.field === "fldntLJtw5b4TnNUN");
-    expect(gap).toBeDefined();
-    expect(snapshot.fields["fldntLJtw5b4TnNUN"]).not.toContain("bespoke");
+    expect(gap?.missing).toEqual([]);
+    expect(snapshot.fields["fldntLJtw5b4TnNUN"]).toContain("bespoke");
   });
 
   it("uk_sdr_kpis_committed still has a duplicate and a blank option", () => {

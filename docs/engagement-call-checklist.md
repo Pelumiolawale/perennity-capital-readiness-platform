@@ -218,7 +218,20 @@ This is the c8/c9/c10 Art 9 machinery on top of the Art 8 baseline (sections 1-6
 | "Category: Environmental / Social / Mixed?" | `SFDR SI Objective Category` |
 | "Three dominance test questions: (a) is the SI objective named in the investment memorandum? (b) does the project's economic rationale materially depend on the SI contribution? (c) does marketing lead with the SI objective?" | `SFDR Dominance Test` (JSON: `{"named_in_investment_memorandum": true, "economic_rationale_depends_on_si": true, "marketing_leads_with_si": true}`) |
 
-For aligned: all three dominance booleans true, plus quantified indicators (currently bundled with sfdr_si_objective text — future Airtable extension may surface as separate fields).
+For aligned: all three dominance booleans true, plus at least three quantified indicators from recognised sources — the SFDR ES Characteristics rows with `indicator_source` set to `art_2_17_example` or `l2_rts_annex_i_pai`.
+
+**If the category is Environmental or Mixed, also ask** (both count as climate mitigation, which needs one piece of enhanced evidence — added 25 Sep 2026):
+
+| Question | Airtable column |
+|---|---|
+| "Is the target SBTi-validated at 1.5 °C — can you send the SBTi dashboard link?" | `c8 SBTi validated 1.5°C` |
+| "Does that validated target include a net-zero commitment?" | `c8 SBTi target includes net zero` |
+| "Has the project itself been shown aligned with an EU Climate Transition or Paris-Aligned Benchmark trajectory?" | `c8 EU CTB/PAB aligned (project level)` |
+| "Has the emissions trajectory been shown compatible with the IEA Net Zero 2050 scenario?" | `c8 IEA NZE 2050 compatible` |
+
+> Tick only what you have seen evidenced. Unticked means "not evidenced", and the engine
+> treats a definite no the same way, which is why these are checkboxes and not Yes/No/?.
+> With none ticked, a mitigation objective is `not_aligned` on c8 however good the rest is.
 
 ### c9 SI-eligibility evidence pack
 
@@ -228,6 +241,7 @@ For aligned: all three dominance booleans true, plus quantified indicators (curr
 | "Did the assurance engagement carry any material qualifications?" | `c9 Material qualifications present (Y/N/?)` |
 | "How old is the operational documentation in the pack, in months?" | `c9 Operational doc age (months)` |
 | "…or, for a pre-operational project, the design-stage documentation?" | `c9 Design stage doc age (months)` |
+| "Where is the machine-readable PAI data file in the pack?" | `c9 PAI data file reference` — new 25 Sep 2026. Blank means the pack has no PAI data file, which is a missing c9 component. |
 
 > **The three rows above are new (20 Sep 2026) and two of them decide the verdict.**
 >
@@ -300,8 +314,34 @@ For aligned: **all 11** PAIs carry a value AND a methodology reference, data no 
 9 of the 11 third-party verified. 8 to 10 PAIs caps at partially aligned. Fewer than 8, or
 any PAI with a value but no methodology reference, is not aligned.
 
-One hard override: if the project is within 2km of a Key Biodiversity Area and PAI 7 has
-no value, c10 is `not_aligned` outright, whatever the overall coverage. Ask the question.
+Each PAI row's methodology reference goes in the PAI Data table's `Methodology reference`
+column (new 25 Sep 2026). Before that there was nowhere to put it, so c10 could not reach
+aligned on any engagement.
+
+One hard override in the engine: if the project is within 2km of a Key Biodiversity Area
+and PAI 7 has no value, c10 is `not_aligned` outright, whatever the overall coverage.
+**There is not yet an Airtable field for the KBA question**, so the app never sends it and
+this override cannot fire. Ask it anyway and note the answer in the engagement notes; a
+field is on the follow-up list.
+
+## UK SDR (Focus / Improvers / Impact)
+
+Added 25 Sep 2026 — until then this checklist had no UK SDR questions, only the label.
+Field-by-field detail and the JSON shapes are in `runbook-paid-reports-appendix-labels.md`
+sections 4–6.
+
+| Question | Airtable column | Read by |
+|---|---|---|
+| "Which sustainability standard does the product claim?" | `UK SDR Standard Claimed` | Focus c2 |
+| "Which KPIs do you commit to report: PUE, WUE, renewable share, GHG?" | `UK SDR KPIs Committed` | Focus c4; Improvers c8 |
+| "How often will you report them?" | `UK SDR Reporting Frequency` | Focus c4; Improvers c8 |
+| "How will the KPIs be verified — third-party audit, internally, or not at all?" | `UK SDR verification method` (`third_party_audit` / `internal` / `none`) — new 25 Sep 2026 | Improvers c8 |
+| Improvement strategy, targets, baseline | `UK SDR Improvement Plan` (JSON) | Improvers c5–c7 |
+| Impact objective, measurement, investor contribution | `UK SDR Impact Plan` (JSON) | Impact c10–c15 |
+
+> **Improvers c8 cannot pass without a verification method**, and `none` counts as absent.
+> It used to be documented as a key inside the Improvement Plan JSON, where the engine never
+> looked; do not put it there.
 
 ## Engine determinism note
 

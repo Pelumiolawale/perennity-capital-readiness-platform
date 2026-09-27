@@ -131,7 +131,15 @@ rows.
     `economic_rationale_depends_on_si`, `marketing_leads_with_si`). All 3 must be true for
     aligned. Optional fields `investment_memorandum_ref`, `economic_rationale_description`.
   - ≥3 quantified contribution indicators via SFDR ES Characteristics child rows (those
-    that have `indicator_source` populated double as c8 indicators).
+    that have `indicator_source` populated double as c8 indicators). Only
+    `art_2_17_example` and `l2_rts_annex_i_pai` count as recognised; `bespoke` (an option
+    since 25 Sep 2026) reaches the partially-aligned "bespoke metrics" path instead.
+  - **Climate-mitigation sub-case (a)** — `Environmental` and `Mixed` both map to climate
+    mitigation, which needs ONE of: `c8 SBTi validated 1.5°C` AND `c8 SBTi target includes
+    net zero`; `c8 EU CTB/PAB aligned (project level)`; or `c8 IEA NZE 2050 compatible`.
+    With none ticked, a fully evidenced mitigation objective is `not_aligned`. (Fields added
+    25 Sep 2026; before that nothing sent this evidence, so no Environmental or Mixed
+    objective could pass c8.)
 - **c9 — SI-eligibility evidence pack** — cascades from c8 + c4 + c2. Any `not_aligned`
   upstream forces c9 `not_aligned`. Driven by `SFDR Assurance Tier` (`reasonable_big4` /
   `limited_big4` / `limited_partial` / `management_only` — see methodology v3.5 F7).
@@ -231,9 +239,12 @@ Sydney, gap tier — partial baseline + extended timeline).
   `timeline_years ≤3` AND `actions.length ≥3`. Partial: ≤5 years, ≥1 action.
 - **c7 — Improvement KPI targets** — reads `improvement_plan.targets`. Aligned requires
   ≥3 of 4 quantified targets, AND a credible baseline from c5 (cascade).
-- **c8 — Progress monitoring** — reads `UK SDR Reporting Frequency` + verification method
-  inside the JSON blob (`strategy.verification_method`). Aligned requires `annual` cadence
-  + verification ≠ `none`.
+- **c8 — Progress monitoring** — reads `UK SDR Reporting Frequency` + `UK SDR verification
+  method` (`third_party_audit` / `internal` / `none`). Aligned requires `annual` cadence +
+  a verification method other than `none`. *Corrected 25 Sep 2026: this said the method
+  lived inside the Improvement Plan JSON as `strategy.verification_method`. The engine never
+  read it from there, and the app never sent it from anywhere, so c8 could not pass. It now
+  has its own field; anything typed into the JSON under that key is still ignored.*
 - **c9 — Improvement proportion threshold** — cascades from c5 + c6 + c7 + c8. Any
   `not_aligned` upstream forces c9 `not_aligned`.
 
