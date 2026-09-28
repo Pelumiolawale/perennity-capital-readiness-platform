@@ -18,9 +18,9 @@ maps 1:1 to a real asset.
 | 1 | `eu_taxonomy_aligned_8_1` | Strong | `6239c407-a1fa-4335-86fb-5cdda3e480cb` | NORDX1 Stockholm / North Edge Holdings | Mostly `pass` |
 | 2 | `eu_taxonomy_aligned_8_1` | Gap | `b4ca4e61-1800-4190-bd4e-b3ac07b9c7ed` | DAL-COL-002 / Lonestar Colocation LLC | Mix of `partial` / `data_missing` |
 | 3 | `sfdr_article_8` | Strong | `595791d1-b2ef-4036-9a6e-066bb42be1e8` | FRA-HYP-01 / Centrum Digital AG | Mostly `aligned` |
-| 4 | `sfdr_article_8` | Gap | `ba4634e6-bf5c-4bd3-93e7-0654e83e150c` | RUH-COL-004 / Najd Data Holdings | Mostly `partially_aligned` |
-| 5 | `sfdr_article_9` | Strong | `48f32d4d-be5a-41bf-bbac-b720ab5612ff` | OSL-GRN-01 / Fjord Sustainable DC Fund | Mostly `aligned`, c8 aligned with sub-case (a) |
-| 6 | `sfdr_article_9` | Gap | `b01bb716-997f-42e8-828c-6345aeb708bc` | AMS-MIX-003 / Lowland Digital BV | `partially_aligned` on c8 dominance (b), cascades |
+| 4 | `sfdr_article_8` | Gap | `ba4634e6-bf5c-4bd3-93e7-0654e83e150c` | RUH-COL-004 / Najd Data Holdings | `not_aligned`: one unquantified characteristic (c1), stale PAI statement (c3), weak DNSH (c4); c5 cascades from c1 |
+| 5 | `sfdr_article_9` | Strong | `48f32d4d-be5a-41bf-bbac-b720ab5612ff` | OSL-GRN-01 / Fjord Sustainable DC Fund | 9 of 10 `aligned`, c8 via sub-case (a) (SBTi 1.5 °C + net zero), c9 and c10 included. Overall `not_aligned` on c6 alone: claims 92% Taxonomy alignment against 70% corroborated |
+| 6 | `sfdr_article_9` | Gap | `b01bb716-997f-42e8-828c-6345aeb708bc` | AMS-MIX-003 / Lowland Digital BV | `not_aligned`: c8 fails dominance and the indicator threshold, cascading to c9; c10 has 5/11 PAIs and no methodology references |
 | 7 | `uk_sdr_focus` | Strong | `f517f09f-587f-4094-99ec-e78dd29e72ae` | LOS-HYP-01 / Sahara Edge Capital | `aligned` across all 4 Focus criteria |
 | 8 | `uk_sdr_focus` | Gap | `0d9a20e3-17b0-4217-9514-4ddfb200e83b` | SIN-COL-005 / Strait Data Ltd | `not_aligned` on c2 (LEED Gold not recognised) |
 | 9 | `uk_sdr_improvers` | Strong | `6325c039-3137-471b-840b-6a6dd87cd9dc` | SAO-IMP-01 / Atlas Sustentável Brasil | `aligned` across c5–c9 |
@@ -47,17 +47,36 @@ These are synthetic, like every other value in this fixture set. They are chosen
 gate on both sides of its threshold across the four records, not to describe any real
 assurance engagement.
 
-**They do not move a verdict today, and the reason is worth knowing.** c9 and c10 are Article
-9 criteria, so #3 and #4 never reach them. On #5 and #6, criterion 8 (SI objective
-qualification) is `not_aligned`, and c9's Art 2(17) cascade turns any `not_aligned` upstream
-into `not_aligned` for c9 before the recency gate is consulted. So the values sit there
-correctly and are currently unreachable.
+**Until 25 Sep 2026 they moved no verdict**, because criterion 8 was `not_aligned` on both
+Article 9 fixtures and c9's Art 2(17) cascade short-circuits before the recency gate. On #5
+that is no longer true — see below.
 
-That also means **fixture #5 does not behave as this README says it should.** The table above
-promises "Mostly `aligned`, c8 aligned with sub-case (a)"; c8 actually scores `not_aligned`,
-which cascades. That predates the c9 work and has not been changed — flagged here rather than
-quietly corrected, because fixing it means altering fixture data to make c8 pass, which is a
-decision about what the fixture is for.
+### Fixture child rows and Workstream C values (added 25 Sep 2026)
+
+**Fixtures #3–#6 had never had their child rows in the live base.** `child-rows.json` did not
+match the live schema (a legacy ES category value, section numbers stored as strings,
+upper-case standard names, and a `bespoke` indicator source the field did not yet offer), and
+the seeding instructions stopped at "POST matching child rows". So the four SFDR fixtures ran
+with no ES characteristics, PAI coverage, Annex II coverage, project reports or PAI data, and
+**#5 was not the happy path this table promised.** The file was corrected to the live schema
+(its `_meta.corrected_2026_09_25` lists every change) and all 91 rows were seeded with
+`node scripts/seed-fixture-children.mjs --apply`, which refuses to seed a table an engagement
+already has rows in.
+
+The fields added that day for items 6–9 carry these fixture values, all synthetic and marked
+`TEST FIXTURE` where they are text:
+
+| # | Field | Value | Exercises |
+|---|---|---|---|
+| 5 | c8 SBTi validated 1.5 °C + c8 SBTi target includes net zero | both ticked | c8 sub-case (a) — the aligned path |
+| 3, 4, 5, 6 | c9 PAI data file reference | `TEST FIXTURE — synthetic PAI data file (…)` | c9's PAI data file component |
+| 5 | PAI Data → Methodology reference, all 11 rows | `TEST FIXTURE — …` | c10 aligned |
+| 6 | PAI Data → Methodology reference | none, deliberately | c10 with values but no methodology |
+| 9 | UK SDR verification method | `third_party_audit` | Improvers c8 aligned |
+| 10 | UK SDR verification method | `none` | Improvers c8 — `none` scores as absent |
+
+With both in place #5 scores as the table above says, and #9 is `aligned` across the
+Improvers framework, as its row always claimed.
 
 ---
 
@@ -72,8 +91,8 @@ that test data stops feeding the benchmark sweep: `listEngagementReferences` in
 `src/lib/listEngagements.js` requires `active` AND a signed letter, and the benchmark table
 is append-only. So the sweep currently selects nothing. Re-seeding from `engagements.json`
 would tick the box again and put fixtures back into the benchmark set — untick it after any
-re-seed. Items 14 and 15 of the fix plan (blank `Issued At` / `Project ID`) cannot bite
-until a real signed engagement exists.
+re-seed. (Items 14 and 15 of the fix plan — a blank `Issued At` or `Project ID` — are guarded
+since 25 Sep 2026: the sweep skips such an engagement and logs why.)
 
 ---
 
@@ -86,12 +105,20 @@ not client engagements (confirmed by Pels, 25 Sep 2026), and are kept deliberate
 |---|---|---|---|
 | `reccILCx0VfYGFBl5` | `b464da15-f122-4043-aa6d-f5720a0cc7f6` | Nordwind Digital GmbH / BER-HYP-002 Berlin | The original seed record (15 May). Used as the report URL for visual PDF checks in the May handovers; its ref appears as a literal in several unit tests. |
 | `recfTCng48P1TwXq2` | `b464da15-f122-4043-aa6d-f5720a0cc7f7` | TEST 2 / Day 6 verification | May day-6 verification record. |
-| `recoIUjTdcX69uHlK` | `6e36293f-b062-497a-a6fb-7373600fb834` | Riyadh Digital Infrastructure Partners / NEOM DC-Alpha | May Article 9 test record. |
+| `recoIUjTdcX69uHlK` | `6e36293f-b062-497a-a6fb-7373600fb834` | Riyadh Digital Infrastructure Partners / NEOM DC-Alpha | May test record, created as Article 9; currently scoped `uk_sdr_focus`. |
 
 All three carry an `SFDR Assurance Tier` but **no c9/c10 evidence values, and that is
 intentional.** Those values are findings from reading a real assurance report. These records
 have no report behind them, so the fields stay blank and c9 falls out of `aligned` — the
 honest result. Do not fill them with plausible numbers to make a demo look better.
+
+The exception is the PAI Data rows on Nordwind and NEOM (Pels, 25 Sep 2026). They held the
+old ten-PAI list, so PAI 3 and PAI 6 rows were added, and every applicable row got a
+methodology reference. All of it is synthetic and says so: each reference reads `TEST DATA —
+synthetic methodology reference for PAI n; not from any real report`, and the two new rows
+per record are `Management attested` with no verifier named. Note that neither record is
+currently scoped to Article 9 (Nordwind is `sfdr_article_8`, NEOM `uk_sdr_focus`), so c10
+does not score these rows today; they matter if either is re-scoped.
 
 The one blank row the base used to hold (`recZjQaihwCsYfzcx`, created 24 May, every field
 empty) was deleted on 25 Sep 2026.
@@ -127,8 +154,19 @@ curl -X POST "https://api.airtable.com/v0/appasxX7eC3QsmxeM/tblRnd8BdQ65kuaej" \
   -d '{"records":[{"fields":<one engagement object>}],"returnFieldsByFieldId":true}'
 ```
 
-Capture the returned `id` (Airtable `rec...` ID) per UUID, then POST matching child rows from
-`child-rows.json` to the right child tables, linking via the `engagement` field.
+Then seed the child rows:
+
+```bash
+node scripts/seed-fixture-children.mjs          # dry run
+node scripts/seed-fixture-children.mjs --apply  # write
+```
+
+It resolves each parent by Engagement Reference, links from the child side, writes with
+`typecast` off (an option name the field does not offer fails rather than being created),
+and skips any table an engagement already has rows in.
+
+**After any re-seed, untick `Engagement Letter Signed` on every fixture** — `engagements.json`
+ticks it, and a ticked fixture feeds the append-only benchmark table (see above).
 
 ### Option B — Airtable UI CSV import
 

@@ -194,7 +194,8 @@
     ],
     "fldntLJtw5b4TnNUN": [
       "art_2_17_example",
-      "l2_rts_annex_i_pai"
+      "l2_rts_annex_i_pai",
+      "bespoke"
     ],
     "fldVbdnEcmD6sesAd": [
       "covered_specific",
@@ -223,6 +224,12 @@
       "Yes",
       "No",
       "Unknown"
+    ],
+    "fldJZqFDJZjyH14MS": [
+      "third_party_audit",
+      "internal",
+      "none"
     ]
-  }
+  },
+  "_note_2026_09_25": "fldJZqFDJZjyH14MS (UK SDR verification method) was added by hand on 25 Sep 2026, copied from the create-field API response that created it, because refresh-airtable-schema.mjs needs the schema.bases:read scope the PAT does not yet have. Replace with a real refresh once it does. fldntLJtw5b4TnNUN gained 'bespoke' the same day, added in the Airtable UI (the API cannot add select options) and confirmed by a schema read afterwards."
 }

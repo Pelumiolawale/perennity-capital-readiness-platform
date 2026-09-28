@@ -148,7 +148,39 @@ rather than live, the same shape as the defects in the first half of the plan.
 
 ---
 
+## 8. Workstream C — seven fields and one option, for engine inputs nothing fed ✅
+
+Added 25 Sep 2026 through the Airtable connector. Each description says what a blank means.
+
+| Table | Field | ID | Type | Feeds |
+|---|---|---|---|---|
+| SFDR Project PAI Data | Methodology reference | `fldGOkEQ9kVfTBXgv` | text | c10 `per_pai[n].methodology_ref` |
+| Engagements | c9 PAI data file reference | `fldNOctD71rPYRc0e` | text | c9 `evidence_pack.pai_data_file_ref` |
+| Engagements | c8 SBTi validated 1.5°C | `fldKLoDgA1XJICC6A` | checkbox | c8 `sub_case_a.sbti_validated_1_5c` |
+| Engagements | c8 SBTi target includes net zero | `fldjP14I4rvpNxjSV` | checkbox | c8 `sub_case_a.sbti_includes_net_zero` |
+| Engagements | c8 EU CTB/PAB aligned (project level) | `flddcAF6U1M2mYETZ` | checkbox | c8 `sub_case_a.eu_ctb_or_pab_aligned_at_project_level` |
+| Engagements | c8 IEA NZE 2050 compatible | `fld9x1U3UFEZ5AGpr` | checkbox | c8 `sub_case_a.iea_nze_2050_compatible_with_trajectory` |
+| Engagements | UK SDR verification method | `fldJZqFDJZjyH14MS` | select: `third_party_audit` / `internal` / `none` | UK SDR Improvers c8 `kpi_reporting_commitment.verification_method` |
+
+**Why the four c8 fields are checkboxes, not Y/N/? selects.** The engine reads each through
+`Boolean()`, so a definite No scores identically to a blank — the same finding that kept the
+c7 specifiers as checkboxes. A third state would have given the operator a choice with no
+consequence. Unticked means "not evidenced"; the descriptions say so.
+
+**`indicator_source` (`fldntLJtw5b4TnNUN`) gained `bespoke`.** It offered two of the engine's
+three `QuantifiedIndicatorSource` values, so a bespoke indicator could not be tagged and never
+reached c8's "bespoke metrics" partial path. Added in the Airtable UI — the API cannot add a
+select option — and confirmed by a schema read. `KNOWN_GAPS` records it as closed and the
+field now has an exact contract.
+
+---
+
 ## One thing this surfaced, which is data entry rather than schema
+
+> **Done 25 Sep 2026.** PAI 3 and PAI 6 rows were added to both engagements, and every
+> applicable row given a methodology reference. Both engagements are test records, so the
+> values are synthetic and marked `TEST DATA` (Pels's decision). See
+> `docs/test-engagements/README.md`. The original note follows.
 
 The `SFDR Project PAI Data` table holds 20 rows: two engagements × ten PAIs, and those ten
 are the **old** list — PAI 4 present, PAIs 3 and 6 absent. So both engagements that have
